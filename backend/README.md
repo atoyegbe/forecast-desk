@@ -30,8 +30,10 @@ that `frontend/` consumes.
 - `GET /api/v1/events/:eventId`
 - `GET /api/v1/events/:eventId/history`
 
-Discovery list and detail are now served from persisted Postgres records. Price
-history still falls through to live provider fetches until Slice 2.
+Discovery, event detail, and event history are now served from persisted
+Postgres records. Responses include freshness metadata so the frontend can
+distinguish current snapshots from delayed ones. Provider live sockets remain a
+separate Slice 3 concern.
 
 ## Local Setup
 

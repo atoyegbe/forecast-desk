@@ -2,9 +2,11 @@ import type { PoolClient } from 'pg'
 import type {
   PulseEvent,
   PulseEventListParams,
+  PulseFreshness,
   PulseMarket,
   PulseProvider,
 } from '../contracts/pulse-events.js'
+import { getDiscoveryRefreshIntervalMs } from './config.js'
 import { getDbPool } from './pool.js'
 
 type Queryable = {
@@ -32,6 +34,7 @@ type EventRow = {
   source_url: string | null
   status: string
   supported_currencies: string[] | null
+  synced_at: Date | string
   title: string
   total_orders: number
   total_volume: number
@@ -103,6 +106,19 @@ function toRequiredTimestampInput(value: Date | string | null | undefined) {
   return toNullableTimestampInput(value) ?? new Date(0).toISOString()
 }
 
+function toFreshness(value: Date | string | null | undefined): PulseFreshness {
+  const syncedAt = toIsoString(value) ?? new Date(0).toISOString()
+  const parsedTimestamp = new Date(syncedAt).getTime()
+  const isStale =
+    Number.isNaN(parsedTimestamp) ||
+    Date.now() - parsedTimestamp >= getDiscoveryRefreshIntervalMs()
+
+  return {
+    isStale,
+    syncedAt,
+  }
+}
+
 function mapMarketRow(row: MarketRow): PulseMarket {
   return {
     feePercentage: row.fee_percentage,
@@ -137,6 +153,7 @@ function mapEventRow(row: EventRow, markets: PulseMarket[]): PulseEvent {
     createdAt: toIsoString(row.created_at) ?? new Date(0).toISOString(),
     description: row.description,
     engine: row.engine,
+    freshness: toFreshness(row.synced_at),
     hashtags: row.hashtags ?? [],
     id: row.id,
     imageUrl: row.image_url,
@@ -494,6 +511,7 @@ export async function listStoredDiscoveryEvents(params: PulseEventListParams = {
         source_url,
         status,
         supported_currencies,
+        synced_at,
         title,
         total_orders,
         total_volume,
@@ -533,6 +551,7 @@ export async function getStoredDiscoveryEvent(eventId: string) {
         source_url,
         status,
         supported_currencies,
+        synced_at,
         title,
         total_orders,
         total_volume,

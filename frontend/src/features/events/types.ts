@@ -6,6 +6,11 @@ export type PulseOutcome = {
   price: number
 }
 
+export type PulseFreshness = {
+  isStale: boolean
+  syncedAt: string
+}
+
 export type PulseMarket = {
   id: string
   providerMarketId: string
@@ -33,6 +38,7 @@ export type PulseEvent = {
   status: string
   engine: string
   type: string
+  freshness?: PulseFreshness
   imageUrl?: string | null
   createdAt: string
   resolutionDate?: string | null
@@ -57,6 +63,7 @@ export type PulsePricePoint = {
 export type PulsePriceHistory = {
   eventId: string
   eventTitle: string
+  freshness?: PulseFreshness
   marketId: string
   marketTitle: string
   points: PulsePricePoint[]

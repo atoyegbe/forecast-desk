@@ -15,6 +15,10 @@ import {
   recordProviderSyncSuccess,
   upsertStoredDiscoveryEvents,
 } from '../db/discovery-repository.js'
+import {
+  getStoredPriceHistory,
+  replaceStoredPriceHistory,
+} from '../db/history-repository.js'
 import { parseProviderScopedId } from '../providers/provider-ids.js'
 import { bayseProvider } from '../providers/bayse.js'
 import { polymarketProvider } from '../providers/polymarket.js'
@@ -43,6 +47,13 @@ function dedupeEvents(events: PulseEvent[]) {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unknown discovery sync failure.'
+}
+
+function getFreshnessSnapshot(syncedAt = new Date()) {
+  return {
+    isStale: false,
+    syncedAt: syncedAt.toISOString(),
+  }
 }
 
 function isDiscoverySyncStale(lastSuccessAt?: string | null) {
@@ -161,11 +172,15 @@ export async function getEvent(eventId: string) {
     return storedEvent
   }
 
+  const syncedAt = new Date()
   const event = await getProvider(provider).getEvent(providerId)
 
-  await upsertStoredDiscoveryEvents([event], new Date())
+  await upsertStoredDiscoveryEvents([event], syncedAt)
 
-  return event
+  return {
+    ...event,
+    freshness: getFreshnessSnapshot(syncedAt),
+  }
 }
 
 export async function getPriceHistory(
@@ -173,9 +188,58 @@ export async function getPriceHistory(
   interval = '1d',
 ): Promise<PulsePriceHistory> {
   const event = await getEvent(eventId)
+  const primaryMarket = event.markets[0]
 
-  return getProvider(event.provider).getPriceHistory({
-    event,
-    interval,
-  })
+  if (!primaryMarket) {
+    return {
+      eventId: event.id,
+      eventTitle: event.title,
+      freshness: event.freshness,
+      marketId: '',
+      marketTitle: 'Primary market',
+      points: [],
+    }
+  }
+
+  const storedHistory = await getStoredPriceHistory(event, primaryMarket.id, interval)
+
+  if (storedHistory && !storedHistory.freshness?.isStale) {
+    return storedHistory
+  }
+
+  try {
+    const syncedAt = new Date()
+    const liveHistory = await getProvider(event.provider).getPriceHistory({
+      event,
+      interval,
+    })
+
+    await replaceStoredPriceHistory(event, liveHistory, interval, syncedAt)
+    const persistedHistory = await getStoredPriceHistory(
+      event,
+      liveHistory.marketId || primaryMarket.id,
+      interval,
+    )
+
+    return (
+      persistedHistory ?? {
+        ...liveHistory,
+        freshness: getFreshnessSnapshot(syncedAt),
+      }
+    )
+  } catch (error) {
+    if (storedHistory) {
+      return {
+        ...storedHistory,
+        freshness: storedHistory.freshness
+          ? {
+              ...storedHistory.freshness,
+              isStale: true,
+            }
+          : undefined,
+      }
+    }
+
+    throw error
+  }
 }

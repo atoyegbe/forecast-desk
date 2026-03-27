@@ -67,6 +67,12 @@ export function EventPage() {
   const liveSourceUrl = event.sourceUrl ?? event.resolutionSource
   const yesPrice = liveMarket?.yesPrice ?? primaryMarket?.yesOutcome.price ?? 0
   const noPrice = liveMarket?.noPrice ?? primaryMarket?.noOutcome.price ?? 0
+  const eventFreshnessLabel = event.freshness?.syncedAt
+    ? formatRelativeTime(new Date(event.freshness.syncedAt).getTime())
+    : 'Snapshot timing unavailable'
+  const historyFreshnessLabel = historyQuery.data?.freshness?.syncedAt
+    ? formatRelativeTime(new Date(historyQuery.data.freshness.syncedAt).getTime())
+    : 'History timing unavailable'
 
   return (
     <div className="space-y-8">
@@ -102,6 +108,16 @@ export function EventPage() {
             <p className="mt-5 max-w-3xl text-base leading-8 text-stone-600 sm:text-lg">
               {event.description || 'This market is being tracked live on Pulse Markets.'}
             </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-stone-500">
+              <span>
+                Snapshot synced {eventFreshnessLabel}
+              </span>
+              {event.freshness?.isStale ? (
+                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-amber-700">
+                  Delayed backend snapshot
+                </span>
+              ) : null}
+            </div>
 
             <div className="mt-7 grid gap-4 sm:grid-cols-3">
               <div className="rounded-[1.4rem] border border-stone-900/10 bg-white p-4">
@@ -138,6 +154,28 @@ export function EventPage() {
             kicker="Price history"
             title={historyQuery.data?.marketTitle ?? 'Primary market'}
           />
+          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-stone-500">
+            <span>
+              History synced {historyFreshnessLabel}
+            </span>
+            {historyQuery.isLoading ? (
+              <span className="rounded-full border border-stone-900/10 bg-stone-950/[0.03] px-3 py-1 text-stone-600">
+                Loading stored history
+              </span>
+            ) : historyQuery.data?.freshness?.isStale ? (
+              <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-amber-700">
+                Using delayed stored history
+              </span>
+            ) : historyQuery.data ? (
+              <span className="rounded-full border border-teal-700/10 bg-teal-700/5 px-3 py-1 text-teal-700">
+                Stored backend history
+              </span>
+            ) : (
+              <span className="rounded-full border border-stone-900/10 bg-stone-950/[0.03] px-3 py-1 text-stone-600">
+                History snapshot unavailable
+              </span>
+            )}
+          </div>
           <div className="mt-6">
             <PriceHistoryChart points={historyQuery.data?.points ?? []} />
           </div>
