@@ -180,6 +180,36 @@ function MoonIcon() {
   )
 }
 
+function SearchIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle
+        cx="7"
+        cy="7"
+        r="4.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <line
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+        x1="10.5"
+        x2="14"
+        y1="10.5"
+        y2="14"
+      />
+    </svg>
+  )
+}
+
 function LiveStatusPill({
   freshnessLabel,
   status,
@@ -210,6 +240,10 @@ export function SiteShell() {
   const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme)
   const runtimeConnectionStatus = useRuntimeLiveConnection()
   const freshnessLabel = useRuntimeFreshnessLabel()
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const isSearchRoute = pathname === '/search'
 
   return (
     <div className="min-h-screen">
@@ -239,6 +273,16 @@ export function SiteShell() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
+            <Link
+              aria-label="Open search"
+              className="shell-icon-button"
+              data-active={isSearchRoute ? 'true' : 'false'}
+              title="Open search"
+              to="/search"
+            >
+              <SearchIcon />
+            </Link>
+
             <LiveStatusPill
               freshnessLabel={freshnessLabel}
               status={runtimeConnectionStatus}
@@ -248,7 +292,7 @@ export function SiteShell() {
               aria-label={
                 theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
               }
-              className="theme-toggle-button"
+              className="shell-icon-button"
               onClick={() => {
                 setTheme((currentTheme) => {
                   const nextTheme =

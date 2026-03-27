@@ -1,6 +1,5 @@
 import {
   startTransition,
-  useDeferredValue,
   useMemo,
   useState,
 } from 'react'
@@ -41,7 +40,6 @@ import {
   getCategoryRoute,
   getEventCompareRoute,
   getEventRoute,
-  getSearchRoute,
 } from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 import type {
@@ -99,7 +97,6 @@ function getBoardCategory(category: string) {
 
 export function HomePage() {
   const [activeCategory, setActiveCategory] = useState('All')
-  const [searchTerm, setSearchTerm] = useState('')
   const [activeTabId, setActiveTabId] = useUrlSelection({
     fallback: 'briefing',
     key: 'tab',
@@ -115,9 +112,7 @@ export function HomePage() {
     key: 'provider',
     values: PROVIDER_FILTER_IDS,
   })
-  const deferredSearchTerm = useDeferredValue(searchTerm.trim())
   const eventsQuery = useEventsQuery({
-    keyword: deferredSearchTerm.length >= 2 ? deferredSearchTerm : undefined,
     status: 'open',
   })
   const events = eventsQuery.data ?? EMPTY_EVENTS
@@ -341,38 +336,12 @@ export function HomePage() {
         <div className="space-y-6">
           <section className="panel p-4 sm:p-5">
             <SectionHeader
-              description="Use search, venue filters, and category desks without leaving the main board. The feed stays dense and shareable through URL state."
+              description="Use venue filters and category desks to tighten the main board without leaving the homepage feed."
               kicker="Discovery"
               title="Scan the board"
             />
 
-            <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
-              <div className="space-y-2">
-                <label className="terminal-input">
-                  <span className="section-kicker !tracking-[0.14em]">Search</span>
-                  <input
-                    onChange={(event) => {
-                      const nextValue = event.target.value
-
-                      startTransition(() => {
-                        setSearchTerm(nextValue)
-                      })
-                    }}
-                    placeholder="Ayra, election, AFCON..."
-                    value={searchTerm}
-                  />
-                </label>
-
-                {searchTerm.trim().length >= 2 ? (
-                  <Link
-                    className="inline-flex text-sm font-medium text-[var(--color-brand)] transition hover:text-[var(--color-text-primary)]"
-                    {...getSearchRoute(searchTerm)}
-                  >
-                    Open full search results
-                  </Link>
-                ) : null}
-              </div>
-
+            <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start">
               <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start xl:min-w-[28rem]">
                 <div className="space-y-2 lg:min-w-[11rem]">
                   <div className="section-kicker">Venue</div>
