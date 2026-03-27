@@ -57,11 +57,7 @@ function ShellNavLink({
       to={item.to}
     >
       <span>{item.label}</span>
-      {mobile ? null : (
-        <span className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-tertiary)]">
-          Desk
-        </span>
-      )}
+      {mobile ? null : null}
     </Link>
   )
 }
@@ -96,16 +92,16 @@ export function SiteShell() {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-[var(--color-border-subtle)] bg-[rgba(13,15,16,0.88)] backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1380px] items-center gap-5 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-[1380px] items-center gap-4 px-4 py-3 sm:px-6">
           <Link
-            className="shrink-0 font-mono text-[1.02rem] font-medium uppercase tracking-[0.28em]"
+            className="shrink-0 font-mono text-[0.98rem] font-medium uppercase tracking-[0.28em]"
             to="/"
           >
             <span className="text-[var(--color-text-primary)]">Naija</span>
             <span className="text-[var(--color-brand)]">Pulse</span>
           </Link>
 
-          <nav className="hidden items-center gap-6 md:flex">
+          <nav className="hidden items-center gap-5 md:flex">
             {primaryNav.map((item) => (
               <ShellNavLink item={item} key={item.to} />
             ))}
@@ -140,39 +136,12 @@ export function SiteShell() {
             </button>
           </div>
         </div>
-
-        <div className="border-t border-[var(--color-border-subtle)]">
-          <div className="mx-auto flex max-w-[1380px] flex-wrap items-center justify-between gap-3 px-4 py-2 text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-tertiary)] sm:px-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <span>Signal desk</span>
-              <span className="text-[var(--color-border-strong)]">/</span>
-              <span>Bayse + Polymarket</span>
-              <span className="text-[var(--color-border-strong)]">/</span>
-              <span>Stored history</span>
-              <span className="text-[var(--color-border-strong)]">/</span>
-              <span>Read-only product</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span
-                className={`live-dot ${
-                  backendConnectionState === 'offline'
-                    ? 'offline'
-                    : backendConnectionState === 'connecting'
-                      ? 'warn'
-                      : ''
-                }`}
-              />
-              <span>{backendContractLabel}</span>
-            </div>
-          </div>
-        </div>
       </header>
 
-      <div className="mx-auto max-w-[1380px] px-4 py-4 sm:px-6 sm:py-5">
+      <div className="mx-auto max-w-[1380px] px-4 py-3 sm:px-6 sm:py-4">
         <LiveTicker />
 
-        <main className="pb-24 pt-5">
+        <main className="pb-24 pt-4">
           <Outlet />
         </main>
 

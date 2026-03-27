@@ -2,16 +2,15 @@ import {
   Link,
   useParams,
 } from '@tanstack/react-router'
+import { CompactMarketCard } from '../components/compact-market-card'
 import { DeskTabs } from '../components/desk-tabs'
 import { MarketRow } from '../components/market-row'
 import { PlatformBadge } from '../components/platform-badge'
 import { SectionHeader } from '../components/section-header'
-import { getProviderLabel } from '../features/events/provider-ids'
 import { useEventsQuery } from '../features/events/hooks'
 import {
   EMPTY_EVENTS,
   getCategoryLabelFromSlug,
-  getMarketStance,
   getTempoLabel,
   getYesPrice,
   sortByActivityScore,
@@ -85,8 +84,8 @@ export function CategoryPage() {
 
   return (
     <div className="space-y-6">
-      <section className="panel overflow-hidden">
-        <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1.15fr)_320px] lg:p-6">
+      <section className="panel p-5 lg:p-6">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_360px]">
           <div className="space-y-5">
             <Link
               className="section-kicker hover:text-[var(--color-text-primary)]"
@@ -94,10 +93,10 @@ export function CategoryPage() {
             >
               Markets
             </Link>
-            <div>
+            <div className="space-y-3">
               <h1 className="display-title">{category} desk</h1>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
-                A focused reading environment for the {category.toLowerCase()} board. The desk emphasizes the most active names, the least settled stories, and the markets carrying the strongest conviction.
+              <p className="max-w-3xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
+                A focused reading environment for the {category.toLowerCase()} board. This desk keeps the feed tight: active names first, least-settled stories nearby, and high-conviction markets easy to isolate.
               </p>
             </div>
 
@@ -121,65 +120,44 @@ export function CategoryPage() {
                 <PlatformBadge platform={lead.provider} />
                 <span className="terminal-chip text-sm">{formatProbability(leadPrice)} yes</span>
                 <span className="terminal-chip text-sm">Resolves {formatDate(lead.resolutionDate)}</span>
+                <Link
+                  className="terminal-button terminal-button-primary text-sm font-medium"
+                  {...getEventRoute(lead)}
+                >
+                  Open lead market
+                </Link>
               </div>
             ) : null}
           </div>
 
-          <div className="grid gap-4">
-            <div className="panel-elevated relative min-h-[220px] overflow-hidden">
-              <div className="absolute inset-0">
-                {lead?.imageUrl ? (
-                  <img
-                    alt={lead.title}
-                    className="h-full w-full object-cover object-top opacity-40"
-                    src={lead.imageUrl}
-                  />
-                ) : null}
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(13,15,16,0.18),rgba(13,15,16,0.94))]" />
-              </div>
-              <div className="relative flex h-full flex-col justify-end p-5">
-                <div className="section-kicker">Lead read</div>
-                <div className="mt-3 text-sm leading-7 text-[var(--color-text-secondary)]">
-                  {lead ? getMarketStance(leadPrice) : 'Loading lead market.'}
-                </div>
-              </div>
-            </div>
-
+          <div className="panel-elevated p-4">
+            <SectionHeader
+              description="Each category desk gets one clear lead so the vertical has an obvious anchor."
+              kicker="Lead story"
+              title={lead?.title ?? `${category} lead`}
+            />
             {lead ? (
-              <div className="panel-elevated p-4">
-                <div className="flex items-center justify-between gap-3">
+              <div className="mt-4 space-y-4">
+                <div className="flex items-center gap-2">
                   <PlatformBadge platform={lead.provider} size="sm" />
-                  <div
-                    className={`mono-data text-sm font-medium ${
-                      leadPrice >= 0.5
-                        ? 'text-[var(--color-up)]'
-                        : 'text-[var(--color-down)]'
-                    }`}
-                  >
-                    {formatProbability(leadPrice)}
-                  </div>
+                  <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
+                    {formatProbability(leadPrice)} yes
+                  </span>
                 </div>
-                <div className="mt-3 text-sm leading-6 text-[var(--color-text-primary)]">
-                  {lead.title}
-                </div>
-                <div className="mt-3 text-[12px] leading-6 text-[var(--color-text-secondary)]">
+                <p className="text-sm leading-7 text-[var(--color-text-secondary)]">
                   {lead.description}
-                </div>
-                <div className="mt-4">
-                  <Link
-                    className="terminal-button terminal-button-primary w-full text-sm font-medium"
-                    {...getEventRoute(lead)}
-                  >
-                    Open lead market
-                  </Link>
-                </div>
+                </p>
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-4 text-sm text-[var(--color-text-secondary)]">
+                Waiting for the desk lead.
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.42fr)_320px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]">
         <div className="space-y-6">
           <section className="space-y-4">
             <SectionHeader
@@ -246,28 +224,6 @@ export function CategoryPage() {
         </div>
 
         <aside className="space-y-4">
-          {lead ? (
-            <section className="panel p-4">
-              <SectionHeader
-                description="Each category desk gets one clear lead story so the page reads like a deliberate vertical, not just another filtered grid."
-                kicker="Lead story"
-                title={lead.title}
-              />
-              <div className="mt-4 space-y-3 text-sm leading-7 text-[var(--color-text-secondary)]">
-                <p>{lead.description}</p>
-                <div className="flex flex-wrap gap-2">
-                  <PlatformBadge platform={lead.provider} size="sm" />
-                  <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
-                    {getProviderLabel(lead.provider)}
-                  </span>
-                  <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
-                    Resolves {formatDate(lead.resolutionDate)}
-                  </span>
-                </div>
-              </div>
-            </section>
-          ) : null}
-
           <section className="panel p-4">
             <SectionHeader
               description="These are the names nearest the middle, where conviction is lowest and the next piece of information matters most."
@@ -276,7 +232,20 @@ export function CategoryPage() {
             />
             <div className="mt-4 space-y-3">
               {closestCalls.map((event) => (
-                <MarketRow event={event} key={event.id} />
+                <CompactMarketCard event={event} key={event.id} />
+              ))}
+            </div>
+          </section>
+
+          <section className="panel p-4">
+            <SectionHeader
+              description="Names already leaning hard in one direction."
+              kicker="Conviction"
+              title="Strongest current lean"
+            />
+            <div className="mt-4 space-y-3">
+              {convictionBoard.map((event) => (
+                <CompactMarketCard event={event} key={event.id} />
               ))}
             </div>
           </section>

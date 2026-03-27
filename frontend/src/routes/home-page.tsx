@@ -5,6 +5,7 @@ import {
   useState,
 } from 'react'
 import { Link } from '@tanstack/react-router'
+import { CompactMarketCard } from '../components/compact-market-card'
 import { DeskTabs } from '../components/desk-tabs'
 import { MarketRow } from '../components/market-row'
 import { PlatformBadge } from '../components/platform-badge'
@@ -193,8 +194,8 @@ export function HomePage() {
 
   return (
     <div className="space-y-6">
-      <section className="panel overflow-hidden">
-        <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:p-6">
+      <section className="panel p-5 lg:p-6">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_360px]">
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="eyebrow">Signal feed</span>
@@ -266,30 +267,24 @@ export function HomePage() {
           </div>
 
           <div className="grid gap-4">
-            <div className="panel-elevated relative min-h-[260px] overflow-hidden">
-              <div className="absolute inset-0">
-                {spotlight?.imageUrl ? (
-                  <img
-                    alt={spotlight.title}
-                    className="h-full w-full object-cover object-top opacity-40"
-                    src={spotlight.imageUrl}
-                  />
-                ) : null}
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(13,15,16,0.18),rgba(13,15,16,0.96))]" />
-              </div>
-              <div className="relative flex h-full flex-col justify-end p-5">
-                <div className="section-kicker">Lead read</div>
-                <div className="mt-3 max-w-md text-sm leading-7 text-[var(--color-text-secondary)]">
-                  {getMarketStance(spotlightPrice)}
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="panel-elevated p-4">
+              <SectionHeader
+                description="Lead market"
+                kicker="Top line"
+                title={spotlight?.title ?? 'Watching the board'}
+              />
+              <div className="mt-4 space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
                   {spotlight ? (
-                    <PlatformBadge platform={spotlight.provider} />
+                    <PlatformBadge platform={spotlight.provider} size="sm" />
                   ) : null}
                   <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
                     {spotlight?.category ?? 'Open desk'}
                   </span>
                 </div>
+                <p className="text-sm leading-7 text-[var(--color-text-secondary)]">
+                  {getMarketStance(spotlightPrice)}
+                </p>
               </div>
             </div>
 
@@ -299,7 +294,7 @@ export function HomePage() {
                 kicker="Desk snapshot"
                 title="Market structure right now"
               />
-              <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              <div className="mt-4 grid gap-3">
                 <div className="metric-card">
                   <div className="stat-label">Open names</div>
                   <strong>{formatCompactNumber(events.length)}</strong>
@@ -324,7 +319,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.42fr)_320px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]">
         <div className="space-y-6">
           <section className="panel p-4 sm:p-5">
             <SectionHeader
@@ -574,31 +569,7 @@ export function HomePage() {
             />
             <div className="mt-4 space-y-3">
               {trendingSidebarEvents.map((event) => (
-                <Link
-                  className="panel-elevated block p-4 transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
-                  key={event.id}
-                  {...getEventRoute(event)}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <PlatformBadge platform={event.provider} size="sm" />
-                    <div
-                      className={`mono-data text-sm font-medium ${
-                        getYesPrice(event) >= 0.5
-                          ? 'text-[var(--color-up)]'
-                          : 'text-[var(--color-down)]'
-                      }`}
-                    >
-                      {formatProbability(getYesPrice(event))}
-                    </div>
-                  </div>
-                  <div className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--color-text-primary)]">
-                    {event.title}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-[var(--color-text-secondary)]">
-                    <span>{event.category}</span>
-                    <span className="mono-data">{formatCompactNumber(event.totalVolume)}</span>
-                  </div>
-                </Link>
+                <CompactMarketCard event={event} key={event.id} />
               ))}
             </div>
           </section>
