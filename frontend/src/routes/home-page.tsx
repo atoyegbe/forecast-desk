@@ -8,13 +8,19 @@ import { CompactMarketCard } from '../components/compact-market-card'
 import { DeskTabs } from '../components/desk-tabs'
 import { MarketRow } from '../components/market-row'
 import { PlatformBadge } from '../components/platform-badge'
+import { ScoreBadge } from '../components/score-badge'
 import { SectionHeader } from '../components/section-header'
+import { SignalCard } from '../components/signal-card'
 import { getProviderLabel } from '../features/events/provider-ids'
 import {
   useDivergenceQuery,
   useEventsQuery,
   useMoversQuery,
 } from '../features/events/hooks'
+import {
+  useSmartMoneySignalsQuery,
+  useSmartMoneyWalletsQuery,
+} from '../features/smart-money/hooks'
 import {
   EMPTY_EVENTS,
   MOVER_WINDOWS,
@@ -23,29 +29,34 @@ import {
   getMarketStance,
   getTempoLabel,
   getTopMoverWindow,
-  getYesPrice,
   isNigeriaRelevant,
   sortByActivityScore,
   sortByTightRace,
   sortByVolume,
 } from '../features/events/insights'
 import {
+  formatCompactCurrency,
   formatCompactNumber,
-  formatDate,
-  formatProbability,
   formatProbabilityPoints,
   formatSignedProbabilityChange,
+  formatTimeAgo,
 } from '../lib/format'
 import {
   getCategoryRoute,
   getEventCompareRoute,
-  getEventRoute,
+  getSmartMoneyLeaderboardRoute,
+  getSmartMoneyRoute,
+  getSmartMoneyWalletRoute,
 } from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 import type {
   PulseMoverWindow,
   PulseProvider,
 } from '../features/events/types'
+import type {
+  PulseSmartMoneySignal,
+  PulseSmartMoneyWallet,
+} from '../features/smart-money/types'
 
 const HOME_TAB_IDS = ['briefing', 'repricing', 'closest', 'velocity'] as const
 const MOVER_WINDOW_IDS: readonly PulseMoverWindow[] = ['1h', '6h', '24h']
@@ -78,6 +89,50 @@ const providerFilterMeta: Array<{
     label: 'Polymarket',
   },
 ]
+
+function TopWhaleHomeRow({
+  signal,
+  wallet,
+}: {
+  signal?: PulseSmartMoneySignal
+  wallet: PulseSmartMoneyWallet
+}) {
+  return (
+    <Link
+      className="panel-elevated block p-4 transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
+      {...getSmartMoneyWalletRoute(wallet.address)}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="mono-data text-sm text-[var(--color-text-tertiary)]">
+              #{wallet.rank}
+            </span>
+            <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+              {wallet.displayName || wallet.shortAddress}
+            </span>
+            {wallet.isLive ? (
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full bg-[var(--color-up)]"
+              />
+            ) : null}
+          </div>
+          <div className="mt-2 line-clamp-2 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+            {signal
+              ? `${signal.outcome} ${signal.marketTitle}`
+              : 'No qualifying signal in the current homepage feed.'}
+          </div>
+          <div className="mt-2 text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-tertiary)]">
+            Active {formatTimeAgo(wallet.lastActiveAt)}
+          </div>
+        </div>
+
+        <ScoreBadge score={wallet.score} />
+      </div>
+    </Link>
+  )
+}
 
 function getVenueSummaryLabel(providers: PulseProvider[]) {
   if (!providers.length) {
@@ -158,6 +213,16 @@ export function HomePage() {
     limit: 3,
     sort: 'divergence',
   })
+  const smartMoneySignalsQuery = useSmartMoneySignalsQuery({
+    limit: 4,
+    minScore: 60,
+    minSize: 500,
+    sort: 'newest',
+  })
+  const smartMoneyWalletsQuery = useSmartMoneyWalletsQuery({
+    limit: 5,
+    minScore: 60,
+  })
 
   const nigeriaDesk = useMemo(() => {
     return providerFilteredEvents.filter(isNigeriaRelevant).sort(sortByVolume)
@@ -195,15 +260,27 @@ export function HomePage() {
     })
     .filter((entry) => entry.lead)
     .slice(0, 4)
-  const spotlightPrice = getYesPrice(spotlight)
   const leadMover = rankedMovers[0]
-  const activeProviderLabel =
-    activeProviderId === 'all'
-      ? 'All venues'
-      : getProviderLabel(activeProviderId)
   const hasBoardResults = filteredEvents.length > 0
   const topDivergences = divergenceQuery.data ?? []
   const trendingSidebarEvents = volumeLeaders.slice(0, 3)
+  const smartMoneySignals = smartMoneySignalsQuery.data ?? []
+  const topWhales = smartMoneyWalletsQuery.data ?? []
+  const smartMoneyFlow = smartMoneySignals.reduce(
+    (totalSize, signal) => totalSize + signal.size,
+    0,
+  )
+  const latestSignalByWallet = useMemo(() => {
+    const signalMap = new Map<string, PulseSmartMoneySignal>()
+
+    for (const signal of smartMoneySignals) {
+      if (!signalMap.has(signal.walletAddress)) {
+        signalMap.set(signal.walletAddress, signal)
+      }
+    }
+
+    return signalMap
+  }, [smartMoneySignals])
 
   return (
     <div className="space-y-6">
@@ -213,121 +290,156 @@ export function HomePage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="eyebrow">Signal feed</span>
               <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
-                {activeProviderLabel}
+                Polymarket wallets
               </span>
               <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
-                {formatCompactNumber(filteredEvents.length)} open markets
+                {formatCompactNumber(smartMoneySignals.length)} recent signals
+              </span>
+              <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
+                {formatCompactCurrency(smartMoneyFlow)} tracked size
               </span>
             </div>
 
             <div>
               <div className="section-kicker">What the crowd is saying now</div>
               <h1 className="display-title mt-3">
-                {spotlight?.title ?? 'Reading the live market tape.'}
+                High-score wallets are opening fresh positions.
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
-                {spotlight?.description ||
-                  'Quorum is a data-dense public market desk. Scan the lead market, then move directly into repricings, divergence, and the densest order flow on the board.'}
+                The homepage now leads with owned Smart Money flow. These are recent qualifying positions from the highest-scoring wallets in the stored Polymarket snapshot, with current pricing context carried alongside each entry.
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="metric-card">
-                <div className="stat-label">Yes price</div>
-                <strong
-                  className={
-                    spotlightPrice >= 0.5
-                      ? 'text-[var(--color-up)]'
-                      : 'text-[var(--color-down)]'
-                  }
-                >
-                  {formatProbability(spotlightPrice)}
-                </strong>
+            {smartMoneySignalsQuery.isLoading && !smartMoneySignals.length ? (
+              <div className="panel-elevated p-6 text-[var(--color-text-secondary)]">
+                Loading smart money signal flow...
               </div>
-              <div className="metric-card">
-                <div className="stat-label">Traded volume</div>
-                <strong>{formatCompactNumber(spotlight?.totalVolume ?? 0)}</strong>
+            ) : null}
+
+            {smartMoneySignalsQuery.error ? (
+              <div className="panel-elevated p-6 text-[var(--color-down)]">
+                {(smartMoneySignalsQuery.error as Error).message}
               </div>
-              <div className="metric-card">
-                <div className="stat-label">Resolution</div>
-                <strong>{formatDate(spotlight?.resolutionDate)}</strong>
+            ) : null}
+
+            {!smartMoneySignalsQuery.isLoading &&
+            !smartMoneySignalsQuery.error &&
+            !smartMoneySignals.length ? (
+              <div className="panel-elevated p-6 text-sm leading-7 text-[var(--color-text-secondary)]">
+                No qualifying Smart Money signals are stored yet. The wallet snapshot has loaded, but no recent buys currently clear the homepage threshold.
               </div>
-            </div>
+            ) : null}
+
+            {smartMoneySignals.length ? (
+              <div className="space-y-4">
+                {smartMoneySignals.map((signal) => (
+                  <SignalCard key={signal.id} signal={signal} />
+                ))}
+              </div>
+            ) : null}
 
             <div className="flex flex-wrap gap-3">
-              {spotlight ? (
-                <Link
-                  className="terminal-button terminal-button-primary text-sm font-medium"
-                  {...getEventRoute(spotlight)}
-                >
-                  Open market
-                </Link>
-              ) : null}
-              {spotlight ? (
-                <Link
-                  className="terminal-button text-sm font-medium"
-                  {...getCategoryRoute(getCategorySlug(spotlight.category))}
-                >
-                  Browse {spotlight.category}
-                </Link>
-              ) : null}
-              {spotlight ? (
-                <span className="terminal-chip text-sm">
-                  {getProviderLabel(spotlight.provider)}
-                </span>
-              ) : null}
+              <Link
+                className="terminal-button terminal-button-primary text-sm font-medium"
+                {...getSmartMoneyRoute()}
+              >
+                Open signal feed
+              </Link>
+              <Link
+                className="terminal-button text-sm font-medium"
+                {...getSmartMoneyLeaderboardRoute()}
+              >
+                View whale leaderboard
+              </Link>
             </div>
           </div>
 
-          <div className="grid gap-4">
-            <div className="panel-elevated p-4">
+          <div className="space-y-4">
+            <section className="panel-elevated p-4">
               <SectionHeader
-                description="Lead market"
-                kicker="Top line"
-                title={spotlight?.title ?? 'Watching the board'}
+                description="Compact reads on the heaviest names in the book."
+                kicker="Trending"
+                title="High-volume markets"
               />
-              <div className="mt-4 space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  {spotlight ? (
-                    <PlatformBadge platform={spotlight.provider} size="sm" />
-                  ) : null}
-                  <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
-                    {spotlight?.category ?? 'Open desk'}
-                  </span>
-                </div>
-                <p className="text-sm leading-7 text-[var(--color-text-secondary)]">
-                  {getMarketStance(spotlightPrice)}
-                </p>
+              <div className="mt-4 space-y-3">
+                {trendingSidebarEvents.map((event) => (
+                  <CompactMarketCard event={event} key={event.id} />
+                ))}
               </div>
-            </div>
+            </section>
 
-            <div className="panel-elevated p-4">
+            <section className="panel-elevated p-4">
               <SectionHeader
-                description="The front page stays compact: breadth, desk count, and the strongest sampled repricing."
-                kicker="Desk snapshot"
-                title="Market structure right now"
+                description="The widest stored cross-platform spreads."
+                kicker="Top divergence"
+                title="Where venues disagree"
               />
-              <div className="mt-4 grid gap-3">
-                <div className="metric-card">
-                  <div className="stat-label">Open names</div>
-                  <strong>{formatCompactNumber(events.length)}</strong>
-                </div>
-                <div className="metric-card">
-                  <div className="stat-label">Tracked desks</div>
-                  <strong>{formatCompactNumber(categories.length - 1)}</strong>
-                </div>
-                <div className="metric-card">
-                  <div className="stat-label">Largest repricing</div>
-                  <strong>
-                    {leadMover
-                      ? formatSignedProbabilityChange(
-                          getMoverChange(leadMover, activeMoverWindow),
-                        )
-                      : 'Watching'}
-                  </strong>
-                </div>
+              <div className="mt-4 space-y-3">
+                {topDivergences.length ? topDivergences.map((entry) => (
+                  <Link
+                    className="panel-elevated block p-4 transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
+                    key={entry.linkId}
+                    {...getEventCompareRoute(entry.events[0].event)}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        {entry.events.map((item) => (
+                          <PlatformBadge
+                            key={item.event.id}
+                            platform={item.event.provider}
+                            short
+                            size="sm"
+                          />
+                        ))}
+                      </div>
+                      <div className="mono-data text-sm text-[var(--color-signal)]">
+                        {formatProbabilityPoints(entry.maxDivergence)}
+                      </div>
+                    </div>
+                    <div className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--color-text-primary)]">
+                      {entry.title}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-[var(--color-text-secondary)]">
+                      <span>{entry.category}</span>
+                      <span>{Math.round(entry.confidence * 100)}% confidence</span>
+                    </div>
+                  </Link>
+                )) : (
+                  <div className="panel-elevated p-4 text-sm leading-6 text-[var(--color-text-secondary)]">
+                    Divergence matches are still being computed for this board.
+                  </div>
+                )}
               </div>
-            </div>
+            </section>
+
+            <section className="panel-elevated p-4">
+              <SectionHeader
+                description="Highest-ranked wallets plus a one-line read on their most recent qualifying signal."
+                kicker="Top whales"
+                title="Wallets to watch"
+              />
+              <div className="mt-4 space-y-3">
+                {smartMoneyWalletsQuery.isLoading && !topWhales.length ? (
+                  <div className="panel-elevated p-4 text-sm leading-6 text-[var(--color-text-secondary)]">
+                    Loading whale board...
+                  </div>
+                ) : null}
+
+                {smartMoneyWalletsQuery.error ? (
+                  <div className="panel-elevated p-4 text-sm leading-6 text-[var(--color-down)]">
+                    {(smartMoneyWalletsQuery.error as Error).message}
+                  </div>
+                ) : null}
+
+                {topWhales.map((wallet) => (
+                  <TopWhaleHomeRow
+                    key={wallet.address}
+                    signal={latestSignalByWallet.get(wallet.address)}
+                    wallet={wallet}
+                  />
+                ))}
+              </div>
+            </section>
           </div>
         </div>
       </section>
@@ -561,19 +673,6 @@ export function HomePage() {
         <aside className="space-y-4">
           <section className="panel p-4">
             <SectionHeader
-              description="Compact reads on the heaviest names in the book."
-              kicker="Trending"
-              title="High-volume markets"
-            />
-            <div className="mt-4 space-y-3">
-              {trendingSidebarEvents.map((event) => (
-                <CompactMarketCard event={event} key={event.id} />
-              ))}
-            </div>
-          </section>
-
-          <section className="panel p-4">
-            <SectionHeader
               description="Quick entry points into the busiest desks."
               kicker="Desks"
               title="Verticals to follow"
@@ -602,50 +701,6 @@ export function HomePage() {
                   </div>
                 </Link>
               ))}
-            </div>
-          </section>
-
-          <section className="panel p-4">
-            <SectionHeader
-              description="The widest stored cross-platform spreads."
-              kicker="Top divergence"
-              title="Where venues disagree"
-            />
-            <div className="mt-4 space-y-3">
-              {topDivergences.length ? topDivergences.map((entry) => (
-                <Link
-                  className="panel-elevated block p-4 transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
-                  key={entry.linkId}
-                  {...getEventCompareRoute(entry.events[0].event)}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      {entry.events.map((item) => (
-                        <PlatformBadge
-                          key={item.event.id}
-                          platform={item.event.provider}
-                          short
-                          size="sm"
-                        />
-                      ))}
-                    </div>
-                    <div className="mono-data text-sm text-[var(--color-signal)]">
-                      {formatProbabilityPoints(entry.maxDivergence)}
-                    </div>
-                  </div>
-                  <div className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--color-text-primary)]">
-                    {entry.title}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-[var(--color-text-secondary)]">
-                    <span>{entry.category}</span>
-                    <span>{Math.round(entry.confidence * 100)}% confidence</span>
-                  </div>
-                </Link>
-              )) : (
-                <div className="panel-elevated p-4 text-sm leading-6 text-[var(--color-text-secondary)]">
-                  Divergence matches are still being computed for this board.
-                </div>
-              )}
             </div>
           </section>
         </aside>
