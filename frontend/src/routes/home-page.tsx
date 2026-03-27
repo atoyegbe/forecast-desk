@@ -50,6 +50,10 @@ import type {
 const HOME_TAB_IDS = ['briefing', 'repricing', 'closest', 'velocity'] as const
 const MOVER_WINDOW_IDS: readonly PulseMoverWindow[] = ['1h', '6h', '24h']
 const PROVIDER_FILTER_IDS = ['all', 'bayse', 'polymarket'] as const
+const BOARD_CATEGORY_MERGE_MAP: Record<string, string> = {
+  Starmer: 'Politics',
+  Trump: 'Politics',
+}
 
 type HomeProviderSelection = (typeof PROVIDER_FILTER_IDS)[number]
 
@@ -85,6 +89,10 @@ function getVenueSummaryLabel(providers: PulseProvider[]) {
   }
 
   return 'Mixed venues'
+}
+
+function getBoardCategory(category: string) {
+  return BOARD_CATEGORY_MERGE_MAP[category] ?? category
 }
 
 export function HomePage() {
@@ -125,7 +133,15 @@ export function HomePage() {
       ...new Set(providerFilteredEvents.map((event) => event.category).sort()),
     ]
   }, [providerFilteredEvents])
-  const effectiveCategory = categories.includes(activeCategory)
+  const boardCategories = useMemo(() => {
+    return [
+      'All',
+      ...new Set(
+        providerFilteredEvents.map((event) => getBoardCategory(event.category)).sort(),
+      ),
+    ]
+  }, [providerFilteredEvents])
+  const effectiveCategory = boardCategories.includes(activeCategory)
     ? activeCategory
     : 'All'
 
@@ -136,7 +152,7 @@ export function HomePage() {
           return true
         }
 
-        return event.category === effectiveCategory
+        return getBoardCategory(event.category) === effectiveCategory
       })
       .sort(sortByVolume)
   }, [effectiveCategory, providerFilteredEvents])
@@ -344,8 +360,8 @@ export function HomePage() {
                 />
               </label>
 
-              <div className="grid gap-3 md:grid-cols-2 xl:min-w-[28rem]">
-                <div className="space-y-2">
+              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start xl:min-w-[28rem]">
+                <div className="space-y-2 lg:min-w-[11rem]">
                   <div className="section-kicker">Venue</div>
                   <div className="flex flex-wrap gap-2">
                     {providerFilterMeta.map((provider) => (
@@ -370,15 +386,15 @@ export function HomePage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 lg:min-w-[18rem] lg:flex-1">
                   <div className="section-kicker">Category</div>
                   <div className="flex flex-wrap gap-2">
-                    {categories.map((category) => (
+                    {boardCategories.map((category) => (
                       <button
-                        className={`terminal-chip px-3 py-2 text-[11px] uppercase tracking-[0.18em] ${
+                        className={`rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
                           effectiveCategory === category
-                            ? 'terminal-chip-active'
-                            : 'border-[var(--color-border-subtle)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
+                            ? 'border-[var(--color-brand)] bg-[rgba(0,197,142,0.15)] text-[var(--color-brand)]'
+                            : 'border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]'
                         }`}
                         key={category}
                         onClick={() => {
