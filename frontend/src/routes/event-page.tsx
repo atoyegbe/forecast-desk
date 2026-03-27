@@ -5,6 +5,7 @@ import {
 import { DeskTabs } from '../components/desk-tabs'
 import { DivergenceBar } from '../components/divergence-bar'
 import { PlatformBadge } from '../components/platform-badge'
+import { PriceDisplay } from '../components/price-display'
 import { PriceHistoryChart } from '../components/price-history-chart'
 import { SectionHeader } from '../components/section-header'
 import { getProviderLabel } from '../features/events/provider-ids'
@@ -423,33 +424,50 @@ export function EventPage() {
       </section>
 
       {compareQuery.data ? (
-        <section className="panel-elevated p-4 sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="section-kicker">Cross-platform link</div>
-              <div className="mt-2 text-lg font-medium text-[var(--color-text-primary)]">
-                This event is also listed on {compareQuery.data.events.length - 1}{' '}
-                other platform{compareQuery.data.events.length - 1 === 1 ? '' : 's'}.
+        <section className="rounded-xl border border-[var(--color-brand-border)] border-l-[3px] border-l-[var(--color-brand)] bg-[var(--color-brand-dim)] px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-4 sm:gap-5">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 shrink-0 rounded-lg border border-[var(--color-brand-border)] bg-[var(--color-bg-surface)]/70 p-2 text-[var(--color-brand)]">
+                <svg
+                  aria-hidden="true"
+                  className="h-4 w-4"
+                  fill="currentColor"
+                  viewBox="0 0 16 16"
+                >
+                  <rect height="5" rx="1" width="5" x="1" y="1" />
+                  <rect height="5" rx="1" width="5" x="10" y="1" />
+                  <rect height="5" rx="1" width="5" x="1" y="10" />
+                  <rect height="5" rx="1" width="5" x="10" y="10" />
+                </svg>
               </div>
-              <div className="mt-2 text-sm text-[var(--color-text-secondary)]">
-                Compared {compareFreshnessLabel}
+
+              <div className="min-w-0 flex-1">
+                <div className="section-kicker">Cross-platform link</div>
+                <div className="mt-2 text-lg font-semibold leading-tight text-[var(--color-text-primary)]">
+                  This event is also listed on {compareQuery.data.events.length - 1}{' '}
+                  other platform{compareQuery.data.events.length - 1 === 1 ? '' : 's'}.
+                </div>
+                <div className="mt-2 text-sm text-[var(--color-text-secondary)]">
+                  Compared {compareFreshnessLabel}
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {compareQuery.data.events.map((item) => (
-                <span
-                  className="terminal-chip gap-2"
-                  key={item.event.id}
-                >
-                  <PlatformBadge platform={item.event.provider} short size="sm" />
-                  <span className="mono-data text-[var(--color-text-primary)]">
-                    {formatProbability(item.yesPrice)}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2.5">
+                {compareQuery.data.events.map((item) => (
+                  <span
+                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2"
+                    key={item.event.id}
+                  >
+                    <PlatformBadge platform={item.event.provider} short size="sm" />
+                    <PriceDisplay size="sm" value={item.yesPrice} />
                   </span>
-                </span>
-              ))}
+                ))}
+              </div>
+
               <Link
-                className="terminal-button terminal-button-primary text-sm font-medium"
+                className="inline-flex items-center justify-center rounded-lg bg-[var(--color-brand)] px-4 py-2.5 text-sm font-medium text-[#0f1115] transition hover:brightness-[1.04]"
                 search={{ tab: 'compare' }}
                 {...getEventRoute(event)}
               >
