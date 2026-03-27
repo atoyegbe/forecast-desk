@@ -667,7 +667,21 @@ async function runSmartMoneyRefresh(force = false) {
 }
 
 async function ensureSmartMoneySnapshot() {
-  await runSmartMoneyRefresh()
+  const [walletCount, state] = await Promise.all([
+    countStoredSmartMoneyWallets(),
+    getSmartMoneySyncState(SMART_MONEY_SYNC_KEY),
+  ])
+
+  if (walletCount <= 0) {
+    await runSmartMoneyRefresh(true)
+    return
+  }
+
+  if (isSmartMoneySyncStale(state?.lastRunAt)) {
+    void runSmartMoneyRefresh().catch(() => {
+      // Keep serving the stored snapshot when upstream refreshes fail.
+    })
+  }
 }
 
 export async function pollSmartMoneySignals() {
