@@ -68,6 +68,21 @@ function truncateMarketTitle(title: string, limit = 40) {
   return `${title.slice(0, Math.max(0, limit - 1)).trimEnd()}…`
 }
 
+function getWalletLabel(
+  displayName: string | null | undefined,
+  shortAddress: string,
+) {
+  if (!displayName) {
+    return shortAddress
+  }
+
+  if (displayName.length > 28 || /^0x[a-fA-F0-9]{10,}/.test(displayName)) {
+    return shortAddress
+  }
+
+  return displayName
+}
+
 function getValueToneClass(value: number, threshold = 80) {
   if (!Number.isFinite(value)) {
     return 'text-[var(--color-text-primary)]'
@@ -130,13 +145,13 @@ function WhaleBoardRow({ wallet }: { wallet: PulseSmartMoneyWallet }) {
       {...getSmartMoneyWalletRoute(wallet.address)}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="mono-data text-[11px] text-[var(--color-text-tertiary)]">
               #{wallet.rank}
             </span>
             <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-              {wallet.displayName || wallet.shortAddress}
+              {getWalletLabel(wallet.displayName, wallet.shortAddress)}
             </span>
           </div>
           <div className="mt-1 flex items-center gap-2 text-[11px] text-[var(--color-text-tertiary)]">
@@ -150,7 +165,9 @@ function WhaleBoardRow({ wallet }: { wallet: PulseSmartMoneyWallet }) {
           </div>
         </div>
 
-        <ScoreBadge score={wallet.score} />
+        <div className="shrink-0">
+          <ScoreBadge score={wallet.score} />
+        </div>
       </div>
     </Link>
   )
@@ -163,6 +180,10 @@ function LatestActivityRow({ signal }: { signal: PulseSmartMoneySignal }) {
       : signal.priceDelta < 0
         ? 'text-[var(--color-down)]'
         : 'text-[var(--color-text-tertiary)]'
+  const walletLabel = getWalletLabel(
+    signal.walletDisplayName,
+    signal.walletShortAddress,
+  )
 
   return (
     <Link
@@ -174,21 +195,31 @@ function LatestActivityRow({ signal }: { signal: PulseSmartMoneySignal }) {
           })
         : getSmartMoneyWalletRoute(signal.walletAddress))}
     >
-      <span className="font-medium text-[var(--color-text-primary)]">
-        {signal.walletDisplayName || signal.walletShortAddress}
-      </span>{' '}
-      opened{' '}
-      <span
-        className={
-          signal.outcome === 'YES'
-            ? 'mono-data text-[var(--color-up)]'
-            : 'mono-data text-[var(--color-down)]'
-        }
-      >
-        {signal.outcome}
-      </span>{' '}
-      on {truncateMarketTitle(signal.marketTitle)}{' '}
-      <span className={summaryTone}>— {formatSignalOutcomeSummary(signal)}</span>
+      <div className="space-y-1">
+        <div className="break-words">
+          <span className="font-medium text-[var(--color-text-primary)]">
+            {walletLabel}
+          </span>{' '}
+          opened{' '}
+          <span
+            className={
+              signal.outcome === 'YES'
+                ? 'mono-data text-[var(--color-up)]'
+                : 'mono-data text-[var(--color-down)]'
+            }
+          >
+            {signal.outcome}
+          </span>{' '}
+          on
+        </div>
+
+        <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+          <span className="min-w-0 flex-1 truncate text-[var(--color-text-secondary)]">
+            {truncateMarketTitle(signal.marketTitle)}
+          </span>
+          <span className={summaryTone}>— {formatSignalOutcomeSummary(signal)}</span>
+        </div>
+      </div>
     </Link>
   )
 }
@@ -290,7 +321,7 @@ export function SmartMoneyPage() {
 
   return (
     <div className="border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)]">
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px]">
         <div>
           <section className="border-b border-[var(--color-border-subtle)] px-7 py-6">
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-[#00c58e]">
