@@ -34,7 +34,7 @@ import {
 import { useUrlSelection } from '../lib/url-state'
 
 const EVENT_TAB_IDS = ['live', 'rules', 'compare'] as const
-const HISTORY_INTERVAL_IDS = ['1h', '4h', '1d', '1w'] as const
+const HISTORY_INTERVAL_IDS = ['1d', '1w', '1m', 'all'] as const
 
 type ProbabilityMeterProps = {
   noPrice: number
@@ -214,7 +214,7 @@ export function EventPage() {
   })
   const eventQuery = useEventQuery(eventId)
   const compareQuery = useEventCompareQuery(eventId)
-  const historyQuery = usePriceHistoryQuery(eventId, activeHistoryInterval)
+  const historyQuery = usePriceHistoryQuery(eventId, 'all')
   const liveFeed = useLiveEventPrices(eventId)
 
   if (eventQuery.isLoading) {
@@ -304,6 +304,33 @@ export function EventPage() {
               <p className="mt-4 max-w-4xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
                 {event.description || 'This market is being tracked live on NaijaPulse.'}
               </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <div className="flex items-end gap-4">
+                  {HISTORY_INTERVAL_IDS.map((interval) => (
+                    <button
+                      className={`mono-data border-b-2 px-1 pb-2 text-[11px] uppercase tracking-[0.18em] transition ${
+                        activeHistoryInterval === interval
+                          ? 'border-[var(--color-brand)] text-[var(--color-text-primary)]'
+                          : 'border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
+                      }`}
+                      key={interval}
+                      onClick={() => setActiveHistoryInterval(interval)}
+                      type="button"
+                    >
+                      {interval.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <PriceHistoryChart
+                isLoading={historyQuery.isLoading}
+                points={historyQuery.data?.points ?? []}
+                range={activeHistoryInterval}
+              />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -433,50 +460,6 @@ export function EventPage() {
           </div>
         </section>
       ) : null}
-
-      <section className="panel p-4 sm:p-5">
-        <SectionHeader
-          description="The chart stays on a fixed 0 to 100 scale so short-term repricings do not visually overstate themselves."
-          kicker="Price history"
-          title={historyQuery.data?.marketTitle ?? 'Primary market'}
-        />
-
-        <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {HISTORY_INTERVAL_IDS.map((interval) => (
-              <button
-                className={`terminal-chip px-3 py-2 text-[11px] uppercase tracking-[0.18em] ${
-                  activeHistoryInterval === interval
-                    ? 'terminal-chip-active'
-                    : 'border-[var(--color-border-subtle)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
-                }`}
-                key={interval}
-                onClick={() => setActiveHistoryInterval(interval)}
-                type="button"
-              >
-                {interval.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap gap-2 text-sm">
-            <span className="terminal-chip">History synced {historyFreshnessLabel}</span>
-            {historyQuery.isLoading ? (
-              <span className="terminal-chip">Loading stored history</span>
-            ) : historyQuery.data?.freshness?.isStale ? (
-              <span className="signal-chip terminal-chip">Using delayed stored history</span>
-            ) : historyQuery.data ? (
-              <span className="good-chip terminal-chip">Stored backend history</span>
-            ) : (
-              <span className="terminal-chip">History unavailable</span>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-5">
-          <PriceHistoryChart points={historyQuery.data?.points ?? []} />
-        </div>
-      </section>
 
       <DeskTabs
         activeTabId={activeTabId}
