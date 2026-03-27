@@ -1,8 +1,8 @@
-# Naija Pulse
+# Quorum
 
-`Naija Pulse` is the current working name for the public prediction market dashboard project.
+`Quorum` is the chosen brand name for the public prediction market dashboard project.
 
-The name is intentionally temporary. If this product expands beyond Nigeria or Bayse, the code should stay provider-agnostic and the brand can be swapped later without changing the core architecture.
+This project was previously referred to as `Naija Pulse`. The code should stay provider-agnostic so the product can keep expanding without being locked to a single region or provider.
 
 ## Product Direction
 
@@ -57,16 +57,6 @@ passes that connection string to the backend.
 - `GET /v1/pm/events/{eventId}/price-history` for charts
 - `GET /v1/pm/events/{eventId}` for detail enrichment
 - `wss://socket.bayse.markets/ws/v1/markets` for live price updates
-
-## Naming Direction
-
-If you want a broader brand later, these are better than locking into `Naija`:
-
-- `Pulse Markets`
-- `Event Pulse`
-- `Market Current`
-- `Signal Markets`
-- `Outcome Watch`
 
 ## Next Build Step
 

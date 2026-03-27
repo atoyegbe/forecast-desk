@@ -1,10 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
-  <title>Quorum favicon</title>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="512"
+  height="512"
+  viewBox="0 0 256 256"
+  fill="none"
+>
+  <title>Quorum consensus Q logo</title>
   <circle cx="124" cy="118" r="39" stroke="#08D19D" stroke-width="9.5" />
   <circle cx="124" cy="75.5" r="4.8" fill="#08D19D" fill-opacity="0.96" />
   <circle cx="166.5" cy="118" r="4.8" fill="#08D19D" fill-opacity="0.78" />
   <circle cx="124" cy="160.5" r="4.8" fill="#08D19D" fill-opacity="0.56" />
   <circle cx="81.5" cy="118" r="4.8" fill="#08D19D" fill-opacity="0.34" />
   <circle cx="124" cy="118" r="20" fill="#183B34" />
-  <path d="M149 145L167 166" stroke="#08D19D" stroke-width="8.5" stroke-linecap="round" />
+  <path
+    d="M149 145L167 166"
+    stroke="#08D19D"
+    stroke-width="8.5"
+    stroke-linecap="round"
+  />
 </svg>

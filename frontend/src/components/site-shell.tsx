@@ -11,7 +11,8 @@ import {
 } from '../features/runtime/hooks'
 import { LiveTicker } from './live-ticker'
 
-const THEME_STORAGE_KEY = 'naijapulse-theme'
+const THEME_STORAGE_KEY = 'quorum-theme'
+const LEGACY_THEME_STORAGE_KEY = 'naijapulse-theme'
 
 const primaryNav = [
   { end: true, label: 'Markets', to: '/' },
@@ -73,7 +74,9 @@ function getInitialTheme() {
     return currentTheme
   }
 
-  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  const storedTheme =
+    window.localStorage.getItem(THEME_STORAGE_KEY) ??
+    window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY)
 
   return storedTheme === 'light' ? 'light' : 'dark'
 }
@@ -255,12 +258,18 @@ export function SiteShell() {
       </a>
       <header className="sticky top-0 z-40 border-b border-[var(--color-border-subtle)] bg-[var(--surface-shell-bg)] backdrop-blur-md">
         <div className="mx-auto flex max-w-[1380px] items-center gap-4 px-4 py-3 sm:px-6">
-          <Link
-            className="shrink-0 font-mono text-[0.98rem] font-medium uppercase tracking-[0.28em]"
-            to="/"
-          >
-            <span className="text-[var(--color-text-primary)]">Naija</span>
-            <span className="text-[var(--color-brand)]">Pulse</span>
+          <Link className="flex shrink-0 items-center gap-3" to="/">
+            <img
+              alt=""
+              aria-hidden="true"
+              className="h-8 w-8 shrink-0"
+              height="32"
+              src="/logo-symbol-consensus-q-transparent.svg"
+              width="32"
+            />
+            <span className="font-mono text-[0.98rem] font-medium uppercase tracking-[0.28em] text-[var(--color-text-primary)]">
+              Quorum
+            </span>
           </Link>
 
           <nav
@@ -323,7 +332,7 @@ export function SiteShell() {
         <footer className="mt-6 flex flex-col gap-2 border-t border-[var(--color-border-subtle)] px-1 pt-4 text-sm text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
           <p>Owned market API, stored history, compare, and backend live fan-out.</p>
           <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-tertiary)]">
-            NaijaPulse is for reading public markets, not placing trades.
+            Quorum is for reading public markets, not placing trades.
           </p>
         </footer>
       </div>

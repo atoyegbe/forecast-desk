@@ -1,6 +1,6 @@
-# Pulse Markets Frontend
+# Quorum Frontend
 
-`Pulse Markets` is the frontend workspace for the `naija-pulse` project. It is
+`Quorum` is the frontend workspace for the `naija-pulse` project. It is
 the public read-only prediction market dashboard built on normalized public
 Bayse and Polymarket data.
 

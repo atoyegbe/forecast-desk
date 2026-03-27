@@ -227,7 +227,7 @@ export function HomePage() {
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
                 {spotlight?.description ||
-                  'NaijaPulse is a data-dense public market desk. Scan the lead market, then move directly into repricings, divergence, and the densest order flow on the board.'}
+                  'Quorum is a data-dense public market desk. Scan the lead market, then move directly into repricings, divergence, and the densest order flow on the board.'}
               </p>
             </div>
 
