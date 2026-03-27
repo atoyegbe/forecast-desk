@@ -56,7 +56,7 @@ function SearchFilterButton({
 }) {
   return (
     <button
-      className={`rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
+      className={`min-h-11 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
         active
           ? 'border-[var(--color-brand)] bg-[rgba(0,197,142,0.15)] text-[var(--color-brand)]'
           : 'border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]'
@@ -384,7 +384,7 @@ export function SearchPage() {
                   .filter((category) => category !== 'All')
                   .map((category) => (
                     <Link
-                      className="terminal-chip border-[var(--color-border)] bg-transparent px-3 py-1.5 text-[13px] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]"
+                      className="terminal-chip min-h-11 border-[var(--color-border)] bg-transparent px-3 py-1.5 text-[13px] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]"
                       key={category}
                       {...getCategoryRoute(getCategorySlug(category))}
                     >

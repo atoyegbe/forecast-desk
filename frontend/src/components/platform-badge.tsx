@@ -36,6 +36,7 @@ export function PlatformBadge({
 
   return (
     <span
+      aria-label={config.label}
       className={clsx(
         'platform-badge inline-flex items-center rounded-[4px] border-l-2 font-mono font-medium',
         config.className,
@@ -43,6 +44,7 @@ export function PlatformBadge({
           ? 'px-1.5 py-1 text-[11px] tracking-[0.16em]'
           : 'px-2 py-1 text-[12px] tracking-[0.08em]',
       )}
+      title={config.label}
     >
       {short ? config.short : config.label}
     </span>

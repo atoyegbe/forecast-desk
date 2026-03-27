@@ -22,6 +22,7 @@ export function PriceDisplay({
 }: PriceDisplayProps) {
   return (
     <span
+      aria-live="polite"
       className={clsx(
         'mono-data font-medium',
         getToneClass(value),

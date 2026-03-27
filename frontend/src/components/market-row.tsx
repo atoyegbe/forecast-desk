@@ -48,7 +48,9 @@ export function MarketRow({
 
   return (
     <Link
+      aria-label={`${event.title}. ${formatProbability(yesPrice)} yes price on ${event.provider}.`}
       className={`panel group block border-l-2 px-4 py-4 transition duration-200 hover:border-[var(--color-brand)] hover:bg-[var(--color-bg-hover)] sm:px-5 ${accentStyles[accent]}`}
+      role="article"
       {...getEventRoute(event)}
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_84px_84px_124px_124px] xl:items-center">

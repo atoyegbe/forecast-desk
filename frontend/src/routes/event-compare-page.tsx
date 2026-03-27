@@ -296,7 +296,7 @@ export function EventComparePage() {
           <div className="flex flex-wrap gap-2">
             {HISTORY_INTERVAL_IDS.map((intervalId) => (
               <button
-                className={`border-b-2 px-1 pb-2 text-[12px] font-medium uppercase tracking-[0.18em] transition ${
+                className={`min-h-11 border-b-2 px-2 pb-2 pt-2 text-[12px] font-medium uppercase tracking-[0.18em] transition ${
                   activeHistoryInterval === intervalId
                     ? 'border-[var(--color-brand)] text-[var(--color-brand)]'
                     : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'

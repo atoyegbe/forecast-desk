@@ -46,6 +46,7 @@ function ShellNavLink({
 
   return (
     <Link
+      aria-current={isActive ? 'page' : undefined}
       className={
         mobile
           ? `flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md px-2 py-2 text-xs transition ${
@@ -212,6 +213,12 @@ export function SiteShell() {
 
   return (
     <div className="min-h-screen">
+      <a
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--color-bg-elevated)] focus:px-3 focus:py-2 focus:text-sm focus:text-[var(--color-text-primary)]"
+        href="#main-content"
+      >
+        Skip to main content
+      </a>
       <header className="sticky top-0 z-40 border-b border-[var(--color-border-subtle)] bg-[var(--surface-shell-bg)] backdrop-blur-md">
         <div className="mx-auto flex max-w-[1380px] items-center gap-4 px-4 py-3 sm:px-6">
           <Link
@@ -222,7 +229,10 @@ export function SiteShell() {
             <span className="text-[var(--color-brand)]">Pulse</span>
           </Link>
 
-          <nav className="hidden items-center gap-5 md:flex">
+          <nav
+            aria-label="Primary"
+            className="hidden items-center gap-5 md:flex"
+          >
             {primaryNav.map((item) => (
               <ShellNavLink item={item} key={item.to} />
             ))}
@@ -262,7 +272,7 @@ export function SiteShell() {
       <div className="mx-auto max-w-[1380px] px-4 py-3 sm:px-6 sm:py-4">
         <LiveTicker />
 
-        <main className="pb-24 pt-4">
+        <main className="pb-24 pt-4" id="main-content">
           <Outlet />
         </main>
 
@@ -274,7 +284,10 @@ export function SiteShell() {
         </footer>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--surface-shell-mobile-bg)] px-3 py-2 backdrop-blur-md md:hidden">
+      <nav
+        aria-label="Primary mobile"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--surface-shell-mobile-bg)] px-3 py-2 backdrop-blur-md md:hidden"
+      >
         <div className="mx-auto flex max-w-[1380px] items-center gap-1">
           {primaryNav.map((item) => (
             <ShellNavLink item={item} key={item.to} mobile />

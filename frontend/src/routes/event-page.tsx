@@ -313,7 +313,7 @@ export function EventPage() {
                 <div className="flex items-end gap-4">
                   {HISTORY_INTERVAL_IDS.map((interval) => (
                     <button
-                      className={`mono-data border-b-2 px-1 pb-2 text-[11px] uppercase tracking-[0.18em] transition ${
+                      className={`mono-data min-h-11 border-b-2 px-2 pb-2 pt-2 text-[11px] uppercase tracking-[0.18em] transition ${
                         activeHistoryInterval === interval
                           ? 'border-[var(--color-brand)] text-[var(--color-text-primary)]'
                           : 'border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'

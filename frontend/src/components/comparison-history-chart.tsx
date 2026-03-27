@@ -166,6 +166,7 @@ export function ComparisonHistoryChart({
   range,
 }: ComparisonHistoryChartProps) {
   const [hiddenSeriesIds, setHiddenSeriesIds] = useState<string[]>([])
+  const [showDataTable, setShowDataTable] = useState(false)
 
   const normalizedHistories = useMemo(
     () => histories.filter((history) => history.points.length > 0),
@@ -226,35 +227,45 @@ export function ComparisonHistoryChart({
 
   return (
     <div className="panel-elevated p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {normalizedHistories.map((history) => {
-          const isHidden = hiddenSeriesIds.includes(history.eventId)
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {normalizedHistories.map((history) => {
+            const isHidden = hiddenSeriesIds.includes(history.eventId)
 
-          return (
-            <button
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
-                isHidden
-                  ? 'border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)]'
-                  : 'border-[var(--color-border-strong)] bg-[var(--color-bg-hover)] text-[var(--color-text-primary)]'
-              }`}
-              key={history.eventId}
-              onClick={() => {
-                setHiddenSeriesIds((currentIds) => (
-                  currentIds.includes(history.eventId)
-                    ? currentIds.filter((id) => id !== history.eventId)
-                    : [...currentIds, history.eventId]
-                ))
-              }}
-              type="button"
-            >
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ background: PLATFORM_STROKES[history.platform] }}
-              />
-              <span>{history.label}</span>
-            </button>
-          )
-        })}
+            return (
+              <button
+                className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
+                  isHidden
+                    ? 'border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)]'
+                    : 'border-[var(--color-border-strong)] bg-[var(--color-bg-hover)] text-[var(--color-text-primary)]'
+                }`}
+                key={history.eventId}
+                onClick={() => {
+                  setHiddenSeriesIds((currentIds) => (
+                    currentIds.includes(history.eventId)
+                      ? currentIds.filter((id) => id !== history.eventId)
+                      : [...currentIds, history.eventId]
+                  ))
+                }}
+                type="button"
+              >
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ background: PLATFORM_STROKES[history.platform] }}
+                />
+                <span>{history.label}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <button
+          className="terminal-button px-3 py-1.5 text-[12px] font-medium"
+          onClick={() => setShowDataTable((currentValue) => !currentValue)}
+          type="button"
+        >
+          {showDataTable ? 'Hide data' : 'Show data'}
+        </button>
       </div>
 
       <div className="mt-4 h-[260px]">
@@ -310,6 +321,45 @@ export function ComparisonHistoryChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      {showDataTable ? (
+        <div className="mt-4 max-h-56 overflow-auto rounded-lg border border-[var(--color-border)]">
+          <table className="min-w-full border-collapse text-left text-sm">
+            <thead className="bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)]">
+              <tr>
+                <th className="px-3 py-2 font-medium">Time</th>
+                {normalizedHistories.map((history) => (
+                  <th className="px-3 py-2 font-medium" key={history.eventId}>
+                    {history.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {chartData.map((point) => (
+                <tr
+                  className="border-t border-[var(--color-border-subtle)]"
+                  key={point.timestamp}
+                >
+                  <td className="mono-data px-3 py-2 text-[var(--color-text-secondary)]">
+                    {formatTooltipTimestamp(point.timestamp, range)}
+                  </td>
+                  {normalizedHistories.map((history) => (
+                    <td
+                      className="mono-data px-3 py-2 text-[var(--color-text-primary)]"
+                      key={history.eventId}
+                    >
+                      {typeof point[history.eventId] === 'number'
+                        ? formatProbability((point[history.eventId] as number) / 100)
+                        : '—'}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -122,6 +123,8 @@ export function PriceHistoryChart({
   points,
   range,
 }: PriceHistoryChartProps) {
+  const [showDataTable, setShowDataTable] = useState(false)
+
   if (isLoading && !points.length) {
     return (
       <div className="panel-elevated flex h-[200px] items-center justify-center p-6 text-center text-[var(--color-text-secondary)]">
@@ -174,54 +177,94 @@ export function PriceHistoryChart({
     : 'var(--color-down)'
 
   return (
-    <div className="panel-elevated h-[200px] p-3 sm:p-4">
-      <ResponsiveContainer height="100%" width="100%">
-        <AreaChart data={chartData} margin={{ bottom: 0, left: 0, right: 0, top: 8 }}>
-          <defs>
-            <linearGradient id="price-wave" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor={strokeColor} stopOpacity={0.08} />
-              <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
-            </linearGradient>
-          </defs>
+    <div className="panel-elevated p-3 sm:p-4">
+      <div className="flex justify-end">
+        <button
+          className="terminal-button px-3 py-1.5 text-[12px] font-medium"
+          onClick={() => setShowDataTable((currentValue) => !currentValue)}
+          type="button"
+        >
+          {showDataTable ? 'Hide data' : 'Show data'}
+        </button>
+      </div>
 
-          <ReferenceLine
-            ifOverflow="extendDomain"
-            stroke="var(--surface-chart-grid)"
-            strokeDasharray="4 4"
-            y={50}
-          />
-          <XAxis
-            axisLine={false}
-            dataKey="timestamp"
-            minTickGap={42}
-            tick={{ fill: 'var(--color-text-secondary)', fontSize: 11 }}
-            tickFormatter={(value) => formatRangeTick(Number(value), range)}
-            tickLine={false}
-          />
-          <YAxis
-            domain={[0, 100]}
-            hide
-          />
-          <Tooltip
-            content={({ active, payload }) => (
-              <HistoryTooltip
-                active={active}
-                payload={payload as HistoryTooltipProps['payload']}
-                range={range}
-              />
-            )}
-            cursor={{ stroke: 'var(--surface-chart-grid)', strokeDasharray: '3 3' }}
-          />
-          <Area
-            dataKey="price"
-            fill="url(#price-wave)"
-            isAnimationActive={false}
-            stroke={strokeColor}
-            strokeWidth={2}
-            type="monotone"
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+      <div className="mt-3 h-[200px]">
+        <ResponsiveContainer height="100%" width="100%">
+          <AreaChart data={chartData} margin={{ bottom: 0, left: 0, right: 0, top: 8 }}>
+            <defs>
+              <linearGradient id="price-wave" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={strokeColor} stopOpacity={0.08} />
+                <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+
+            <ReferenceLine
+              ifOverflow="extendDomain"
+              stroke="var(--surface-chart-grid)"
+              strokeDasharray="4 4"
+              y={50}
+            />
+            <XAxis
+              axisLine={false}
+              dataKey="timestamp"
+              minTickGap={42}
+              tick={{ fill: 'var(--color-text-secondary)', fontSize: 11 }}
+              tickFormatter={(value) => formatRangeTick(Number(value), range)}
+              tickLine={false}
+            />
+            <YAxis
+              domain={[0, 100]}
+              hide
+            />
+            <Tooltip
+              content={({ active, payload }) => (
+                <HistoryTooltip
+                  active={active}
+                  payload={payload as HistoryTooltipProps['payload']}
+                  range={range}
+                />
+              )}
+              cursor={{ stroke: 'var(--surface-chart-grid)', strokeDasharray: '3 3' }}
+            />
+            <Area
+              dataKey="price"
+              fill="url(#price-wave)"
+              isAnimationActive={false}
+              stroke={strokeColor}
+              strokeWidth={2}
+              type="monotone"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {showDataTable ? (
+        <div className="mt-4 max-h-56 overflow-auto rounded-lg border border-[var(--color-border)]">
+          <table className="min-w-full border-collapse text-left text-sm">
+            <thead className="bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)]">
+              <tr>
+                <th className="px-3 py-2 font-medium">Time</th>
+                <th className="px-3 py-2 font-medium">Yes price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPoints.map((point) => (
+                <tr
+                  className="border-t border-[var(--color-border-subtle)]"
+                  key={point.timestamp}
+                >
+                  <td className="mono-data px-3 py-2 text-[var(--color-text-secondary)]">
+                    {formatTooltipTimestamp(point.timestamp, range)}
+                  </td>
+                  <td className="mono-data px-3 py-2 text-[var(--color-text-primary)]">
+                    {formatProbability(point.price)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </div>
   )
 }
