@@ -31,6 +31,7 @@ that `frontend/` consumes.
 - `GET /api/v1/events/:eventId/history`
 - `GET /api/v1/events/:eventId/compare`
 - `GET /api/v1/divergence`
+- `WS /api/v1/live/runtime`
 - `WS /api/v1/live/events/:eventId`
 
 Discovery, event detail, and event history are now served from persisted

@@ -416,6 +416,81 @@ img {
     box-shadow: none;
     animation: none;
   }
+
+  .nav-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 6px;
+    padding: 5px 10px;
+  }
+
+  .nav-status-pill[data-state='connected'] {
+    border: 1px solid rgba(0, 197, 142, 0.2);
+    background: rgba(0, 197, 142, 0.06);
+  }
+
+  .nav-status-pill[data-state='reconnecting'] {
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    background: rgba(245, 158, 11, 0.06);
+  }
+
+  .nav-status-pill[data-state='disconnected'] {
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: rgba(239, 68, 68, 0.06);
+  }
+
+  .nav-status-dot {
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    border-radius: 999px;
+  }
+
+  .nav-status-pill[data-state='connected'] .nav-status-dot {
+    background: #00c58e;
+    animation: nav-status-pulse 2s ease-in-out infinite;
+  }
+
+  .nav-status-pill[data-state='reconnecting'] .nav-status-dot {
+    background: #f59e0b;
+    animation: nav-status-pulse-fast 1s ease-in-out infinite;
+  }
+
+  .nav-status-pill[data-state='disconnected'] .nav-status-dot {
+    background: #ef4444;
+    animation: none;
+  }
+
+  .nav-status-label {
+    color: var(--color-text-primary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .theme-toggle-button {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .theme-toggle-button:hover {
+    background: var(--color-bg-hover);
+    border-color: var(--color-border-strong);
+    color: var(--color-text-primary);
+  }
 }
 
 .ticker-mask {
@@ -473,6 +548,28 @@ img {
   }
 }
 
+@keyframes nav-status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes nav-status-pulse-fast {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
 @media (max-width: 767px) {
   .ticker-marquee {
     animation-duration: var(--ticker-duration-mobile, 60s);
@@ -485,7 +582,8 @@ img {
   }
 
   .ticker-marquee,
-  .live-dot {
+  .live-dot,
+  .nav-status-dot {
     animation: none;
   }
 }

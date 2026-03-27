@@ -32,6 +32,7 @@ The app expects the owned backend to serve:
 
 - `/health`
 - `/api/v1/*`
+- `/api/v1/live/runtime` for the shell live-status connection
 - `/api/v1/live/*` for websocket subscriptions
 
 The current frontend surface includes:

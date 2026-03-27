@@ -9,6 +9,18 @@
       content="Pulse Markets is a Nigeria-first dashboard for reading live prediction market sentiment."
     />
     <title>Pulse Markets</title>
+    <script>
+      (() => {
+        const storageKey = 'naijapulse-theme'
+        const storedTheme = window.localStorage.getItem(storageKey)
+        const nextTheme =
+          storedTheme === 'light' || storedTheme === 'dark'
+            ? storedTheme
+            : 'dark'
+
+        document.documentElement.dataset.theme = nextTheme
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -3,12 +3,15 @@ import {
   Outlet,
   useRouterState,
 } from '@tanstack/react-router'
+import { useState } from 'react'
 import {
-  useEffect,
-  useState,
-} from 'react'
-import { useBackendHealthQuery } from '../features/runtime/hooks'
+  useRuntimeFreshnessLabel,
+  useRuntimeLiveConnection,
+  type RuntimeConnectionState,
+} from '../features/runtime/hooks'
 import { LiveTicker } from './live-ticker'
+
+const THEME_STORAGE_KEY = 'naijapulse-theme'
 
 const primaryNav = [
   { end: true, label: 'Markets', to: '/' },
@@ -62,32 +65,150 @@ function ShellNavLink({
   )
 }
 
+function getInitialTheme() {
+  const currentTheme = document.documentElement.dataset.theme
+
+  if (currentTheme === 'light' || currentTheme === 'dark') {
+    return currentTheme
+  }
+
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+
+  return storedTheme === 'light' ? 'light' : 'dark'
+}
+
+function SunIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle cx="8" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.5" />
+      <line
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+        x1="8"
+        x2="8"
+        y1="1"
+        y2="3"
+      />
+      <line
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+        x1="8"
+        x2="8"
+        y1="13"
+        y2="15"
+      />
+      <line
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+        x1="1"
+        x2="3"
+        y1="8"
+        y2="8"
+      />
+      <line
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+        x1="13"
+        x2="15"
+        y1="8"
+        y2="8"
+      />
+      <line
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+        x1="3.05"
+        x2="4.45"
+        y1="3.05"
+        y2="4.45"
+      />
+      <line
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+        x1="11.55"
+        x2="12.95"
+        y1="11.55"
+        y2="12.95"
+      />
+      <line
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+        x1="11.55"
+        x2="12.95"
+        y1="4.45"
+        y2="3.05"
+      />
+      <line
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+        x1="3.05"
+        x2="4.45"
+        y1="12.95"
+        y2="11.55"
+      />
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="currentColor"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M13 8A5 5 0 1 1 6 3a4 4 0 0 0 7 5z" />
+    </svg>
+  )
+}
+
+function LiveStatusPill({
+  freshnessLabel,
+  status,
+}: {
+  freshnessLabel: string
+  status: RuntimeConnectionState
+}) {
+  const label =
+    status === 'connected'
+      ? freshnessLabel
+      : status === 'reconnecting'
+        ? 'Reconnecting'
+        : 'Offline'
+
+  return (
+    <div
+      className="nav-status-pill"
+      data-state={status}
+      role="status"
+    >
+      <span className="nav-status-dot" />
+      <span className="nav-status-label">{label}</span>
+    </div>
+  )
+}
+
 export function SiteShell() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
-  const backendHealthQuery = useBackendHealthQuery()
-
-  useEffect(() => {
-    const storedTheme = window.localStorage.getItem('naija-pulse-theme')
-    const nextTheme = storedTheme === 'light' ? 'light' : 'dark'
-    setTheme(nextTheme)
-  }, [])
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    window.localStorage.setItem('naija-pulse-theme', theme)
-  }, [theme])
-
-  const backendConnectionState = backendHealthQuery.isSuccess
-    ? 'connected'
-    : backendHealthQuery.isError
-      ? 'offline'
-      : 'connecting'
-  const backendContractLabel =
-    backendConnectionState === 'connected'
-      ? 'Backend live'
-      : backendConnectionState === 'offline'
-        ? 'Backend offline'
-        : 'Checking backend'
+  const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme)
+  const runtimeConnectionStatus = useRuntimeLiveConnection()
+  const freshnessLabel = useRuntimeFreshnessLabel()
 
   return (
     <div className="min-h-screen">
@@ -108,31 +229,31 @@ export function SiteShell() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2 lg:flex">
-              <span
-                className={`live-dot ${
-                  backendConnectionState === 'offline'
-                    ? 'offline'
-                    : backendConnectionState === 'connecting'
-                      ? 'warn'
-                      : ''
-                }`}
-              />
-              <span className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">
-                {backendContractLabel}
-              </span>
-            </div>
+            <LiveStatusPill
+              freshnessLabel={freshnessLabel}
+              status={runtimeConnectionStatus}
+            />
 
             <button
-              className="terminal-button px-3 py-2 text-[11px] uppercase tracking-[0.16em]"
+              aria-label={
+                theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+              }
+              className="theme-toggle-button"
               onClick={() => {
-                setTheme((currentTheme) =>
-                  currentTheme === 'dark' ? 'light' : 'dark',
-                )
+                setTheme((currentTheme) => {
+                  const nextTheme =
+                    currentTheme === 'dark' ? 'light' : 'dark'
+
+                  document.documentElement.dataset.theme = nextTheme
+                  window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
+
+                  return nextTheme
+                })
               }}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               type="button"
             >
-              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
             </button>
           </div>
         </div>
