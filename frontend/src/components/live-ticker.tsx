@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useEventsQuery } from '../features/events/hooks'
 import {
@@ -12,6 +13,48 @@ import {
 } from '../lib/format'
 import { getEventRoute } from '../lib/routes'
 import { PlatformBadge } from './platform-badge'
+
+function truncateTitle(title: string, maxLength = 40) {
+  if (title.length <= maxLength) {
+    return title
+  }
+
+  return `${title.slice(0, maxLength - 1).trimEnd()}…`
+}
+
+function TickerItem({ event }: { event: (typeof EMPTY_EVENTS)[number] }) {
+  const yesPrice = getYesPrice(event)
+
+  return (
+    <Link
+      className="flex min-h-11 shrink-0 items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2.5 text-sm whitespace-nowrap transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)] sm:px-3.5"
+      {...getEventRoute(event)}
+    >
+      <PlatformBadge platform={event.provider} short size="sm" />
+      <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
+        {event.category}
+      </span>
+      <span
+        className="max-w-[220px] truncate text-[13px] text-[var(--color-text-primary)] sm:max-w-[260px]"
+        title={event.title}
+      >
+        {truncateTitle(event.title)}
+      </span>
+      <span
+        className={`mono-data text-sm font-medium ${
+          yesPrice >= 0.5
+            ? 'text-[var(--color-up)]'
+            : 'text-[var(--color-down)]'
+        }`}
+      >
+        {formatProbability(yesPrice)}
+      </span>
+      <span className="mono-data text-[11px] text-[var(--color-text-secondary)]">
+        {formatCompactNumber(event.totalVolume)}
+      </span>
+    </Link>
+  )
+}
 
 function TickerTrack() {
   const eventsQuery = useEventsQuery({ status: 'open' })
@@ -29,44 +72,29 @@ function TickerTrack() {
     )
   }
 
-  const items = [...tickerEvents, ...tickerEvents]
+  const marqueeStyle = {
+    '--ticker-duration': `${Math.max(tickerEvents.length * 5, 40)}s`,
+    '--ticker-duration-mobile': `${Math.max(tickerEvents.length * 7.5, 60)}s`,
+  } as CSSProperties
 
   return (
-    <div className="ticker-track flex min-w-max items-center gap-3 px-3 py-2.5">
-      {items.map((event, index) => (
-        <Link
-          className="flex min-w-[280px] items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3.5 py-2.5 text-sm transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
-          key={`${event.id}-${index}`}
-          {...getEventRoute(event)}
-        >
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <PlatformBadge platform={event.provider} short size="sm" />
-              <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
-                {event.category}
-              </span>
-            </div>
-            <div className="mt-1 truncate text-[13px] text-[var(--color-text-primary)]">
-              {event.title}
-            </div>
-          </div>
-
-          <div className="text-right">
-            <div
-              className={`mono-data text-sm font-medium ${
-                getYesPrice(event) >= 0.5
-                  ? 'text-[var(--color-up)]'
-                  : 'text-[var(--color-down)]'
-              }`}
-            >
-              {formatProbability(getYesPrice(event))}
-            </div>
-            <div className="mono-data mt-1 text-[11px] text-[var(--color-text-secondary)]">
-              {formatCompactNumber(event.totalVolume)}
-            </div>
-          </div>
-        </Link>
-      ))}
+    <div
+      className="ticker-marquee"
+      style={marqueeStyle}
+    >
+      <div className="ticker-lane px-3 py-2.5">
+        {tickerEvents.map((event) => (
+          <TickerItem event={event} key={event.id} />
+        ))}
+      </div>
+      <div
+        aria-hidden="true"
+        className="ticker-lane px-3 py-2.5"
+      >
+        {tickerEvents.map((event) => (
+          <TickerItem event={event} key={`${event.id}-copy`} />
+        ))}
+      </div>
     </div>
   )
 }
