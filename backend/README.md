@@ -32,6 +32,9 @@ that `frontend/` consumes.
 - `GET /api/v1/events/:eventId/compare`
 - `GET /api/v1/divergence`
 - `GET /api/v1/search`
+- `GET /api/v1/smart-money/signals`
+- `GET /api/v1/smart-money/wallets`
+- `GET /api/v1/smart-money/wallets/:address`
 - `WS /api/v1/live/runtime`
 - `WS /api/v1/live/events/:eventId`
 
@@ -43,6 +46,12 @@ route instead of Bayse directly. Cross-platform links are also persisted, so the
 backend now serves compare and divergence reads from owned event-link records
 instead of ad hoc frontend joins.
 
+Smart money is now started as an owned backend surface as well. The current
+implementation seeds from the public Polymarket leaderboard, enriches those
+wallets with position and recent activity data from the public Data API, scores
+them locally, stores the snapshot in Postgres, and serves a public signal feed,
+leaderboard, and wallet-detail read model from owned routes.
+
 ## Local Setup
 
 1. Copy `.env.example` to `.env`
@@ -52,6 +61,10 @@ instead of ad hoc frontend joins.
 
 The backend bootstraps its discovery schema on startup. If `DATABASE_URL` is not
 set, it falls back to `postgresql:///postgres` for local development.
+
+The first Smart Money request can take noticeably longer than normal discovery
+reads because it may need to refresh the wallet snapshot on demand before
+serving the response.
 
 ## Expected Source Layout
 

@@ -1,5 +1,5 @@
-export async function fetchJson<T>(url: string) {
-  const response = await fetch(url)
+export async function fetchJson<T>(url: string, init?: RequestInit) {
+  const response = await fetch(url, init)
 
   if (!response.ok) {
     const fallback = `${response.status} ${response.statusText}`

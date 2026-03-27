@@ -17,6 +17,7 @@ const LEGACY_THEME_STORAGE_KEY = 'naijapulse-theme'
 const primaryNav = [
   { end: true, label: 'Markets', to: '/' },
   { label: 'Divergence', to: '/divergence' },
+  { label: 'Smart Money', to: '/smart-money' },
   { label: 'Politics', to: '/categories/politics' },
   { label: 'Sports', to: '/categories/sports' },
   { label: 'Finance', to: '/categories/finance' },

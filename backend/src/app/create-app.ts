@@ -6,6 +6,7 @@ import { bayseLiveHub } from '../realtime/bayse-live-hub.js'
 import { healthRoute } from '../routes/health.js'
 import { v1EventsRoutes } from '../routes/v1/events.js'
 import { v1LiveRoutes } from '../routes/v1/live.js'
+import { v1SmartMoneyRoutes } from '../routes/v1/smart-money.js'
 
 export async function createApp() {
   await ensureDiscoverySchema()
@@ -24,6 +25,7 @@ export async function createApp() {
   app.register(healthRoute)
   app.register(v1EventsRoutes, { prefix: '/api/v1' })
   app.register(v1LiveRoutes, { prefix: '/api/v1' })
+  app.register(v1SmartMoneyRoutes, { prefix: '/api/v1' })
 
   return app
 }

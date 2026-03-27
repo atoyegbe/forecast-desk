@@ -20,6 +20,7 @@ Build a public-facing web app that makes prediction markets legible for normal u
 - live odds updates
 - price history charts
 - category and trend views
+- smart money signal feed and whale leaderboard
 - editorial framing around why a market moved
 
 ## v1 Non-Goals
@@ -31,7 +32,7 @@ Build a public-facing web app that makes prediction markets legible for normal u
 
 ## Workspace Structure
 
-- `frontend/` holds the public UI and is locked to `Vite + React`, moving toward `TanStack Router + TanStack Query`.
+- `frontend/` holds the public UI and is locked to `Vite + React + TanStack Router + TanStack Query`.
 - `backend/` is the owned API, ingestion, normalization, matching, and real-time workspace.
 - `docs/` holds the product blueprint and supporting architecture notes.
 

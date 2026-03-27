@@ -42,6 +42,7 @@ The current frontend surface includes:
 - backend-owned live event updates
 - a dedicated compare desk plus event-level compare read driven by `/api/v1/events/:eventId/compare`
 - a divergence leaderboard driven by `/api/v1/divergence`
+- a dedicated smart money signal feed, whale leaderboard, and wallet profile flow backed by `/api/v1/smart-money/*`
 
 ## Deployment
 

@@ -32,6 +32,15 @@ const EventComparePage = lazy(async () => ({
 const SearchPage = lazy(async () => ({
   default: (await import('./routes/search-page')).SearchPage,
 }))
+const SmartMoneyPage = lazy(async () => ({
+  default: (await import('./routes/smart-money-page')).SmartMoneyPage,
+}))
+const SmartMoneyLeaderboardPage = lazy(async () => ({
+  default: (await import('./routes/smart-money-leaderboard-page')).SmartMoneyLeaderboardPage,
+}))
+const SmartMoneyWalletPage = lazy(async () => ({
+  default: (await import('./routes/smart-money-wallet-page')).SmartMoneyWalletPage,
+}))
 const NotFoundPage = lazy(async () => ({
   default: (await import('./routes/not-found-page')).NotFoundPage,
 }))
@@ -124,6 +133,24 @@ const searchRoute = createRoute({
   component: withSuspense(SearchPage),
 })
 
+const smartMoneyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'smart-money',
+  component: withSuspense(SmartMoneyPage),
+})
+
+const smartMoneyLeaderboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'smart-money/leaderboard',
+  component: withSuspense(SmartMoneyLeaderboardPage),
+})
+
+const smartMoneyWalletRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'smart-money/wallets/$walletAddress',
+  component: withSuspense(SmartMoneyWalletPage),
+})
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   eventRoute,
@@ -133,6 +160,9 @@ const routeTree = rootRoute.addChildren([
   categoryRoute,
   divergenceRoute,
   searchRoute,
+  smartMoneyRoute,
+  smartMoneyLeaderboardRoute,
+  smartMoneyWalletRoute,
 ])
 
 export const router = createRouter({

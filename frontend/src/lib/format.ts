@@ -3,6 +3,13 @@ const compactNumberFormatter = new Intl.NumberFormat('en-NG', {
   notation: 'compact',
 })
 
+const currencyFormatter = new Intl.NumberFormat('en-NG', {
+  currency: 'USD',
+  maximumFractionDigits: 0,
+  notation: 'compact',
+  style: 'currency',
+})
+
 const dateFormatter = new Intl.DateTimeFormat('en-NG', {
   day: 'numeric',
   month: 'short',
@@ -41,6 +48,10 @@ export function formatCompactNumber(value: number) {
   return compactNumberFormatter.format(value)
 }
 
+export function formatCompactCurrency(value: number) {
+  return currencyFormatter.format(value)
+}
+
 export function formatDate(value?: string | number | null) {
   if (!value) return 'TBD'
 
@@ -66,6 +77,29 @@ export function formatRelativeTime(value?: number | null) {
   const diffHours = Math.round(diffMinutes / 60)
 
   return relativeTimeFormatter.format(diffHours, 'hour')
+}
+
+export function formatTimeAgo(value?: string | number | null) {
+  if (!value) {
+    return 'just now'
+  }
+
+  const diffMs = Date.now() - new Date(value).getTime()
+  const diffMinutes = Math.round(diffMs / 60_000)
+
+  if (Math.abs(diffMinutes) < 60) {
+    return relativeTimeFormatter.format(-diffMinutes, 'minute')
+  }
+
+  const diffHours = Math.round(diffMinutes / 60)
+
+  if (Math.abs(diffHours) < 48) {
+    return relativeTimeFormatter.format(-diffHours, 'hour')
+  }
+
+  const diffDays = Math.round(diffHours / 24)
+
+  return relativeTimeFormatter.format(-diffDays, 'day')
 }
 
 export function formatClosingCountdown(value?: string | number | null) {
@@ -108,4 +142,19 @@ export function formatChartTick(timestamp: number) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(new Date(timestamp))
+}
+
+export function formatWalletAddress(address: string) {
+  if (address.length <= 12) {
+    return address
+  }
+
+  return `${address.slice(0, 6)}...${address.slice(-4)}`
+}
+
+export function formatSignedPercent(value: number) {
+  const percentage = value * 100
+  const sign = percentage > 0 ? '+' : percentage < 0 ? '-' : ''
+
+  return `${sign}${Math.abs(percentage).toFixed(Math.abs(percentage) < 10 ? 1 : 0)}%`
 }

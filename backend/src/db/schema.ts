@@ -129,6 +129,102 @@ CREATE TABLE IF NOT EXISTS pulse_event_link_members (
 
 CREATE INDEX IF NOT EXISTS idx_pulse_event_link_members_event
   ON pulse_event_link_members(event_id);
+
+CREATE TABLE IF NOT EXISTS pulse_smart_money_sync_state (
+  sync_key TEXT PRIMARY KEY,
+  last_error TEXT,
+  last_run_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS pulse_smart_money_wallets (
+  address TEXT PRIMARY KEY,
+  display_name TEXT,
+  x_username TEXT,
+  profile_image_url TEXT,
+  verified_badge BOOLEAN NOT NULL DEFAULT FALSE,
+  rank INTEGER NOT NULL DEFAULT 0,
+  source_rank INTEGER,
+  score INTEGER NOT NULL DEFAULT 0,
+  win_rate DOUBLE PRECISION NOT NULL DEFAULT 0,
+  roi DOUBLE PRECISION NOT NULL DEFAULT 0,
+  total_volume DOUBLE PRECISION NOT NULL DEFAULT 0,
+  source_volume DOUBLE PRECISION NOT NULL DEFAULT 0,
+  source_pnl DOUBLE PRECISION NOT NULL DEFAULT 0,
+  open_position_count INTEGER NOT NULL DEFAULT 0,
+  closed_position_count INTEGER NOT NULL DEFAULT 0,
+  market_count INTEGER NOT NULL DEFAULT 0,
+  recency_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+  last_active_at TIMESTAMPTZ,
+  category_stats_json JSONB NOT NULL DEFAULT '[]'::JSONB,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_wallets_rank
+  ON pulse_smart_money_wallets(rank);
+CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_wallets_score
+  ON pulse_smart_money_wallets(score DESC);
+CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_wallets_last_active
+  ON pulse_smart_money_wallets(last_active_at DESC);
+
+CREATE TABLE IF NOT EXISTS pulse_smart_money_positions (
+  position_key TEXT PRIMARY KEY,
+  wallet_address TEXT NOT NULL REFERENCES pulse_smart_money_wallets(address) ON DELETE CASCADE,
+  event_id TEXT REFERENCES pulse_events(id) ON DELETE SET NULL,
+  provider_event_id TEXT,
+  provider TEXT NOT NULL DEFAULT 'polymarket',
+  condition_id TEXT NOT NULL,
+  event_slug TEXT NOT NULL,
+  market_title TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'General',
+  icon_url TEXT,
+  outcome TEXT NOT NULL,
+  status TEXT NOT NULL,
+  avg_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+  current_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+  share_count DOUBLE PRECISION NOT NULL DEFAULT 0,
+  entry_value DOUBLE PRECISION NOT NULL DEFAULT 0,
+  current_value DOUBLE PRECISION NOT NULL DEFAULT 0,
+  cash_pnl DOUBLE PRECISION NOT NULL DEFAULT 0,
+  realized_pnl DOUBLE PRECISION NOT NULL DEFAULT 0,
+  closing_date TIMESTAMPTZ,
+  position_timestamp TIMESTAMPTZ,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_positions_wallet
+  ON pulse_smart_money_positions(wallet_address, status);
+CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_positions_event
+  ON pulse_smart_money_positions(event_id);
+
+CREATE TABLE IF NOT EXISTS pulse_smart_money_signals (
+  id TEXT PRIMARY KEY,
+  wallet_address TEXT NOT NULL REFERENCES pulse_smart_money_wallets(address) ON DELETE CASCADE,
+  event_id TEXT REFERENCES pulse_events(id) ON DELETE SET NULL,
+  provider_event_id TEXT,
+  provider TEXT NOT NULL DEFAULT 'polymarket',
+  condition_id TEXT NOT NULL,
+  event_slug TEXT NOT NULL,
+  market_title TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'General',
+  icon_url TEXT,
+  outcome TEXT NOT NULL,
+  entry_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+  current_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+  price_delta DOUBLE PRECISION NOT NULL DEFAULT 0,
+  size_usd DOUBLE PRECISION NOT NULL DEFAULT 0,
+  signal_timestamp TIMESTAMPTZ NOT NULL,
+  closing_date TIMESTAMPTZ,
+  transaction_hash TEXT,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_signals_timestamp
+  ON pulse_smart_money_signals(signal_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_signals_wallet
+  ON pulse_smart_money_signals(wallet_address);
+CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_signals_category
+  ON pulse_smart_money_signals(category);
 `
 
 let schemaReadyPromise: Promise<void> | null = null

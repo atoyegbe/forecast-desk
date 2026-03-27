@@ -39,3 +39,24 @@ export function getSearchRoute(query?: string) {
     to: '/search' as const,
   }
 }
+
+export function getSmartMoneyRoute() {
+  return {
+    to: '/smart-money' as const,
+  }
+}
+
+export function getSmartMoneyLeaderboardRoute() {
+  return {
+    to: '/smart-money/leaderboard' as const,
+  }
+}
+
+export function getSmartMoneyWalletRoute(address: string) {
+  return {
+    params: {
+      walletAddress: address.toLowerCase(),
+    },
+    to: '/smart-money/wallets/$walletAddress' as const,
+  }
+}
