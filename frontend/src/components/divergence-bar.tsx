@@ -1,9 +1,9 @@
-import { getProviderLabel } from '../features/events/provider-ids'
 import type { PulseComparedEvent } from '../features/events/types'
 import {
   formatProbability,
   formatProbabilityPoints,
 } from '../lib/format'
+import { PlatformBadge } from './platform-badge'
 
 type DivergenceBarProps = {
   items: PulseComparedEvent[]
@@ -21,18 +21,34 @@ export function DivergenceBar({ items }: DivergenceBarProps) {
       : 0
 
   return (
-    <div className="rounded-[1.4rem] border border-stone-900/10 bg-stone-950/[0.02] p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-stone-600">
+    <div className="panel-elevated p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--color-text-secondary)]">
         <span>Cross-platform spread</span>
-        <span className="font-medium text-stone-900">
+        <span className="mono-data text-base font-medium text-[var(--color-text-primary)]">
           {formatProbabilityPoints(maxDivergence)}
         </span>
       </div>
 
-      <div className="relative mt-5 h-14">
-        <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-stone-200" />
+      <div className="mt-5 flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
+        <span>0%</span>
+        <span>50%</span>
+        <span>100%</span>
+      </div>
+
+      <div className="relative mt-3 h-20">
+        <div className="absolute inset-x-0 top-8 h-2 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,var(--color-down-dim),rgba(100,116,139,0.08),var(--color-up-dim))]" />
         {sortedItems.map((item, index) => {
           const isUpperTrack = index % 2 === 0
+          const providerPalette =
+            item.event.provider === 'bayse'
+              ? {
+                  dot: '#00c58e',
+                  glow: 'rgba(0, 197, 142, 0.18)',
+                }
+              : {
+                  dot: '#0070f3',
+                  glow: 'rgba(0, 112, 243, 0.18)',
+                }
 
           return (
             <div
@@ -40,14 +56,21 @@ export function DivergenceBar({ items }: DivergenceBarProps) {
               key={item.event.id}
               style={{
                 left: `${clampPercentage(item.yesPrice)}%`,
-                top: isUpperTrack ? '0.25rem' : '1.9rem',
+                top: isUpperTrack ? '0.25rem' : '2.5rem',
               }}
             >
               <div className="flex flex-col items-center gap-2">
-                <div className="rounded-full border border-stone-900/10 bg-white px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-stone-700 shadow-[0_8px_16px_rgba(28,25,23,0.08)]">
-                  {getProviderLabel(item.event.provider)}
+                <div className="mono-data text-xs text-[var(--color-text-primary)]">
+                  {formatProbability(item.yesPrice)}
                 </div>
-                <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-teal-700 shadow-[0_0_0_4px_rgba(20,184,166,0.12)]" />
+                <div
+                  className="h-3.5 w-3.5 rounded-full border-2 border-[var(--color-bg-surface)]"
+                  style={{
+                    backgroundColor: providerPalette.dot,
+                    boxShadow: `0 0 0 4px ${providerPalette.glow}`,
+                  }}
+                />
+                <PlatformBadge platform={item.event.provider} short size="sm" />
               </div>
             </div>
           )
@@ -57,23 +80,21 @@ export function DivergenceBar({ items }: DivergenceBarProps) {
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         {sortedItems.map((item) => (
           <div
-            className="rounded-[1.2rem] border border-stone-900/10 bg-white px-4 py-3"
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3"
             key={item.event.id}
           >
-            <div className="text-[0.68rem] uppercase tracking-[0.22em] text-stone-500">
-              {getProviderLabel(item.event.provider)}
+            <div className="flex items-center justify-between gap-3">
+              <PlatformBadge platform={item.event.provider} short size="sm" />
+              <div className="mono-data text-sm font-medium text-[var(--color-text-primary)]">
+                {formatProbability(item.yesPrice)}
+              </div>
             </div>
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <div className="min-w-0 text-sm text-stone-600">
-                <div className="truncate font-medium text-stone-900">{item.marketTitle}</div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="min-w-0 text-sm text-[var(--color-text-secondary)]">
+                <div className="truncate font-medium text-[var(--color-text-primary)]">{item.marketTitle}</div>
                 <div className="truncate">{item.event.title}</div>
               </div>
-              <div className="shrink-0 text-right">
-                <div className="text-lg font-semibold text-teal-700">
-                  {formatProbability(item.yesPrice)}
-                </div>
-                <div className="text-xs text-stone-500">Yes</div>
-              </div>
+              <div className="stat-label shrink-0">Yes</div>
             </div>
           </div>
         ))}

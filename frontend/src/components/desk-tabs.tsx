@@ -41,10 +41,10 @@ export function DeskTabs<T extends string>({
   }
 
   return (
-    <section className="panel p-5 sm:p-6">
+    <section className="panel p-4 sm:p-5">
       <div
         aria-label={activeItem.title}
-        className="flex flex-wrap gap-2 rounded-[1.3rem] border border-stone-900/10 bg-stone-950/[0.03] p-2"
+        className="flex flex-wrap gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1.5"
         role="tablist"
       >
         {items.map((item) => {
@@ -56,10 +56,10 @@ export function DeskTabs<T extends string>({
             <button
               aria-controls={panelId}
               aria-selected={isActive}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+              className={`rounded-md border px-3 py-2 text-sm font-medium transition ${
                 isActive
-                  ? 'active-pill'
-                  : 'bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-950'
+                  ? 'terminal-chip terminal-chip-active'
+                  : 'border-transparent bg-transparent text-[var(--color-text-tertiary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
               }`}
               id={tabId}
               key={item.id}
@@ -77,7 +77,7 @@ export function DeskTabs<T extends string>({
         })}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-5">
         <SectionHeader
           description={activeItem.description}
           kicker={activeItem.kicker}
@@ -85,7 +85,7 @@ export function DeskTabs<T extends string>({
         />
         <div
           aria-labelledby={`${tabsId}-tab-${activeItem.id}`}
-          className="mt-6"
+          className="mt-5"
           id={`${tabsId}-panel-${activeItem.id}`}
           role="tabpanel"
         >

@@ -1,12 +1,13 @@
 import { Link } from '@tanstack/react-router'
-import { getProviderLabel } from '../features/events/provider-ids'
 import type { PulseEvent } from '../features/events/types'
 import {
   formatCompactNumber,
+  formatDate,
   formatSignedProbabilityChange,
 } from '../lib/format'
 import { getEventRoute } from '../lib/routes'
 import { OutcomeStrip } from './outcome-strip'
+import { PlatformBadge } from './platform-badge'
 
 type MarketRowProps = {
   accent?: 'neutral' | 'positive' | 'negative'
@@ -15,9 +16,9 @@ type MarketRowProps = {
 }
 
 const accentStyles = {
-  negative: 'border-l-rose-600',
-  neutral: 'border-l-stone-300',
-  positive: 'border-l-teal-700',
+  negative: 'border-l-[var(--color-down)]',
+  neutral: 'border-l-[var(--color-border-strong)]',
+  positive: 'border-l-[var(--color-up)]',
 }
 
 export function MarketRow({
@@ -35,58 +36,63 @@ export function MarketRow({
 
   return (
     <Link
-      className={`panel group block border-l-4 p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(28,25,23,0.12)] sm:p-5 ${accentStyles[accent]}`}
+      className={`panel group block border-l-2 px-4 py-4 transition duration-200 hover:border-[var(--color-brand)] hover:bg-[var(--color-bg-hover)] sm:px-5 ${accentStyles[accent]}`}
       {...getEventRoute(event)}
     >
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(240px,0.9fr)_176px] xl:items-center">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-[0.72rem] uppercase tracking-[0.24em] text-stone-500">
-            <span>{event.category}</span>
-            <span className="text-stone-300">/</span>
-            <span>{getProviderLabel(event.provider)}</span>
-            <span className="text-stone-300">/</span>
-            <span>{event.engine}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <PlatformBadge platform={event.provider} size="sm" />
+            <span className="terminal-chip border-[var(--color-border-subtle)] bg-transparent px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
+              {event.category}
+            </span>
+            <span className="terminal-chip border-[var(--color-border-subtle)] bg-transparent px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
+              {event.engine}
+            </span>
             {change !== undefined ? (
-              <>
-                <span className="text-stone-300">/</span>
-                <span
-                  className={
-                    change > 0
-                      ? 'text-teal-700'
-                      : change < 0
-                        ? 'text-rose-700'
-                        : 'text-stone-500'
-                  }
-                >
-                  {formatSignedProbabilityChange(change)}
-                </span>
-              </>
+              <span
+                className={`terminal-chip px-2 py-1 text-[11px] ${
+                  change > 0
+                    ? 'good-chip'
+                    : change < 0
+                      ? 'bad-chip'
+                      : 'border-[var(--color-border-subtle)] bg-transparent text-[var(--color-text-tertiary)]'
+                }`}
+              >
+                {formatSignedProbabilityChange(change)}
+              </span>
             ) : null}
           </div>
 
-          <h3 className="mt-3 max-w-3xl text-[1.9rem] font-semibold leading-[1.05] text-stone-900 sm:text-[2.1rem]">
+          <h3 className="mt-3 max-w-3xl text-lg font-medium leading-snug text-[var(--color-text-primary)] sm:text-[1.28rem]">
             {event.title}
           </h3>
+
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-[var(--color-text-secondary)]">
+            <span>Resolves {formatDate(event.resolutionDate)}</span>
+            <span className="text-[var(--color-text-tertiary)]">•</span>
+            <span className="capitalize">{event.status}</span>
+          </div>
         </div>
 
-        <div className="grid shrink-0 grid-cols-2 gap-x-5 gap-y-3 text-sm text-stone-500 xl:min-w-[11rem] xl:justify-items-end">
-          <div>
+        <div>
+          <OutcomeStrip dense noPrice={noPrice} yesPrice={yesPrice} />
+        </div>
+
+        <div className="grid shrink-0 grid-cols-2 gap-x-5 gap-y-3 text-sm text-[var(--color-text-secondary)] xl:grid-cols-1 xl:justify-items-end">
+          <div className="text-left xl:text-right">
             <div className="stat-label">Total volume</div>
-            <div className="mt-1 text-lg font-semibold text-stone-900">
+            <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
               {formatCompactNumber(event.totalVolume)}
             </div>
           </div>
-          <div>
+          <div className="text-left xl:text-right">
             <div className="stat-label">{secondaryMetricLabel}</div>
-            <div className="mt-1 text-lg font-semibold text-stone-900">
+            <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
               {formatCompactNumber(secondaryMetricValue)}
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-5">
-        <OutcomeStrip dense noPrice={noPrice} yesPrice={yesPrice} />
       </div>
     </Link>
   )

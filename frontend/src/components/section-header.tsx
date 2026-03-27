@@ -11,11 +11,14 @@ export function SectionHeader({
 }: SectionHeaderProps) {
   return (
     <div className="space-y-3">
-      <div className="section-kicker">{kicker}</div>
-      <div className="border-t border-stone-900/10 pt-4">
+      <div className="flex items-center gap-3">
+        <div className="section-kicker">{kicker}</div>
+        <div className="h-px flex-1 bg-[var(--color-border-subtle)]" />
+      </div>
+      <div className="space-y-3">
         <h2 className="section-title">{title}</h2>
         {description ? (
-          <p className="mt-3 max-w-3xl text-base leading-7 text-stone-600">
+          <p className="max-w-3xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-[15px]">
             {description}
           </p>
         ) : null}

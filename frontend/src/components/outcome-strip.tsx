@@ -21,37 +21,48 @@ export function OutcomeStrip({
 }: OutcomeStripProps) {
   const safeYesPrice = clampProbability(yesPrice)
   const safeNoPrice = clampProbability(noPrice)
+  const yesLeads = safeYesPrice >= safeNoPrice
+  const yesSurface = yesLeads
+    ? 'border-[rgba(34,197,94,0.22)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
+    : 'border-[rgba(239,68,68,0.22)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
+  const noSurface = yesLeads
+    ? 'border-[rgba(239,68,68,0.22)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
+    : 'border-[rgba(34,197,94,0.22)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
 
   return (
-    <div className={dense ? 'space-y-3' : 'space-y-4'}>
+    <div className={dense ? 'space-y-2.5' : 'space-y-3.5'}>
       <div className="grid gap-3 sm:grid-cols-2">
         <div
-          className={`rounded-[1.2rem] border border-teal-800/10 bg-teal-700/[0.08] text-left ${
+          className={`rounded-lg border text-left ${
+            yesSurface
+          } ${
             dense ? 'px-3 py-3' : 'px-4 py-4'
           }`}
         >
-          <div className="text-[0.68rem] uppercase tracking-[0.26em] text-teal-800/70">
+          <div className="stat-label text-current/70">
             Yes
           </div>
           <div
-            className={`mt-1 font-semibold text-teal-800 ${
-              dense ? 'text-[1.9rem] leading-none' : 'text-[2.35rem] leading-none'
+            className={`mono-data mt-1 font-medium ${
+              dense ? 'text-[1.55rem] leading-none' : 'text-[2rem] leading-none'
             }`}
           >
             {formatProbability(safeYesPrice)}
           </div>
         </div>
         <div
-          className={`rounded-[1.2rem] border border-stone-900/10 bg-white text-right ${
+          className={`rounded-lg border text-right ${
+            noSurface
+          } ${
             dense ? 'px-3 py-3' : 'px-4 py-4'
           }`}
         >
-          <div className="text-[0.68rem] uppercase tracking-[0.26em] text-stone-500">
+          <div className="stat-label text-current/70">
             No
           </div>
           <div
-            className={`mt-1 font-semibold text-stone-900 ${
-              dense ? 'text-[1.9rem] leading-none' : 'text-[2.35rem] leading-none'
+            className={`mono-data mt-1 font-medium ${
+              dense ? 'text-[1.55rem] leading-none' : 'text-[2rem] leading-none'
             }`}
           >
             {formatProbability(safeNoPrice)}
@@ -59,18 +70,22 @@ export function OutcomeStrip({
         </div>
       </div>
 
-      <div className="relative overflow-hidden rounded-full border border-stone-900/10 bg-stone-200/80">
+      <div className="relative overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
         <div className={`${dense ? 'h-4' : 'h-5'} flex`}>
           <div
-            className="h-full bg-teal-700/82 transition-[width] duration-300"
+            className={`h-full transition-[width] duration-300 ${
+              yesLeads ? 'bg-[var(--color-up)]' : 'bg-[var(--color-down)]'
+            }`}
             style={{ width: `${safeYesPrice * 100}%` }}
           />
           <div
-            className="h-full bg-stone-900/72 transition-[width] duration-300"
+            className={`h-full transition-[width] duration-300 ${
+              yesLeads ? 'bg-[var(--color-down)]' : 'bg-[var(--color-up)]'
+            }`}
             style={{ width: `${safeNoPrice * 100}%` }}
           />
         </div>
-        <div className="pointer-events-none absolute inset-y-1 left-1/2 w-px -translate-x-1/2 rounded-full bg-white/60" />
+        <div className="pointer-events-none absolute inset-y-1 left-1/2 w-px -translate-x-1/2 rounded-full bg-[rgba(232,234,235,0.35)]" />
       </div>
     </div>
   )

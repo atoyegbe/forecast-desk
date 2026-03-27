@@ -20,7 +20,7 @@ type PriceHistoryChartProps = {
 export function PriceHistoryChart({ points }: PriceHistoryChartProps) {
   if (!points.length) {
     return (
-      <div className="panel flex h-80 items-center justify-center p-6 text-center text-stone-500">
+      <div className="panel-elevated flex h-80 items-center justify-center p-6 text-center text-[var(--color-text-secondary)]">
         Price history is not available for this market yet.
       </div>
     )
@@ -32,41 +32,44 @@ export function PriceHistoryChart({ points }: PriceHistoryChartProps) {
     timestamp: point.timestamp,
   }))
   const prices = chartData.map((point) => point.price)
-  const min = Math.max(0, Math.floor(Math.min(...prices) - 3))
-  const max = Math.min(100, Math.ceil(Math.max(...prices) + 3))
+  const averagePrice =
+    prices.reduce((sum, price) => sum + price, 0) / prices.length
+  const latestPrice = prices[prices.length - 1] ?? 0
+  const strokeColor = latestPrice >= averagePrice ? '#22c55e' : '#ef4444'
 
   return (
-    <div className="panel h-80 p-4 sm:p-6">
+    <div className="panel-elevated h-80 p-4 sm:p-6">
       <ResponsiveContainer height="100%" width="100%">
         <AreaChart data={chartData} margin={{ bottom: 0, left: 0, right: 0, top: 10 }}>
           <defs>
             <linearGradient id="price-wave" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#0f766e" stopOpacity={0.45} />
-              <stop offset="100%" stopColor="#f4efe7" stopOpacity={0} />
+              <stop offset="0%" stopColor={strokeColor} stopOpacity={0.28} />
+              <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
             </linearGradient>
           </defs>
 
-          <CartesianGrid stroke="rgba(28,25,23,0.08)" vertical={false} />
+          <CartesianGrid stroke="rgba(138,147,153,0.12)" vertical={false} />
           <XAxis
             axisLine={false}
             dataKey="label"
             minTickGap={42}
-            tick={{ fill: 'rgba(87,83,78,0.8)', fontSize: 12 }}
+            tick={{ fill: '#8a9399', fontSize: 12 }}
             tickLine={false}
           />
           <YAxis
             axisLine={false}
-            domain={[min, max]}
-            tick={{ fill: 'rgba(87,83,78,0.8)', fontSize: 12 }}
+            domain={[0, 100]}
+            tick={{ fill: '#8a9399', fontSize: 12 }}
             tickFormatter={(value) => `${value}%`}
             tickLine={false}
             width={38}
           />
           <Tooltip
             contentStyle={{
-              background: 'rgba(251, 248, 242, 0.96)',
-              border: '1px solid rgba(28, 25, 23, 0.08)',
-              borderRadius: '18px',
+              background: 'rgba(30, 35, 38, 0.96)',
+              border: '1px solid #2a3035',
+              borderRadius: '10px',
+              color: '#e8eaeb',
             }}
             formatter={(value) => formatProbability(Number(value) / 100)}
             labelFormatter={(_, payload) =>
@@ -81,8 +84,8 @@ export function PriceHistoryChart({ points }: PriceHistoryChartProps) {
           <Area
             dataKey="price"
             fill="url(#price-wave)"
-            stroke="#0f766e"
-            strokeWidth={3}
+            stroke={strokeColor}
+            strokeWidth={2.5}
             type="monotone"
           />
         </AreaChart>

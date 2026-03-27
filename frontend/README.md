@@ -17,6 +17,10 @@ Bayse and Polymarket data.
 The frontend now runs on `TanStack Router` with the existing product URLs and
 page behavior preserved.
 
+The shipped UI follows a dark, data-dense market-desk model: compact nav,
+monospaced numeric emphasis, strong platform badges, and leaderboard-style
+comparison surfaces instead of the earlier editorial light theme.
+
 ## Run locally
 
 ```bash

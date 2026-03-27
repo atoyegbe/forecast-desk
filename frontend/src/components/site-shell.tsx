@@ -3,33 +3,20 @@ import {
   Outlet,
   useRouterState,
 } from '@tanstack/react-router'
+import {
+  useEffect,
+  useState,
+} from 'react'
 import { useBackendHealthQuery } from '../features/runtime/hooks'
 import { LiveTicker } from './live-ticker'
 
 const primaryNav = [
-  { end: true, label: 'Front Page', to: '/' },
+  { end: true, label: 'Markets', to: '/' },
   { label: 'Divergence', to: '/divergence' },
   { label: 'Politics', to: '/categories/politics' },
-  { label: 'Culture', to: '/categories/culture' },
   { label: 'Sports', to: '/categories/sports' },
   { label: 'Finance', to: '/categories/finance' },
 ]
-
-function getNavItemClass(isActive: boolean) {
-  return [
-    'flex items-center justify-between rounded-full border px-4 py-2 text-sm transition',
-    isActive
-      ? 'active-pill border-teal-800/10'
-      : 'border-stone-900/10 bg-white text-stone-700 hover:border-stone-900/20 hover:bg-stone-950/[0.03] hover:text-stone-950',
-  ].join(' ')
-}
-
-function getNavMetaClass(isActive: boolean) {
-  return [
-    'text-[0.66rem] uppercase tracking-[0.24em]',
-    isActive ? 'opacity-70' : 'text-stone-500',
-  ].join(' ')
-}
 
 function isNavItemActive(
   pathname: string,
@@ -56,127 +43,154 @@ function ShellNavLink({
 
   return (
     <Link
-      className={getNavItemClass(isActive)}
+      className={
+        mobile
+          ? `flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md px-2 py-2 text-xs transition ${
+              isActive
+                ? 'bg-[var(--color-brand-dim)] text-[var(--color-brand)]'
+                : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
+            }`
+          : 'nav-link'
+      }
+      data-active={!mobile && isActive ? 'true' : 'false'}
       key={item.to}
       to={item.to}
     >
-      {mobile ? (
-        <span className={isActive ? 'text-white' : 'text-stone-700'}>
-          {item.label}
+      <span>{item.label}</span>
+      {mobile ? null : (
+        <span className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-tertiary)]">
+          Desk
         </span>
-      ) : (
-        <>
-          <span>{item.label}</span>
-          <span className={getNavMetaClass(isActive)}>Edit</span>
-        </>
       )}
     </Link>
   )
 }
 
 export function SiteShell() {
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const backendHealthQuery = useBackendHealthQuery()
-  const backendContractLabel = backendHealthQuery.isSuccess
-    ? 'Backend online'
+
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem('naija-pulse-theme')
+    const nextTheme = storedTheme === 'light' ? 'light' : 'dark'
+    setTheme(nextTheme)
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem('naija-pulse-theme', theme)
+  }, [theme])
+
+  const backendConnectionState = backendHealthQuery.isSuccess
+    ? 'connected'
     : backendHealthQuery.isError
-      ? 'Backend contract offline'
-      : 'Checking backend contract'
+      ? 'offline'
+      : 'connecting'
+  const backendContractLabel =
+    backendConnectionState === 'connected'
+      ? 'Backend live'
+      : backendConnectionState === 'offline'
+        ? 'Backend offline'
+        : 'Checking backend'
 
   return (
-    <div className="min-h-screen px-3 py-4 sm:px-5 lg:px-6">
-      <div className="mx-auto max-w-[1460px] lg:grid lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-5">
-        <aside className="hidden lg:block">
-          <div className="sidebar-panel sticky top-5 space-y-6 p-5">
-            <div>
-              <div className="section-kicker">Edition 01</div>
-              <h1 className="display-title mt-4 text-[2.7rem] leading-[0.95] text-stone-950">
-                Pulse Markets
-              </h1>
-              <p className="mt-4 text-sm leading-7 text-stone-600">
-                A newsroom-style interface for reading live public prediction
-                markets without the noise of a trading terminal.
-              </p>
-            </div>
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border-subtle)] bg-[rgba(13,15,16,0.88)] backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1380px] items-center gap-5 px-4 py-3 sm:px-6">
+          <Link
+            className="shrink-0 font-mono text-[1.02rem] font-medium uppercase tracking-[0.28em]"
+            to="/"
+          >
+            <span className="text-[var(--color-text-primary)]">Naija</span>
+            <span className="text-[var(--color-brand)]">Pulse</span>
+          </Link>
 
-            <nav className="space-y-2">
-              {primaryNav.map((item) => (
-                <ShellNavLink item={item} key={item.to} />
-              ))}
-            </nav>
+          <nav className="hidden items-center gap-6 md:flex">
+            {primaryNav.map((item) => (
+              <ShellNavLink item={item} key={item.to} />
+            ))}
+          </nav>
 
-            <div className="rounded-[1.45rem] border border-stone-900/10 bg-stone-950/[0.03] p-4">
-              <div className="section-kicker">Method</div>
-              <p className="mt-3 text-sm leading-7 text-stone-600">
-                Read the board like a desk: lead story first, then repricings,
-                closest calls, and the densest order flow.
-              </p>
-            </div>
-          </div>
-        </aside>
-
-        <div className="min-w-0 space-y-5">
-          <header className="panel flex flex-col gap-4 p-4 sm:p-5 lg:hidden">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="section-kicker">Edition 01</div>
-                <div className="display-title mt-3 text-3xl text-stone-950">
-                  Pulse Markets
-                </div>
-              </div>
-              <div className="rounded-full border border-stone-900/10 bg-stone-950 px-3 py-2 text-xs uppercase tracking-[0.24em] text-white">
-                Live
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {primaryNav.map((item) => (
-                <ShellNavLink item={item} key={item.to} mobile />
-              ))}
-            </div>
-          </header>
-
-          <div className="panel flex flex-col gap-4 px-4 py-4 sm:px-5 sm:py-5 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="section-kicker">Live edition</div>
-              <div className="display-title mt-3 text-3xl text-stone-950 sm:text-[2.7rem] sm:leading-[0.95]">
-                Public prediction markets, arranged like a front page.
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <div className="rounded-full border border-stone-900/10 bg-white px-4 py-2 text-sm text-stone-700">
-                Nigeria-first desk
-              </div>
-              <div className="rounded-full border border-stone-900/10 bg-stone-950 px-4 py-2 text-sm text-white">
-                Live market radar
-              </div>
-            </div>
-          </div>
-
-          <LiveTicker />
-
-          <main className="pb-14">
-            <Outlet />
-          </main>
-
-          <footer className="panel flex flex-col gap-3 px-5 py-4 text-sm text-stone-600 sm:flex-row sm:items-center sm:justify-between">
-            <p>Built for market discovery, not order placement.</p>
-            <div className="flex flex-col gap-2 sm:items-end">
-              <p>Public Bayse and Polymarket data now flow through the owned backend API and live stream.</p>
-              <p
-                className={
-                  backendHealthQuery.isSuccess
-                    ? 'text-teal-700'
-                    : backendHealthQuery.isError
-                      ? 'text-rose-700'
-                      : 'text-stone-500'
-                }
-              >
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2 lg:flex">
+              <span
+                className={`live-dot ${
+                  backendConnectionState === 'offline'
+                    ? 'offline'
+                    : backendConnectionState === 'connecting'
+                      ? 'warn'
+                      : ''
+                }`}
+              />
+              <span className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">
                 {backendContractLabel}
-              </p>
+              </span>
             </div>
-          </footer>
+
+            <button
+              className="terminal-button px-3 py-2 text-[11px] uppercase tracking-[0.16em]"
+              onClick={() => {
+                setTheme((currentTheme) =>
+                  currentTheme === 'dark' ? 'light' : 'dark',
+                )
+              }}
+              type="button"
+            >
+              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            </button>
+          </div>
         </div>
+
+        <div className="border-t border-[var(--color-border-subtle)]">
+          <div className="mx-auto flex max-w-[1380px] flex-wrap items-center justify-between gap-3 px-4 py-2 text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-tertiary)] sm:px-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <span>Signal desk</span>
+              <span className="text-[var(--color-border-strong)]">/</span>
+              <span>Bayse + Polymarket</span>
+              <span className="text-[var(--color-border-strong)]">/</span>
+              <span>Stored history</span>
+              <span className="text-[var(--color-border-strong)]">/</span>
+              <span>Read-only product</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span
+                className={`live-dot ${
+                  backendConnectionState === 'offline'
+                    ? 'offline'
+                    : backendConnectionState === 'connecting'
+                      ? 'warn'
+                      : ''
+                }`}
+              />
+              <span>{backendContractLabel}</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-[1380px] px-4 py-4 sm:px-6 sm:py-5">
+        <LiveTicker />
+
+        <main className="pb-24 pt-5">
+          <Outlet />
+        </main>
+
+        <footer className="mt-6 flex flex-col gap-2 border-t border-[var(--color-border-subtle)] px-1 pt-4 text-sm text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+          <p>Owned market API, stored history, compare, and backend live fan-out.</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-tertiary)]">
+            NaijaPulse is for reading public markets, not placing trades.
+          </p>
+        </footer>
       </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[rgba(13,15,16,0.94)] px-3 py-2 backdrop-blur-md md:hidden">
+        <div className="mx-auto flex max-w-[1380px] items-center gap-1">
+          {primaryNav.map((item) => (
+            <ShellNavLink item={item} key={item.to} mobile />
+          ))}
+        </div>
+      </nav>
     </div>
   )
 }

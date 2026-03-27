@@ -1,9 +1,10 @@
-import { DeskTabs } from '../components/desk-tabs'
 import {
   Link,
   useParams,
 } from '@tanstack/react-router'
+import { DeskTabs } from '../components/desk-tabs'
 import { MarketRow } from '../components/market-row'
+import { PlatformBadge } from '../components/platform-badge'
 import { SectionHeader } from '../components/section-header'
 import { getProviderLabel } from '../features/events/provider-ids'
 import { useEventsQuery } from '../features/events/hooks'
@@ -43,7 +44,7 @@ export function CategoryPage() {
 
   if (eventsQuery.isLoading) {
     return (
-      <div className="panel p-8 text-stone-500">
+      <div className="panel p-8 text-[var(--color-text-secondary)]">
         Loading category desk...
       </div>
     )
@@ -51,13 +52,13 @@ export function CategoryPage() {
 
   if (!category) {
     return (
-      <div className="panel p-8 text-stone-600">
-        <p className="text-lg text-rose-700">That category desk does not exist yet.</p>
+      <div className="panel p-8 text-[var(--color-text-secondary)]">
+        <p className="text-lg text-[var(--color-down)]">That category desk does not exist yet.</p>
         <Link
-          className="mt-4 inline-flex rounded-full border border-stone-900/10 bg-white px-4 py-2 text-sm text-stone-900"
+          className="terminal-button mt-4 text-sm font-medium"
           to="/"
         >
-          Back to front page
+          Back to markets
         </Link>
       </div>
     )
@@ -80,182 +81,206 @@ export function CategoryPage() {
     (sum, event) => sum + event.totalVolume,
     0,
   )
+  const leadPrice = lead ? getYesPrice(lead) : 0
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <section className="panel overflow-hidden">
-        <div className="grid 2xl:grid-cols-[minmax(18rem,0.78fr)_minmax(0,1.22fr)]">
-          <div className="relative min-h-[420px] bg-stone-950">
-            {lead?.imageUrl ? (
-              <img
-                alt={lead.title}
-                className="absolute inset-0 h-full w-full object-cover object-top opacity-82"
-                src={lead.imageUrl}
-              />
-            ) : null}
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.76))]" />
-            <div className="absolute inset-x-0 bottom-0 p-6 text-stone-50 sm:p-7">
-              <div className="section-kicker text-stone-300">Lead read</div>
-              <div className="mt-3 max-w-sm text-sm leading-7 text-stone-200">
-                {lead ? getMarketStance(getYesPrice(lead)) : 'Loading lead market.'}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 sm:p-8 lg:p-10">
+        <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1.15fr)_320px] lg:p-6">
+          <div className="space-y-5">
             <Link
-              className="section-kicker text-stone-500 hover:text-stone-900"
+              className="section-kicker hover:text-[var(--color-text-primary)]"
               to="/"
             >
-              Front page
+              Markets
             </Link>
-            <h1 className="display-title mt-4 text-5xl leading-[0.95] text-stone-950 sm:text-6xl">
-              {category} desk
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-stone-600 sm:text-lg">
-              A focused reading environment for the {category.toLowerCase()}{' '}
-              category. This desk emphasizes the most active names, the least
-              settled stories, and the markets carrying the strongest current
-              conviction.
-            </p>
+            <div>
+              <h1 className="display-title">{category} desk</h1>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
+                A focused reading environment for the {category.toLowerCase()} board. The desk emphasizes the most active names, the least settled stories, and the markets carrying the strongest conviction.
+              </p>
+            </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-[1.4rem] border border-stone-900/10 bg-white p-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="metric-card">
                 <div className="stat-label">Open names</div>
-                <div className="mt-2 text-3xl font-semibold text-stone-950">
-                  {formatCompactNumber(categoryEvents.length)}
-                </div>
+                <strong>{formatCompactNumber(categoryEvents.length)}</strong>
               </div>
-              <div className="rounded-[1.4rem] border border-stone-900/10 bg-white p-4">
+              <div className="metric-card">
                 <div className="stat-label">Desk volume</div>
-                <div className="mt-2 text-3xl font-semibold text-stone-950">
-                  {formatCompactNumber(totalVolume)}
-                </div>
+                <strong>{formatCompactNumber(totalVolume)}</strong>
               </div>
-              <div className="rounded-[1.4rem] border border-stone-900/10 bg-white p-4">
+              <div className="metric-card">
                 <div className="stat-label">Lead tempo</div>
-                <div className="mt-2 text-2xl font-semibold text-teal-700">
-                  {lead ? getTempoLabel(lead) : 'Loading'}
+                <strong>{lead ? getTempoLabel(lead) : 'Waiting'}</strong>
+              </div>
+            </div>
+
+            {lead ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <PlatformBadge platform={lead.provider} />
+                <span className="terminal-chip text-sm">{formatProbability(leadPrice)} yes</span>
+                <span className="terminal-chip text-sm">Resolves {formatDate(lead.resolutionDate)}</span>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="grid gap-4">
+            <div className="panel-elevated relative min-h-[220px] overflow-hidden">
+              <div className="absolute inset-0">
+                {lead?.imageUrl ? (
+                  <img
+                    alt={lead.title}
+                    className="h-full w-full object-cover object-top opacity-40"
+                    src={lead.imageUrl}
+                  />
+                ) : null}
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(13,15,16,0.18),rgba(13,15,16,0.94))]" />
+              </div>
+              <div className="relative flex h-full flex-col justify-end p-5">
+                <div className="section-kicker">Lead read</div>
+                <div className="mt-3 text-sm leading-7 text-[var(--color-text-secondary)]">
+                  {lead ? getMarketStance(leadPrice) : 'Loading lead market.'}
                 </div>
               </div>
             </div>
+
+            {lead ? (
+              <div className="panel-elevated p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <PlatformBadge platform={lead.provider} size="sm" />
+                  <div
+                    className={`mono-data text-sm font-medium ${
+                      leadPrice >= 0.5
+                        ? 'text-[var(--color-up)]'
+                        : 'text-[var(--color-down)]'
+                    }`}
+                  >
+                    {formatProbability(leadPrice)}
+                  </div>
+                </div>
+                <div className="mt-3 text-sm leading-6 text-[var(--color-text-primary)]">
+                  {lead.title}
+                </div>
+                <div className="mt-3 text-[12px] leading-6 text-[var(--color-text-secondary)]">
+                  {lead.description}
+                </div>
+                <div className="mt-4">
+                  <Link
+                    className="terminal-button terminal-button-primary w-full text-sm font-medium"
+                    {...getEventRoute(lead)}
+                  >
+                    Open lead market
+                  </Link>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
 
-      <div className="space-y-6">
-        {lead ? (
-          <section className="panel p-6 sm:p-8">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.42fr)_320px]">
+        <div className="space-y-6">
+          <section className="space-y-4">
             <SectionHeader
-              description="Each category desk gets one clear lead story so the page reads like a deliberate vertical, not just another filtered grid."
-              kicker="Lead story"
-              title={lead.title}
+              description="Activity-ranked names are the core of the category board. This is where participation is densest, not just where prices happen to be interesting."
+              kicker="Most active"
+              title="Where order flow is densest"
             />
-            <p className="mt-5 max-w-3xl text-base leading-8 text-stone-600">
-              {lead.description}
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <span className="rounded-full border border-stone-900/10 bg-white px-4 py-2 text-sm text-stone-700">
-                {formatProbability(getYesPrice(lead))} yes
-              </span>
-              <span className="rounded-full border border-stone-900/10 bg-white px-4 py-2 text-sm text-stone-700">
-                {getProviderLabel(lead.provider)}
-              </span>
-              <span className="rounded-full border border-stone-900/10 bg-white px-4 py-2 text-sm text-stone-700">
-                Resolves {formatDate(lead.resolutionDate)}
-              </span>
-              <Link
-                className="dark-pill px-4 py-2 text-sm"
-                {...getEventRoute(lead)}
-              >
-                Open event page
-              </Link>
+            <div className="space-y-3">
+              {mostActive.map((event) => (
+                <MarketRow event={event} key={event.id} />
+              ))}
             </div>
           </section>
-        ) : null}
 
-        <section className="space-y-4">
-          <SectionHeader
-            description="Activity-ranked names are the core of the category board. This is where participation is densest, not just where prices happen to be interesting."
-            kicker="Most active"
-            title="Where order flow is densest"
-          />
-          {mostActive.map((event) => (
-            <MarketRow event={event} key={event.id} />
-          ))}
-        </section>
-
-        <section className="panel p-6">
-          <SectionHeader
-            description="These are the names nearest the middle, where conviction is lowest and the next piece of information matters most."
-            kicker="Least settled"
-            title="Closest calls"
-          />
-          <div className="mt-6 space-y-4">
-            {closestCalls.map((event) => (
-              <MarketRow event={event} key={event.id} />
-            ))}
-          </div>
-        </section>
-
-        <DeskTabs
-          activeTabId={activeTabId}
-          defaultTabId="summary"
-          items={[
-            {
-              content: (
-                <div className="space-y-5">
-                  <div className="max-w-3xl text-base leading-8 text-stone-600">
-                    This desk keeps the category reading tight: one lead story,
-                    the most active names up front, then tabs for softer
-                    signals like conviction and desk-level summaries.
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-[1.35rem] border border-stone-900/10 bg-white p-4">
-                      <div className="stat-label">Lead price</div>
-                      <div className="mt-2 text-3xl font-semibold text-stone-950">
-                        {lead ? formatProbability(getYesPrice(lead)) : 'TBD'}
-                      </div>
+          <DeskTabs
+            activeTabId={activeTabId}
+            defaultTabId="summary"
+            items={[
+              {
+                content: (
+                  <div className="space-y-5">
+                    <div className="panel-elevated p-4 text-sm leading-7 text-[var(--color-text-secondary)]">
+                      This desk keeps the category reading tight: one lead story, the most active names up front, then tabs for softer signals like conviction and desk-level summaries.
                     </div>
-                    <div className="rounded-[1.35rem] border border-stone-900/10 bg-white p-4">
-                      <div className="stat-label">Lead tempo</div>
-                      <div className="mt-2 text-2xl font-semibold text-stone-950">
-                        {lead ? getTempoLabel(lead) : 'Loading'}
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="metric-card">
+                        <div className="stat-label">Lead price</div>
+                        <strong>{lead ? formatProbability(getYesPrice(lead)) : 'TBD'}</strong>
                       </div>
-                    </div>
-                    <div className="rounded-[1.35rem] border border-stone-900/10 bg-white p-4">
-                      <div className="stat-label">Desk volume</div>
-                      <div className="mt-2 text-3xl font-semibold text-stone-950">
-                        {formatCompactNumber(totalVolume)}
+                      <div className="metric-card">
+                        <div className="stat-label">Lead tempo</div>
+                        <strong>{lead ? getTempoLabel(lead) : 'Waiting'}</strong>
+                      </div>
+                      <div className="metric-card">
+                        <div className="stat-label">Desk volume</div>
+                        <strong>{formatCompactNumber(totalVolume)}</strong>
                       </div>
                     </div>
                   </div>
+                ),
+                description: 'A quick overview of where the desk sits before you drill into individual markets.',
+                id: 'summary',
+                kicker: 'Desk summary',
+                label: 'Summary',
+                title: `What stands out in ${category.toLowerCase()} right now`,
+              },
+              {
+                content: (
+                  <div className="space-y-4">
+                    {convictionBoard.map((event) => (
+                      <MarketRow event={event} key={event.id} />
+                    ))}
+                  </div>
+                ),
+                description: 'High-conviction names give you the opposite read: markets already leaning sharply in one direction.',
+                id: 'conviction',
+                kicker: 'Conviction board',
+                label: 'Conviction',
+                title: 'Strongest current lean',
+              },
+            ]}
+            onTabChange={setActiveTabId}
+          />
+        </div>
+
+        <aside className="space-y-4">
+          {lead ? (
+            <section className="panel p-4">
+              <SectionHeader
+                description="Each category desk gets one clear lead story so the page reads like a deliberate vertical, not just another filtered grid."
+                kicker="Lead story"
+                title={lead.title}
+              />
+              <div className="mt-4 space-y-3 text-sm leading-7 text-[var(--color-text-secondary)]">
+                <p>{lead.description}</p>
+                <div className="flex flex-wrap gap-2">
+                  <PlatformBadge platform={lead.provider} size="sm" />
+                  <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
+                    {getProviderLabel(lead.provider)}
+                  </span>
+                  <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
+                    Resolves {formatDate(lead.resolutionDate)}
+                  </span>
                 </div>
-              ),
-              description: 'A quick overview of where the desk sits before you drill into individual markets.',
-              id: 'summary',
-              kicker: 'Desk summary',
-              label: 'Summary',
-              title: `What stands out in ${category.toLowerCase()} right now`,
-            },
-            {
-              content: (
-                <div className="space-y-4">
-                  {convictionBoard.map((event) => (
-                    <MarketRow event={event} key={event.id} />
-                  ))}
-                </div>
-              ),
-              description: 'High-conviction names give you the opposite read: markets already leaning sharply in one direction.',
-              id: 'conviction',
-              kicker: 'Conviction board',
-              label: 'Conviction',
-              title: 'Strongest current lean',
-            },
-          ]}
-          onTabChange={setActiveTabId}
-        />
+              </div>
+            </section>
+          ) : null}
+
+          <section className="panel p-4">
+            <SectionHeader
+              description="These are the names nearest the middle, where conviction is lowest and the next piece of information matters most."
+              kicker="Least settled"
+              title="Closest calls"
+            />
+            <div className="mt-4 space-y-3">
+              {closestCalls.map((event) => (
+                <MarketRow event={event} key={event.id} />
+              ))}
+            </div>
+          </section>
+        </aside>
       </div>
     </div>
   )

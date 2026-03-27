@@ -32,7 +32,7 @@ const NotFoundPage = lazy(async () => ({
 
 function RouteSkeleton() {
   return (
-    <div className="panel p-8 text-stone-500">
+    <div className="panel p-8 text-[var(--color-text-secondary)]">
       Loading view...
     </div>
   )
