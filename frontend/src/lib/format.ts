@@ -68,6 +68,32 @@ export function formatRelativeTime(value?: number | null) {
   return relativeTimeFormatter.format(diffHours, 'hour')
 }
 
+export function formatClosingCountdown(value?: string | number | null) {
+  if (!value) return 'TBD'
+
+  const diffMs = new Date(value).getTime() - Date.now()
+
+  if (diffMs <= 0) {
+    return 'Closed'
+  }
+
+  const diffMinutes = Math.round(diffMs / 60_000)
+
+  if (diffMinutes < 60) {
+    return `in ${diffMinutes}m`
+  }
+
+  const diffHours = Math.round(diffMinutes / 60)
+
+  if (diffHours < 48) {
+    return `in ${diffHours}h`
+  }
+
+  const diffDays = Math.round(diffHours / 24)
+
+  return `in ${diffDays}d`
+}
+
 export function formatCategory(label: string) {
   return label
     .toLowerCase()
