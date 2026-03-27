@@ -1,5 +1,10 @@
 import type { FastifyPluginAsync } from 'fastify'
 import {
+  applyHttpCacheHeaders,
+  buildRequestCacheKey,
+  withCachedResponse,
+} from '../../app/response-cache.js'
+import {
   createApiResponse,
 } from '../../contracts/api-response.js'
 import {
@@ -19,40 +24,79 @@ import {
   searchEvents,
 } from '../../app/events-service.js'
 
+const EVENT_LIST_CACHE_POLICY = {
+  maxAgeSeconds: 30,
+  staleWhileRevalidateSeconds: 120,
+} as const
+
+const EVENT_DETAIL_CACHE_POLICY = {
+  maxAgeSeconds: 45,
+  staleWhileRevalidateSeconds: 180,
+} as const
+
+const EVENT_HISTORY_CACHE_POLICY = {
+  maxAgeSeconds: 60,
+  staleWhileRevalidateSeconds: 300,
+} as const
+
 export const v1EventsRoutes: FastifyPluginAsync = async (app) => {
   app.get<{
     Querystring: PulseEventListParams
   }>(
     '/events',
-    async (request) => {
-      const items = await listEvents(request.query)
-      const data: PulseEventsListData = { items }
+    async (request, reply) => {
+      applyHttpCacheHeaders(reply, EVENT_LIST_CACHE_POLICY)
 
-      return createApiResponse(data, {
-        total: items.length,
-      })
+      return withCachedResponse(
+        buildRequestCacheKey(request),
+        EVENT_LIST_CACHE_POLICY,
+        async () => {
+          const items = await listEvents(request.query)
+          const data: PulseEventsListData = { items }
+
+          return createApiResponse(data, {
+            total: items.length,
+          })
+        },
+      )
     },
   )
 
   app.get<{
     Querystring: PulseSearchParams
-  }>('/search', async (request) => {
-    const items = await searchEvents(request.query)
-    const data: PulseSearchResultsData = { items }
+  }>('/search', async (request, reply) => {
+    applyHttpCacheHeaders(reply, EVENT_LIST_CACHE_POLICY)
 
-    return createApiResponse(data, {
-      total: items.length,
-    })
+    return withCachedResponse(
+      buildRequestCacheKey(request),
+      EVENT_LIST_CACHE_POLICY,
+      async () => {
+        const items = await searchEvents(request.query)
+        const data: PulseSearchResultsData = { items }
+
+        return createApiResponse(data, {
+          total: items.length,
+        })
+      },
+    )
   })
 
   app.get<{
     Params: {
       eventId: string
     }
-  }>('/events/:eventId', async (request) => {
-    const event = await getEvent(request.params.eventId)
+  }>('/events/:eventId', async (request, reply) => {
+    applyHttpCacheHeaders(reply, EVENT_DETAIL_CACHE_POLICY)
 
-    return createApiResponse(event)
+    return withCachedResponse(
+      buildRequestCacheKey(request),
+      EVENT_DETAIL_CACHE_POLICY,
+      async () => {
+        const event = await getEvent(request.params.eventId)
+
+        return createApiResponse(event)
+      },
+    )
   })
 
   app.get<{
@@ -62,33 +106,57 @@ export const v1EventsRoutes: FastifyPluginAsync = async (app) => {
     Querystring: {
       interval?: string
     }
-  }>('/events/:eventId/history', async (request) => {
-    const history = await getPriceHistory(
-      request.params.eventId,
-      request.query.interval,
-    )
+  }>('/events/:eventId/history', async (request, reply) => {
+    applyHttpCacheHeaders(reply, EVENT_HISTORY_CACHE_POLICY)
 
-    return createApiResponse(history)
+    return withCachedResponse(
+      buildRequestCacheKey(request),
+      EVENT_HISTORY_CACHE_POLICY,
+      async () => {
+        const history = await getPriceHistory(
+          request.params.eventId,
+          request.query.interval,
+        )
+
+        return createApiResponse(history)
+      },
+    )
   })
 
   app.get<{
     Params: {
       eventId: string
     }
-  }>('/events/:eventId/compare', async (request) => {
-    const comparison = await getEventCompare(request.params.eventId)
+  }>('/events/:eventId/compare', async (request, reply) => {
+    applyHttpCacheHeaders(reply, EVENT_HISTORY_CACHE_POLICY)
 
-    return createApiResponse(comparison)
+    return withCachedResponse(
+      buildRequestCacheKey(request),
+      EVENT_HISTORY_CACHE_POLICY,
+      async () => {
+        const comparison = await getEventCompare(request.params.eventId)
+
+        return createApiResponse(comparison)
+      },
+    )
   })
 
   app.get<{
     Querystring: PulseDivergenceListParams
-  }>('/divergence', async (request) => {
-    const items = await listDivergence(request.query)
-    const data: PulseDivergenceListData = { items }
+  }>('/divergence', async (request, reply) => {
+    applyHttpCacheHeaders(reply, EVENT_LIST_CACHE_POLICY)
 
-    return createApiResponse(data, {
-      total: items.length,
-    })
+    return withCachedResponse(
+      buildRequestCacheKey(request),
+      EVENT_LIST_CACHE_POLICY,
+      async () => {
+        const items = await listDivergence(request.query)
+        const data: PulseDivergenceListData = { items }
+
+        return createApiResponse(data, {
+          total: items.length,
+        })
+      },
+    )
   })
 }

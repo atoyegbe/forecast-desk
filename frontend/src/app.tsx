@@ -1,5 +1,6 @@
 import {
   Suspense,
+  useEffect,
   lazy,
 } from 'react'
 import {
@@ -7,6 +8,10 @@ import {
   QueryClientProvider,
 } from '@tanstack/react-query'
 import { AppRouter } from './router'
+import {
+  hydrateQueryClientFromStorage,
+  subscribeToQueryCachePersistence,
+} from './lib/query-persistence'
 
 const ReactQueryDevtools = lazy(async () => ({
   default: (await import('@tanstack/react-query-devtools')).ReactQueryDevtools,
@@ -15,6 +20,7 @@ const ReactQueryDevtools = lazy(async () => ({
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      gcTime: 30 * 60_000,
       retry: 1,
       staleTime: 60_000,
       refetchOnWindowFocus: false,
@@ -22,7 +28,13 @@ const queryClient = new QueryClient({
   },
 })
 
+hydrateQueryClientFromStorage(queryClient)
+
 export function App() {
+  useEffect(() => {
+    return subscribeToQueryCachePersistence(queryClient)
+  }, [])
+
   return (
     <QueryClientProvider client={queryClient}>
       <AppRouter />

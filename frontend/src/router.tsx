@@ -11,12 +11,10 @@ import {
   createRouter,
 } from '@tanstack/react-router'
 import { SiteShell } from './components/site-shell'
+import { HomePage } from './routes/home-page'
 
 export type AppSearch = Record<string, string | undefined>
 
-const HomePage = lazy(async () => ({
-  default: (await import('./routes/home-page')).HomePage,
-}))
 const EventPage = lazy(async () => ({
   default: (await import('./routes/event-page')).EventPage,
 }))
@@ -88,7 +86,7 @@ const rootRoute = createRootRoute({
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: withSuspense(HomePage),
+  component: HomePage,
 })
 
 const eventRoute = createRoute({
@@ -166,6 +164,8 @@ const routeTree = rootRoute.addChildren([
 ])
 
 export const router = createRouter({
+  defaultPreload: 'intent',
+  defaultPreloadStaleTime: 60_000,
   routeTree,
   scrollRestoration: true,
 })
