@@ -19,6 +19,16 @@ export function getEventRoute(event: Pick<PulseEvent, 'id' | 'slug'>) {
   }
 }
 
+export function getEventCompareRoute(event: Pick<PulseEvent, 'id' | 'slug'>) {
+  return {
+    params: {
+      eventId: event.id,
+      slug: event.slug,
+    },
+    to: '/events/$eventId/$slug/compare' as const,
+  }
+}
+
 export function getSearchRoute(query?: string) {
   return {
     search: query?.trim()

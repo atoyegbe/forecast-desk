@@ -26,6 +26,9 @@ const CategoryPage = lazy(async () => ({
 const DivergencePage = lazy(async () => ({
   default: (await import('./routes/divergence-page')).DivergencePage,
 }))
+const EventComparePage = lazy(async () => ({
+  default: (await import('./routes/event-compare-page')).EventComparePage,
+}))
 const SearchPage = lazy(async () => ({
   default: (await import('./routes/search-page')).SearchPage,
 }))
@@ -87,6 +90,18 @@ const eventSlugRoute = createRoute({
   component: withSuspense(EventPage),
 })
 
+const eventCompareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'events/$eventId/compare',
+  component: withSuspense(EventComparePage),
+})
+
+const eventCompareSlugRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'events/$eventId/$slug/compare',
+  component: withSuspense(EventComparePage),
+})
+
 const categoryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'categories/$categorySlug',
@@ -109,6 +124,8 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   eventRoute,
   eventSlugRoute,
+  eventCompareRoute,
+  eventCompareSlugRoute,
   categoryRoute,
   divergenceRoute,
   searchRoute,

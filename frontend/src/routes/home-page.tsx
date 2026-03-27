@@ -39,6 +39,7 @@ import {
 } from '../lib/format'
 import {
   getCategoryRoute,
+  getEventCompareRoute,
   getEventRoute,
   getSearchRoute,
 } from '../lib/routes'
@@ -646,10 +647,7 @@ export function HomePage() {
                 <Link
                   className="panel-elevated block p-4 transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
                   key={entry.linkId}
-                  search={{
-                    tab: 'compare',
-                  }}
-                  {...getEventRoute(entry.events[0].event)}
+                  {...getEventCompareRoute(entry.events[0].event)}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">

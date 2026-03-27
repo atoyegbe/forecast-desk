@@ -8,7 +8,7 @@ import {
   formatProbability,
   formatProbabilityPoints,
 } from '../lib/format'
-import { getEventRoute } from '../lib/routes'
+import { getEventCompareRoute } from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 
 const DIVERGENCE_SORT_IDS = ['divergence', 'volume'] as const
@@ -183,10 +183,7 @@ export function DivergencePage() {
                   <Link
                     className="block transition hover:bg-[var(--color-bg-hover)]"
                     key={entry.linkId}
-                    search={{
-                      tab: 'compare',
-                    }}
-                    {...getEventRoute(entry.events[0].event)}
+                    {...getEventCompareRoute(entry.events[0].event)}
                   >
                     <div className="grid gap-4 px-4 py-4 md:grid-cols-[minmax(0,1.45fr)_220px_140px_140px_120px] md:items-center">
                       <div className="min-w-0">
