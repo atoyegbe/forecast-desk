@@ -97,6 +97,38 @@ CREATE INDEX IF NOT EXISTS idx_pulse_price_history_market_interval_time
   ON pulse_price_history(market_id, interval, point_timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_pulse_price_history_event_interval
   ON pulse_price_history(event_id, interval);
+
+CREATE TABLE IF NOT EXISTS pulse_event_link_sync_state (
+  sync_key TEXT PRIMARY KEY,
+  last_run_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS pulse_event_links (
+  id TEXT PRIMARY KEY,
+  canonical_title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  confidence DOUBLE PRECISION NOT NULL,
+  match_method TEXT NOT NULL,
+  matched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_event_links_category
+  ON pulse_event_links(category);
+CREATE INDEX IF NOT EXISTS idx_pulse_event_links_confidence
+  ON pulse_event_links(confidence DESC);
+
+CREATE TABLE IF NOT EXISTS pulse_event_link_members (
+  link_id TEXT NOT NULL REFERENCES pulse_event_links(id) ON DELETE CASCADE,
+  event_id TEXT NOT NULL REFERENCES pulse_events(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL,
+  PRIMARY KEY (link_id, event_id),
+  UNIQUE(event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_event_link_members_event
+  ON pulse_event_link_members(event_id);
 `
 
 let schemaReadyPromise: Promise<void> | null = null

@@ -30,6 +30,13 @@ The app expects the owned backend to serve:
 - `/api/v1/*`
 - `/api/v1/live/*` for websocket subscriptions
 
+The current frontend surface includes:
+
+- backend-backed discovery, detail, and stored history
+- backend-owned live event updates
+- an event-level compare view driven by `/api/v1/events/:eventId/compare`
+- a divergence leaderboard driven by `/api/v1/divergence`
+
 ## Deployment
 
 The app is configured for `Netlify` via

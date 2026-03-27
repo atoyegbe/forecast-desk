@@ -3,13 +3,17 @@ import {
   createApiResponse,
 } from '../../contracts/api-response.js'
 import {
+  type PulseDivergenceListData,
+  type PulseDivergenceListParams,
   type PulseEventListParams,
   type PulseEventsListData,
 } from '../../contracts/pulse-events.js'
 import {
+  getEventCompare,
   getEvent,
   getPriceHistory,
   listEvents,
+  listDivergence,
 } from '../../app/events-service.js'
 
 export const v1EventsRoutes: FastifyPluginAsync = async (app) => {
@@ -51,5 +55,26 @@ export const v1EventsRoutes: FastifyPluginAsync = async (app) => {
     )
 
     return createApiResponse(history)
+  })
+
+  app.get<{
+    Params: {
+      eventId: string
+    }
+  }>('/events/:eventId/compare', async (request) => {
+    const comparison = await getEventCompare(request.params.eventId)
+
+    return createApiResponse(comparison)
+  })
+
+  app.get<{
+    Querystring: PulseDivergenceListParams
+  }>('/divergence', async (request) => {
+    const items = await listDivergence(request.query)
+    const data: PulseDivergenceListData = { items }
+
+    return createApiResponse(data, {
+      total: items.length,
+    })
   })
 }

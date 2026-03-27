@@ -1,4 +1,5 @@
 export type PulseProvider = 'bayse' | 'polymarket'
+export type PulseMatchMethod = 'exact' | 'fuzzy'
 
 export type PulseOutcome = {
   id: string
@@ -109,4 +110,41 @@ export type PulseEventListParams = {
 
 export type PulseEventsListData = {
   items: PulseEvent[]
+}
+
+export type PulseComparedEvent = {
+  event: PulseEvent
+  liquidity: number
+  marketId: string
+  marketTitle: string
+  noPrice: number
+  totalVolume: number
+  yesPrice: number
+}
+
+export type PulseComparisonGroup = {
+  category: string
+  comparedAt: string
+  confidence: number
+  events: PulseComparedEvent[]
+  linkId: string
+  matchMethod: PulseMatchMethod
+  maxDivergence: number
+  title: string
+  weightedDivergence: number
+}
+
+export type PulseEventComparison = PulseComparisonGroup & {
+  anchorEventId: string
+}
+
+export type PulseDivergenceListParams = {
+  category?: string
+  limit?: number | string
+  minDivergence?: number | string
+  sort?: 'divergence' | 'volume'
+}
+
+export type PulseDivergenceListData = {
+  items: PulseComparisonGroup[]
 }

@@ -31,6 +31,12 @@ export function formatSignedProbabilityChange(value: number) {
   return `${sign}${Math.abs(points).toFixed(Math.abs(points) < 10 ? 1 : 0)} pts`
 }
 
+export function formatProbabilityPoints(value: number) {
+  const points = value * 100
+
+  return `${points.toFixed(points < 10 ? 1 : 0)} pts`
+}
+
 export function formatCompactNumber(value: number) {
   return compactNumberFormatter.format(value)
 }

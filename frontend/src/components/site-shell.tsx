@@ -7,6 +7,7 @@ import { LiveTicker } from './live-ticker'
 
 const primaryNav = [
   { end: true, label: 'Front Page', to: '/' },
+  { label: 'Divergence', to: '/divergence' },
   { label: 'Politics', to: '/categories/politics' },
   { label: 'Culture', to: '/categories/culture' },
   { label: 'Sports', to: '/categories/sports' },

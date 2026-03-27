@@ -573,6 +573,54 @@ export async function getStoredDiscoveryEvent(eventId: string) {
   return mapEventRow(row, marketMap.get(eventId) ?? [])
 }
 
+export async function listStoredDiscoveryEventsByIds(eventIds: string[]) {
+  if (!eventIds.length) {
+    return []
+  }
+
+  const result = await getDbPool().query<EventRow>(
+    `
+      SELECT
+        additional_context,
+        category,
+        closing_date,
+        country_codes,
+        created_at,
+        description,
+        engine,
+        hashtags,
+        id,
+        image_url,
+        liquidity,
+        provider,
+        provider_event_id,
+        regions,
+        resolution_date,
+        resolution_source,
+        slug,
+        source_url,
+        status,
+        supported_currencies,
+        synced_at,
+        title,
+        total_orders,
+        total_volume,
+        type
+      FROM pulse_events
+      WHERE id = ANY($1::TEXT[])
+    `,
+    [eventIds],
+  )
+  const marketMap = await loadMarketsByEventIds(eventIds)
+  const eventMap = new Map(
+    result.rows.map((row) => [row.id, mapEventRow(row, marketMap.get(row.id) ?? [])]),
+  )
+
+  return eventIds
+    .map((eventId) => eventMap.get(eventId))
+    .filter((event): event is PulseEvent => Boolean(event))
+}
+
 export async function recordProviderSyncAttempt(provider: PulseProvider, attemptedAt = new Date()) {
   await upsertProviderSyncState(provider, {
     lastAttemptAt: attemptedAt,

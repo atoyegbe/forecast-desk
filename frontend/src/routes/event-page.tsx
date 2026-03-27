@@ -1,11 +1,13 @@
 import { DeskTabs } from '../components/desk-tabs'
 import { Link, useParams } from 'react-router-dom'
+import { DivergenceBar } from '../components/divergence-bar'
 import { OutcomeStrip } from '../components/outcome-strip'
 import { PriceHistoryChart } from '../components/price-history-chart'
 import { SectionHeader } from '../components/section-header'
 import { getProviderLabel } from '../features/events/provider-ids'
 import { useLiveEventPrices } from '../features/events/live'
 import {
+  useEventCompareQuery,
   useEventQuery,
   usePriceHistoryQuery,
 } from '../features/events/hooks'
@@ -18,11 +20,12 @@ import {
   formatDate,
   formatDateTime,
   formatProbability,
+  formatProbabilityPoints,
   formatRelativeTime,
 } from '../lib/format'
 import { useUrlSelection } from '../lib/url-state'
 
-const EVENT_TAB_IDS = ['live', 'rules'] as const
+const EVENT_TAB_IDS = ['live', 'rules', 'compare'] as const
 
 export function EventPage() {
   const { eventId } = useParams()
@@ -32,6 +35,7 @@ export function EventPage() {
     values: EVENT_TAB_IDS,
   })
   const eventQuery = useEventQuery(eventId)
+  const compareQuery = useEventCompareQuery(eventId)
   const historyQuery = usePriceHistoryQuery(eventId, '1d')
   const liveFeed = useLiveEventPrices(eventId)
 
@@ -73,6 +77,9 @@ export function EventPage() {
   const historyFreshnessLabel = historyQuery.data?.freshness?.syncedAt
     ? formatRelativeTime(new Date(historyQuery.data.freshness.syncedAt).getTime())
     : 'History timing unavailable'
+  const compareFreshnessLabel = compareQuery.data?.comparedAt
+    ? formatRelativeTime(new Date(compareQuery.data.comparedAt).getTime())
+    : 'Comparison timing unavailable'
 
   return (
     <div className="space-y-8">
@@ -288,6 +295,136 @@ export function EventPage() {
               kicker: 'Live status',
               label: 'Live Pulse',
               title: 'Realtime event pulse',
+            },
+            {
+              content: compareQuery.isLoading ? (
+                <div className="rounded-[1.35rem] border border-stone-900/10 bg-white px-4 py-5 text-sm text-stone-600">
+                  Matching this event against other venues...
+                </div>
+              ) : compareQuery.data ? (
+                <div className="space-y-5">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-stone-600">
+                    <span>
+                      Compared {compareFreshnessLabel}
+                    </span>
+                    <span className="rounded-full border border-stone-900/10 bg-white px-3 py-1 text-stone-700">
+                      {compareQuery.data.matchMethod === 'exact'
+                        ? 'Exact title/date link'
+                        : 'Fuzzy title/date link'}
+                    </span>
+                    <span className="rounded-full border border-teal-700/10 bg-teal-700/5 px-3 py-1 text-teal-700">
+                      {Math.round(compareQuery.data.confidence * 100)}% confidence
+                    </span>
+                  </div>
+
+                  <DivergenceBar items={compareQuery.data.events} />
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-[1.35rem] border border-stone-900/10 bg-white p-4">
+                      <div className="stat-label">Max spread</div>
+                      <div className="mt-2 text-3xl font-semibold text-stone-950">
+                        {formatProbabilityPoints(compareQuery.data.maxDivergence)}
+                      </div>
+                    </div>
+                    <div className="rounded-[1.35rem] border border-stone-900/10 bg-white p-4">
+                      <div className="stat-label">Weighted spread</div>
+                      <div className="mt-2 text-3xl font-semibold text-stone-950">
+                        {formatProbabilityPoints(compareQuery.data.weightedDivergence)}
+                      </div>
+                    </div>
+                    <div className="rounded-[1.35rem] border border-stone-900/10 bg-white p-4">
+                      <div className="stat-label">Linked venues</div>
+                      <div className="mt-2 text-3xl font-semibold text-stone-950">
+                        {formatCompactNumber(compareQuery.data.events.length)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {compareQuery.data.events.map((comparedEvent) => (
+                      <div
+                        className="rounded-[1.45rem] border border-stone-900/10 bg-white p-5"
+                        key={comparedEvent.event.id}
+                      >
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0">
+                            <div className="section-kicker">
+                              {getProviderLabel(comparedEvent.event.provider)}
+                            </div>
+                            <h3 className="mt-3 text-2xl font-semibold leading-tight text-stone-950">
+                              {comparedEvent.event.title}
+                            </h3>
+                            <div className="mt-3 text-sm leading-7 text-stone-600">
+                              {comparedEvent.marketTitle}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-sm text-stone-600 lg:min-w-[15rem]">
+                            <div>
+                              <div className="stat-label">Yes price</div>
+                              <div className="mt-1 text-lg font-semibold text-teal-700">
+                                {formatProbability(comparedEvent.yesPrice)}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="stat-label">Volume</div>
+                              <div className="mt-1 text-lg font-semibold text-stone-950">
+                                {formatCompactNumber(comparedEvent.totalVolume)}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="stat-label">Resolution</div>
+                              <div className="mt-1 text-lg font-semibold text-stone-950">
+                                {formatDate(comparedEvent.event.resolutionDate)}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="stat-label">Snapshot</div>
+                              <div className="mt-1 text-lg font-semibold text-stone-950">
+                                {comparedEvent.event.freshness?.syncedAt
+                                  ? formatRelativeTime(
+                                      new Date(comparedEvent.event.freshness.syncedAt).getTime(),
+                                    )
+                                  : 'Unavailable'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 flex flex-wrap gap-3">
+                          <Link
+                            className="dark-pill px-4 py-2 text-sm"
+                            to={`/events/${comparedEvent.event.id}/${comparedEvent.event.slug}`}
+                          >
+                            Open event page
+                          </Link>
+                          <span className="rounded-full border border-stone-900/10 bg-stone-950/[0.03] px-4 py-2 text-sm text-stone-700">
+                            {comparedEvent.event.category}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <Link
+                      className="dark-pill px-4 py-2 text-sm"
+                      to="/divergence"
+                    >
+                      Open divergence board
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-[1.35rem] border border-stone-900/10 bg-white px-4 py-5 text-sm leading-7 text-stone-600">
+                  No cross-platform match has been confirmed for this event yet. The matcher only links events when title overlap and timing are strong enough to avoid false positives.
+                </div>
+              ),
+              description: 'This is the cross-platform read: how the same event prices on other venues, and how wide the spread has become.',
+              id: 'compare',
+              kicker: 'Cross-platform read',
+              label: 'Compare',
+              title: 'How other venues are pricing this story',
             },
             {
               content: (

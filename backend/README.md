@@ -29,13 +29,17 @@ that `frontend/` consumes.
 - `GET /api/v1/events`
 - `GET /api/v1/events/:eventId`
 - `GET /api/v1/events/:eventId/history`
+- `GET /api/v1/events/:eventId/compare`
+- `GET /api/v1/divergence`
 - `WS /api/v1/live/events/:eventId`
 
 Discovery, event detail, and event history are now served from persisted
 Postgres records. Responses include freshness metadata so the frontend can
 distinguish current snapshots from delayed ones. Provider live sockets remain a
 separate backend concern and the browser now subscribes through the owned live
-route instead of Bayse directly.
+route instead of Bayse directly. Cross-platform links are also persisted, so the
+backend now serves compare and divergence reads from owned event-link records
+instead of ad hoc frontend joins.
 
 ## Local Setup
 

@@ -21,6 +21,9 @@ const EventPage = lazy(async () => ({
 const CategoryPage = lazy(async () => ({
   default: (await import('./routes/category-page')).CategoryPage,
 }))
+const DivergencePage = lazy(async () => ({
+  default: (await import('./routes/divergence-page')).DivergencePage,
+}))
 const NotFoundPage = lazy(async () => ({
   default: (await import('./routes/not-found-page')).NotFoundPage,
 }))
@@ -64,6 +67,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<RouteSkeleton />}>
             <CategoryPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'divergence',
+        element: (
+          <Suspense fallback={<RouteSkeleton />}>
+            <DivergencePage />
           </Suspense>
         ),
       },
