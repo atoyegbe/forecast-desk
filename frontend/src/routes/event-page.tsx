@@ -60,8 +60,8 @@ function ProbabilityMeter({
         <div
           className={`rounded-lg border ${
             yesLeads
-              ? 'border-[rgba(34,197,94,0.22)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
-              : 'border-[rgba(239,68,68,0.22)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
+              ? 'border-[var(--color-up-border)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
+              : 'border-[var(--color-down-border)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
           } ${boxPadding}`}
         >
           <div className="stat-label text-current/70">Yes</div>
@@ -72,8 +72,8 @@ function ProbabilityMeter({
         <div
           className={`rounded-lg border ${
             yesLeads
-              ? 'border-[rgba(239,68,68,0.22)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
-              : 'border-[rgba(34,197,94,0.22)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
+              ? 'border-[var(--color-down-border)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
+              : 'border-[var(--color-up-border)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
           } ${boxPadding} text-right`}
         >
           <div className="stat-label text-current/70">No</div>
@@ -94,7 +94,7 @@ function ProbabilityMeter({
             style={{ width: `${safeNoPrice * 100}%` }}
           />
         </div>
-        <div className="pointer-events-none absolute inset-y-1 left-1/2 w-px -translate-x-1/2 rounded-full bg-[rgba(232,234,235,0.35)]" />
+        <div className="pointer-events-none absolute inset-y-1 left-1/2 w-px -translate-x-1/2 rounded-full bg-[var(--surface-meter-divider)]" />
       </div>
     </div>
   )
@@ -149,7 +149,7 @@ function MarketBoardRow({
           </div>
         </div>
 
-        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[rgba(34,197,94,0.08)] px-3 py-3 xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:text-right">
+        <div className="rounded-lg border border-[var(--color-up-border)] bg-[var(--color-up-dim)] px-3 py-3 xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:text-right">
           <div className="stat-label">Yes</div>
           <div
             className={`mono-data mt-1 text-[1.1rem] font-medium ${
@@ -162,7 +162,7 @@ function MarketBoardRow({
           </div>
         </div>
 
-        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[rgba(239,68,68,0.08)] px-3 py-3 xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:text-right">
+        <div className="rounded-lg border border-[var(--color-down-border)] bg-[var(--color-down-dim)] px-3 py-3 xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:text-right">
           <div className="stat-label">No</div>
           <div
             className={`mono-data mt-1 text-[1.1rem] font-medium ${

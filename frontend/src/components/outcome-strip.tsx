@@ -23,11 +23,11 @@ export function OutcomeStrip({
   const safeNoPrice = clampProbability(noPrice)
   const yesLeads = safeYesPrice >= safeNoPrice
   const yesSurface = yesLeads
-    ? 'border-[rgba(34,197,94,0.22)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
-    : 'border-[rgba(239,68,68,0.22)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
+    ? 'border-[var(--color-up-border)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
+    : 'border-[var(--color-down-border)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
   const noSurface = yesLeads
-    ? 'border-[rgba(239,68,68,0.22)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
-    : 'border-[rgba(34,197,94,0.22)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
+    ? 'border-[var(--color-down-border)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
+    : 'border-[var(--color-up-border)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
 
   return (
     <div className={dense ? 'space-y-2.5' : 'space-y-3.5'}>
@@ -85,7 +85,7 @@ export function OutcomeStrip({
             style={{ width: `${safeNoPrice * 100}%` }}
           />
         </div>
-        <div className="pointer-events-none absolute inset-y-1 left-1/2 w-px -translate-x-1/2 rounded-full bg-[rgba(232,234,235,0.35)]" />
+        <div className="pointer-events-none absolute inset-y-1 left-1/2 w-px -translate-x-1/2 rounded-full bg-[var(--surface-meter-divider)]" />
       </div>
     </div>
   )

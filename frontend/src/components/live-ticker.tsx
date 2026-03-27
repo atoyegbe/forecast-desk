@@ -23,7 +23,7 @@ function TickerTrack() {
 
   if (!tickerEvents.length) {
     return (
-      <div className="px-4 py-3 text-sm text-stone-500">
+      <div className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">
         Building the live ticker...
       </div>
     )

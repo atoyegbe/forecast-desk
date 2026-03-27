@@ -10,21 +10,18 @@ type PlatformBadgeProps = {
 const PLATFORM_CONFIG: Record<
   PulseProvider,
   {
-    background: string
-    color: string
+    className: string
     label: string
     short: string
   }
 > = {
   bayse: {
-    background: 'rgba(0, 197, 142, 0.14)',
-    color: '#00c58e',
+    className: 'platform-badge-bayse',
     label: 'Bayse',
     short: 'BY',
   },
   polymarket: {
-    background: 'rgba(0, 112, 243, 0.14)',
-    color: '#0070f3',
+    className: 'platform-badge-polymarket',
     label: 'Polymarket',
     short: 'PM',
   },
@@ -40,16 +37,12 @@ export function PlatformBadge({
   return (
     <span
       className={clsx(
-        'inline-flex items-center rounded-[4px] border-l-2 font-mono font-medium',
+        'platform-badge inline-flex items-center rounded-[4px] border-l-2 font-mono font-medium',
+        config.className,
         size === 'sm'
           ? 'px-1.5 py-1 text-[11px] tracking-[0.16em]'
           : 'px-2 py-1 text-[12px] tracking-[0.08em]',
       )}
-      style={{
-        backgroundColor: config.background,
-        borderColor: config.color,
-        color: config.color,
-      }}
     >
       {short ? config.short : config.label}
     </span>

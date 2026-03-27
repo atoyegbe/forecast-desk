@@ -91,7 +91,7 @@ export function SiteShell() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-[var(--color-border-subtle)] bg-[rgba(13,15,16,0.88)] backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border-subtle)] bg-[var(--surface-shell-bg)] backdrop-blur-md">
         <div className="mx-auto flex max-w-[1380px] items-center gap-4 px-4 py-3 sm:px-6">
           <Link
             className="shrink-0 font-mono text-[0.98rem] font-medium uppercase tracking-[0.28em]"
@@ -153,7 +153,7 @@ export function SiteShell() {
         </footer>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[rgba(13,15,16,0.94)] px-3 py-2 backdrop-blur-md md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--surface-shell-mobile-bg)] px-3 py-2 backdrop-blur-md md:hidden">
         <div className="mx-auto flex max-w-[1380px] items-center gap-1">
           {primaryNav.map((item) => (
             <ShellNavLink item={item} key={item.to} mobile />

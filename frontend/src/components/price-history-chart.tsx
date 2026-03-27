@@ -48,28 +48,28 @@ export function PriceHistoryChart({ points }: PriceHistoryChartProps) {
             </linearGradient>
           </defs>
 
-          <CartesianGrid stroke="rgba(138,147,153,0.12)" vertical={false} />
+          <CartesianGrid stroke="var(--surface-chart-grid)" vertical={false} />
           <XAxis
             axisLine={false}
             dataKey="label"
             minTickGap={42}
-            tick={{ fill: '#8a9399', fontSize: 12 }}
+            tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }}
             tickLine={false}
           />
           <YAxis
             axisLine={false}
             domain={[0, 100]}
-            tick={{ fill: '#8a9399', fontSize: 12 }}
+            tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }}
             tickFormatter={(value) => `${value}%`}
             tickLine={false}
             width={38}
           />
           <Tooltip
             contentStyle={{
-              background: 'rgba(30, 35, 38, 0.96)',
-              border: '1px solid #2a3035',
+              background: 'var(--surface-tooltip-bg)',
+              border: '1px solid var(--surface-tooltip-border)',
               borderRadius: '10px',
-              color: '#e8eaeb',
+              color: 'var(--surface-tooltip-text)',
             }}
             formatter={(value) => formatProbability(Number(value) / 100)}
             labelFormatter={(_, payload) =>

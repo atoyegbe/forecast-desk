@@ -95,7 +95,7 @@ export function MarketRow({
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-sm xl:contents">
-          <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[rgba(34,197,94,0.08)] px-3 py-3 text-left xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:text-right">
+          <div className="rounded-lg border border-[var(--color-up-border)] bg-[var(--color-up-dim)] px-3 py-3 text-left xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:text-right">
             <div className="stat-label">Yes</div>
             <div
               className={`mono-data mt-1 text-[1.1rem] font-medium ${
@@ -108,7 +108,7 @@ export function MarketRow({
             </div>
           </div>
 
-          <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[rgba(239,68,68,0.08)] px-3 py-3 text-left xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:text-right">
+          <div className="rounded-lg border border-[var(--color-down-border)] bg-[var(--color-down-dim)] px-3 py-3 text-left xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:text-right">
             <div className="stat-label">No</div>
             <div
               className={`mono-data mt-1 text-[1.1rem] font-medium ${
