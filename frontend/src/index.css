@@ -402,17 +402,18 @@ img {
     height: 8px;
     border-radius: 999px;
     background: var(--color-up);
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.42);
-    animation: live-pulse 1.8s infinite;
+    box-shadow: none;
   }
 
   .live-dot.warn {
     background: var(--color-signal);
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.28);
+    animation: pulse 1.5s ease-in-out infinite;
   }
 
   .live-dot.offline {
     background: var(--color-down);
+    box-shadow: none;
     animation: none;
   }
 }
@@ -448,17 +449,17 @@ img {
   padding-right: 0.75rem;
 }
 
-@keyframes live-pulse {
+@keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.42);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.28);
   }
 
-  70% {
-    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  50% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.08);
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
   }
 }
 

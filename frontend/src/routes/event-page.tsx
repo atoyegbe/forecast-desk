@@ -260,7 +260,7 @@ export function EventPage() {
     : 'Comparison timing unavailable'
   const liveStatusLabel =
     liveFeed.status === 'streaming'
-      ? 'Live'
+      ? 'Connected'
       : liveFeed.status === 'error'
         ? 'Offline'
         : 'Reconnecting'
@@ -364,11 +364,18 @@ export function EventPage() {
           </div>
 
           <div className="panel-elevated p-4">
-            <SectionHeader
-              description="A compact operational read on the current state of the event."
-              kicker="Event read"
-              title={getMarketStance(yesPrice)}
-            />
+            <div>
+              <div className="section-kicker">Event read</div>
+              <h2 className="mt-3 text-[1.65rem] font-bold leading-tight tracking-[-0.045em] text-[var(--color-text-primary)]">
+                {getMarketStance(yesPrice)}
+              </h2>
+            </div>
+
+            <div className="subtle-rule mt-4 pt-4">
+              <p className="text-sm leading-7 text-[var(--color-text-secondary)]">
+                A compact operational read on the current state of the event.
+              </p>
+            </div>
 
             <div className="mt-4 flex items-center gap-2">
               <span className={liveStatusClass} />
@@ -378,37 +385,29 @@ export function EventPage() {
               </span>
             </div>
 
-            <div className="mt-4 space-y-3 text-sm text-[var(--color-text-secondary)]">
-              <div className="flex items-center justify-between gap-3">
-                <span>Snapshot sync</span>
-                <span className="mono-data text-[var(--color-text-primary)]">
-                  {eventFreshnessLabel}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span>History sync</span>
-                <span className="mono-data text-[var(--color-text-primary)]">
-                  {historyFreshnessLabel}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span>Created</span>
-                <span className="mono-data text-[var(--color-text-primary)]">
-                  {formatDateTime(event.createdAt)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span>Provider</span>
-                <span className="text-[var(--color-text-primary)]">
-                  {getProviderLabel(event.provider)}
-                </span>
-              </div>
+            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3 text-sm">
+              <span className="text-[var(--color-text-tertiary)]">Snapshot sync</span>
+              <span className="mono-data text-right text-[var(--color-text-primary)]">
+                {eventFreshnessLabel}
+              </span>
+              <span className="text-[var(--color-text-tertiary)]">History sync</span>
+              <span className="mono-data text-right text-[var(--color-text-primary)]">
+                {historyFreshnessLabel}
+              </span>
+              <span className="text-[var(--color-text-tertiary)]">Created</span>
+              <span className="mono-data text-right text-[var(--color-text-primary)]">
+                {formatDateTime(event.createdAt)}
+              </span>
+              <span className="text-[var(--color-text-tertiary)]">Provider</span>
+              <span className="mono-data text-right text-[var(--color-text-primary)]">
+                {getProviderLabel(event.provider)}
+              </span>
             </div>
 
             {liveSourceUrl ? (
               <div className="mt-5">
                 <a
-                  className="terminal-button terminal-button-primary w-full text-sm font-medium"
+                  className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-[border-color,background-color,color] duration-150 hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
                   href={liveSourceUrl}
                   rel="noreferrer"
                   target="_blank"
