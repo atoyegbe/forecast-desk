@@ -4,7 +4,6 @@ import {
 } from '@tanstack/react-router'
 import { DeskTabs } from '../components/desk-tabs'
 import { DivergenceBar } from '../components/divergence-bar'
-import { OutcomeStrip } from '../components/outcome-strip'
 import { PlatformBadge } from '../components/platform-badge'
 import { PriceHistoryChart } from '../components/price-history-chart'
 import { SectionHeader } from '../components/section-header'
@@ -19,6 +18,7 @@ import {
   getMarketStance,
   getTempoLabel,
 } from '../features/events/insights'
+import type { PulseMarket } from '../features/events/types'
 import {
   formatCompactNumber,
   formatDate,
@@ -35,6 +35,167 @@ import { useUrlSelection } from '../lib/url-state'
 
 const EVENT_TAB_IDS = ['live', 'rules', 'compare'] as const
 const HISTORY_INTERVAL_IDS = ['1h', '4h', '1d', '1w'] as const
+
+type ProbabilityMeterProps = {
+  noPrice: number
+  size?: 'md' | 'sm'
+  yesPrice: number
+}
+
+function ProbabilityMeter({
+  noPrice,
+  size = 'md',
+  yesPrice,
+}: ProbabilityMeterProps) {
+  const safeYesPrice = Math.min(Math.max(yesPrice, 0), 1)
+  const safeNoPrice = Math.min(Math.max(noPrice, 0), 1)
+  const yesLeads = safeYesPrice >= safeNoPrice
+  const boxPadding = size === 'sm' ? 'px-3 py-3' : 'px-4 py-4'
+  const boxValue = size === 'sm' ? 'text-[1.45rem]' : 'text-[1.8rem]'
+  const barHeight = size === 'sm' ? 'h-3.5' : 'h-4'
+
+  return (
+    <div className={size === 'sm' ? 'space-y-2.5' : 'space-y-3'}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div
+          className={`rounded-lg border ${
+            yesLeads
+              ? 'border-[rgba(34,197,94,0.22)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
+              : 'border-[rgba(239,68,68,0.22)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
+          } ${boxPadding}`}
+        >
+          <div className="stat-label text-current/70">Yes</div>
+          <div className={`mono-data mt-1 font-medium leading-none ${boxValue}`}>
+            {formatProbability(safeYesPrice)}
+          </div>
+        </div>
+        <div
+          className={`rounded-lg border ${
+            yesLeads
+              ? 'border-[rgba(239,68,68,0.22)] bg-[var(--color-down-dim)] text-[var(--color-down)]'
+              : 'border-[rgba(34,197,94,0.22)] bg-[var(--color-up-dim)] text-[var(--color-up)]'
+          } ${boxPadding} text-right`}
+        >
+          <div className="stat-label text-current/70">No</div>
+          <div className={`mono-data mt-1 font-medium leading-none ${boxValue}`}>
+            {formatProbability(safeNoPrice)}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
+        <div className={`flex ${barHeight}`}>
+          <div
+            className={yesLeads ? 'bg-[var(--color-up)]' : 'bg-[var(--color-down)]'}
+            style={{ width: `${safeYesPrice * 100}%` }}
+          />
+          <div
+            className={yesLeads ? 'bg-[var(--color-down)]' : 'bg-[var(--color-up)]'}
+            style={{ width: `${safeNoPrice * 100}%` }}
+          />
+        </div>
+        <div className="pointer-events-none absolute inset-y-1 left-1/2 w-px -translate-x-1/2 rounded-full bg-[rgba(232,234,235,0.35)]" />
+      </div>
+    </div>
+  )
+}
+
+function MarketBoardRow({
+  market,
+  provider,
+}: {
+  market: PulseMarket
+  provider: 'bayse' | 'polymarket'
+}) {
+  const secondaryMetricLabel =
+    market.totalOrders > 0 ? 'Orders' : 'Liquidity'
+  const secondaryMetricValue =
+    market.totalOrders > 0 ? market.totalOrders : market.liquidity
+
+  return (
+    <div className="panel-elevated p-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_88px_88px_120px_120px] xl:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <PlatformBadge platform={provider} short size="sm" />
+            <span className="terminal-chip border-[var(--color-border-subtle)] bg-transparent px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
+              {market.status}
+            </span>
+          </div>
+
+          <h3 className="mt-3 max-w-4xl text-[1.02rem] font-medium leading-snug text-[var(--color-text-primary)] sm:text-[1.14rem]">
+            {market.title}
+          </h3>
+
+          <div className="mt-3 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
+            <div className="flex h-1.5">
+              <div
+                className={
+                  market.yesOutcome.price >= market.noOutcome.price
+                    ? 'bg-[var(--color-up)]'
+                    : 'bg-[var(--color-down)]'
+                }
+                style={{ width: `${market.yesOutcome.price * 100}%` }}
+              />
+              <div
+                className={
+                  market.yesOutcome.price >= market.noOutcome.price
+                    ? 'bg-[var(--color-down)]'
+                    : 'bg-[var(--color-up)]'
+                }
+                style={{ width: `${market.noOutcome.price * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[rgba(34,197,94,0.08)] px-3 py-3 xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:text-right">
+          <div className="stat-label">Yes</div>
+          <div
+            className={`mono-data mt-1 text-[1.1rem] font-medium ${
+              market.yesOutcome.price >= market.noOutcome.price
+                ? 'text-[var(--color-up)]'
+                : 'text-[var(--color-down)]'
+            }`}
+          >
+            {formatProbability(market.yesOutcome.price)}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[rgba(239,68,68,0.08)] px-3 py-3 xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:text-right">
+          <div className="stat-label">No</div>
+          <div
+            className={`mono-data mt-1 text-[1.1rem] font-medium ${
+              market.noOutcome.price > market.yesOutcome.price
+                ? 'text-[var(--color-up)]'
+                : 'text-[var(--color-down)]'
+            }`}
+          >
+            {formatProbability(market.noOutcome.price)}
+          </div>
+        </div>
+
+        <div className="text-left xl:text-right">
+          <div className="stat-label">{secondaryMetricLabel}</div>
+          <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
+            {formatCompactNumber(secondaryMetricValue)}
+          </div>
+        </div>
+
+        <div className="text-left xl:text-right">
+          <div className="stat-label">
+            {market.totalOrders > 0 ? 'Fee' : 'Market volume'}
+          </div>
+          <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
+            {market.totalOrders > 0
+              ? `${market.feePercentage}%`
+              : formatCompactNumber(market.totalVolume)}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function EventPage() {
   const eventId = useParams({
@@ -97,6 +258,12 @@ export function EventPage() {
   const compareFreshnessLabel = compareQuery.data?.comparedAt
     ? formatRelativeTime(new Date(compareQuery.data.comparedAt).getTime())
     : 'Comparison timing unavailable'
+  const liveStatusLabel =
+    liveFeed.status === 'streaming'
+      ? 'Live'
+      : liveFeed.status === 'error'
+        ? 'Offline'
+        : 'Reconnecting'
   const liveStatusClass =
     liveFeed.status === 'streaming'
       ? 'live-dot'
@@ -106,8 +273,8 @@ export function EventPage() {
 
   return (
     <div className="space-y-6">
-      <section className="panel overflow-hidden">
-        <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1.18fr)_320px] lg:p-6">
+      <section className="panel p-5 lg:p-6">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_340px]">
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <Link
@@ -121,6 +288,9 @@ export function EventPage() {
               <PlatformBadge platform={event.provider} />
               <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
                 {event.status}
+              </span>
+              <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
+                {getTempoLabel(event)}
               </span>
               {event.freshness?.isStale ? (
                 <span className="signal-chip terminal-chip text-[11px] uppercase tracking-[0.18em]">
@@ -150,12 +320,12 @@ export function EventPage() {
                 </strong>
               </div>
               <div className="metric-card">
-                <div className="stat-label">Tempo</div>
-                <strong>{getTempoLabel(event)}</strong>
-              </div>
-              <div className="metric-card">
                 <div className="stat-label">Total volume</div>
                 <strong>{formatCompactNumber(event.totalVolume)}</strong>
+              </div>
+              <div className="metric-card">
+                <div className="stat-label">Liquidity</div>
+                <strong>{formatCompactNumber(event.liquidity)}</strong>
               </div>
               <div className="metric-card">
                 <div className="stat-label">Resolves</div>
@@ -163,61 +333,65 @@ export function EventPage() {
               </div>
             </div>
 
-            <OutcomeStrip noPrice={noPrice} yesPrice={yesPrice} />
+            <ProbabilityMeter noPrice={noPrice} yesPrice={yesPrice} />
           </div>
 
-          <div className="grid gap-4">
-            <div className="panel-elevated relative min-h-[220px] overflow-hidden">
-              <div className="absolute inset-0">
-                {event.imageUrl ? (
-                  <img
-                    alt={event.title}
-                    className="h-full w-full object-cover object-top opacity-40"
-                    src={event.imageUrl}
-                  />
-                ) : null}
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(13,15,16,0.18),rgba(13,15,16,0.94))]" />
+          <div className="panel-elevated p-4">
+            <SectionHeader
+              description="A compact operational read on the current state of the event."
+              kicker="Event read"
+              title={getMarketStance(yesPrice)}
+            />
+
+            <div className="mt-4 flex items-center gap-2">
+              <span className={liveStatusClass} />
+              <span className="section-kicker">{liveStatusLabel}</span>
+              <span className="mono-data text-sm text-[var(--color-text-secondary)]">
+                {formatRelativeTime(liveFeed.lastUpdateAt)}
+              </span>
+            </div>
+
+            <div className="mt-4 space-y-3 text-sm text-[var(--color-text-secondary)]">
+              <div className="flex items-center justify-between gap-3">
+                <span>Snapshot sync</span>
+                <span className="mono-data text-[var(--color-text-primary)]">
+                  {eventFreshnessLabel}
+                </span>
               </div>
-              <div className="relative flex h-full flex-col justify-end p-5">
-                <div className="section-kicker">Market read</div>
-                <div className="mt-3 text-sm leading-7 text-[var(--color-text-secondary)]">
-                  {getMarketStance(yesPrice)}
-                </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>History sync</span>
+                <span className="mono-data text-[var(--color-text-primary)]">
+                  {historyFreshnessLabel}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Created</span>
+                <span className="mono-data text-[var(--color-text-primary)]">
+                  {formatDateTime(event.createdAt)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Provider</span>
+                <span className="text-[var(--color-text-primary)]">
+                  {getProviderLabel(event.provider)}
+                </span>
               </div>
             </div>
 
-            <div className="panel-elevated p-4">
-              <div className="flex items-center gap-2">
-                <span className={liveStatusClass} />
-                <span className="section-kicker">
-                  {liveFeed.status === 'streaming'
-                    ? 'Live'
-                    : liveFeed.status === 'error'
-                      ? 'Offline'
-                      : 'Reconnecting'}
-                </span>
+            {liveSourceUrl ? (
+              <div className="mt-5">
+                <a
+                  className="terminal-button terminal-button-primary w-full text-sm font-medium"
+                  href={liveSourceUrl}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {event.provider === 'polymarket'
+                    ? 'Open on Polymarket'
+                    : 'View resolution source'}
+                </a>
               </div>
-              <div className="mt-3 space-y-3 text-sm text-[var(--color-text-secondary)]">
-                <div className="flex items-center justify-between gap-3">
-                  <span>Snapshot sync</span>
-                  <span className="mono-data text-[var(--color-text-primary)]">
-                    {eventFreshnessLabel}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span>Resolution target</span>
-                  <span className="mono-data text-[var(--color-text-primary)]">
-                    {formatDate(event.resolutionDate)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span>Provider</span>
-                  <span className="text-[var(--color-text-primary)]">
-                    {getProviderLabel(event.provider)}
-                  </span>
-                </div>
-              </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -304,257 +478,204 @@ export function EventPage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.22fr)_360px]">
-        <section className="panel p-4 sm:p-5">
-          <SectionHeader
-            description="If an event has more than one sub-market, they live here. Some providers package a single event as multiple binary markets, so this board keeps the internal structure visible."
-            kicker="Market board"
-            title="Markets inside this event"
-          />
-
-          <div className="mt-5 space-y-4">
-            {event.markets.map((market) => (
-              <div
-                className="panel-elevated p-4"
-                key={market.id}
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <PlatformBadge platform={event.provider} size="sm" />
-                      <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
-                        {market.status}
-                      </span>
-                    </div>
-                    <h3 className="mt-3 text-lg font-medium leading-snug text-[var(--color-text-primary)]">
-                      {market.title}
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-sm text-[var(--color-text-secondary)] lg:min-w-[16rem]">
-                    <div>
-                      <div className="stat-label">
-                        {market.totalOrders > 0 ? 'Orders' : 'Liquidity'}
-                      </div>
-                      <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-                        {formatCompactNumber(
-                          market.totalOrders > 0
-                            ? market.totalOrders
-                            : market.liquidity,
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="stat-label">
-                        {market.totalOrders > 0 ? 'Fee' : 'Market volume'}
-                      </div>
-                      <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-                        {market.totalOrders > 0
-                          ? `${market.feePercentage}%`
-                          : formatCompactNumber(market.totalVolume)}
-                      </div>
-                    </div>
-                  </div>
+      <DeskTabs
+        activeTabId={activeTabId}
+        defaultTabId="live"
+        items={[
+          {
+            content: (
+              <div className="space-y-5">
+                <div className="flex items-center gap-3 text-sm text-[var(--color-text-secondary)]">
+                  <span className={liveStatusClass} />
+                  <span>{liveStatusLabel}</span>
+                  <span className="mono-data text-[var(--color-text-tertiary)]">
+                    {formatRelativeTime(liveFeed.lastUpdateAt)}
+                  </span>
                 </div>
 
-                <div className="mt-4">
-                  <OutcomeStrip
-                    noPrice={market.noOutcome.price}
-                    yesPrice={market.yesOutcome.price}
-                  />
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="metric-card">
+                    <div className="stat-label">Created</div>
+                    <strong>{formatDateTime(event.createdAt)}</strong>
+                  </div>
+                  <div className="metric-card">
+                    <div className="stat-label">Resolution target</div>
+                    <strong>{formatDate(event.resolutionDate)}</strong>
+                  </div>
+                  <div className="metric-card">
+                    <div className="stat-label">Provider</div>
+                    <strong>{getProviderLabel(event.provider)}</strong>
+                  </div>
+                  <div className="metric-card">
+                    <div className="stat-label">Tracked markets</div>
+                    <strong>{formatCompactNumber(event.markets.length)}</strong>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
+            ),
+            description: 'A quick operational read on whether the live feed is flowing and what baseline metadata surrounds the event.',
+            id: 'live',
+            kicker: 'Live status',
+            label: 'Live Pulse',
+            title: 'Realtime event pulse',
+          },
+          {
+            content: compareQuery.isLoading ? (
+              <div className="panel-elevated px-4 py-5 text-sm text-[var(--color-text-secondary)]">
+                Matching this event against other venues...
+              </div>
+            ) : compareQuery.data ? (
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)]">
+                  <span>Compared {compareFreshnessLabel}</span>
+                  <span className="terminal-chip">
+                    {compareQuery.data.matchMethod === 'exact'
+                      ? 'Exact title/date link'
+                      : 'Fuzzy title/date link'}
+                  </span>
+                  <span className="good-chip terminal-chip">
+                    {Math.round(compareQuery.data.confidence * 100)}% confidence
+                  </span>
+                </div>
 
-        <DeskTabs
-          activeTabId={activeTabId}
-          defaultTabId="live"
-          items={[
-            {
-              content: (
-                <div className="space-y-5">
-                  <div className="flex items-center gap-3 text-sm text-[var(--color-text-secondary)]">
-                    <span className={liveStatusClass} />
-                    <span className="capitalize">{liveFeed.status}</span>
-                    <span className="mono-data text-[var(--color-text-tertiary)]">
-                      {formatRelativeTime(liveFeed.lastUpdateAt)}
-                    </span>
+                <DivergenceBar items={compareQuery.data.events} />
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="metric-card">
+                    <div className="stat-label">Max spread</div>
+                    <strong>{formatProbabilityPoints(compareQuery.data.maxDivergence)}</strong>
                   </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="metric-card">
-                      <div className="stat-label">Created</div>
-                      <strong>{formatDateTime(event.createdAt)}</strong>
-                    </div>
-                    <div className="metric-card">
-                      <div className="stat-label">Resolution target</div>
-                      <strong>{formatDate(event.resolutionDate)}</strong>
-                    </div>
-                    <div className="metric-card">
-                      <div className="stat-label">Provider</div>
-                      <strong>{getProviderLabel(event.provider)}</strong>
-                    </div>
+                  <div className="metric-card">
+                    <div className="stat-label">Weighted spread</div>
+                    <strong>{formatProbabilityPoints(compareQuery.data.weightedDivergence)}</strong>
+                  </div>
+                  <div className="metric-card">
+                    <div className="stat-label">Linked venues</div>
+                    <strong>{formatCompactNumber(compareQuery.data.events.length)}</strong>
                   </div>
                 </div>
-              ),
-              description: 'A quick operational read on whether the live feed is flowing and what baseline metadata surrounds the event.',
-              id: 'live',
-              kicker: 'Live status',
-              label: 'Live Pulse',
-              title: 'Realtime event pulse',
-            },
-            {
-              content: compareQuery.isLoading ? (
-                <div className="panel-elevated px-4 py-5 text-sm text-[var(--color-text-secondary)]">
-                  Matching this event against other venues...
-                </div>
-              ) : compareQuery.data ? (
-                <div className="space-y-5">
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)]">
-                    <span>Compared {compareFreshnessLabel}</span>
-                    <span className="terminal-chip">
-                      {compareQuery.data.matchMethod === 'exact'
-                        ? 'Exact title/date link'
-                        : 'Fuzzy title/date link'}
-                    </span>
-                    <span className="good-chip terminal-chip">
-                      {Math.round(compareQuery.data.confidence * 100)}% confidence
-                    </span>
-                  </div>
 
-                  <DivergenceBar items={compareQuery.data.events} />
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="metric-card">
-                      <div className="stat-label">Max spread</div>
-                      <strong>{formatProbabilityPoints(compareQuery.data.maxDivergence)}</strong>
-                    </div>
-                    <div className="metric-card">
-                      <div className="stat-label">Weighted spread</div>
-                      <strong>{formatProbabilityPoints(compareQuery.data.weightedDivergence)}</strong>
-                    </div>
-                    <div className="metric-card">
-                      <div className="stat-label">Linked venues</div>
-                      <strong>{formatCompactNumber(compareQuery.data.events.length)}</strong>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {compareQuery.data.events.map((comparedEvent) => (
-                      <div
-                        className="panel-elevated p-4"
-                        key={comparedEvent.event.id}
-                      >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="min-w-0">
-                            <PlatformBadge platform={comparedEvent.event.provider} size="sm" />
-                            <h3 className="mt-3 text-lg font-medium leading-snug text-[var(--color-text-primary)]">
-                              {comparedEvent.event.title}
-                            </h3>
-                            <div className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
-                              {comparedEvent.marketTitle}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-sm text-[var(--color-text-secondary)] lg:min-w-[15rem]">
-                            <div>
-                              <div className="stat-label">Yes price</div>
-                              <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-                                {formatProbability(comparedEvent.yesPrice)}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="stat-label">Volume</div>
-                              <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-                                {formatCompactNumber(comparedEvent.totalVolume)}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="stat-label">Resolution</div>
-                              <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-                                {formatDate(comparedEvent.event.resolutionDate)}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="stat-label">Snapshot</div>
-                              <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-                                {comparedEvent.event.freshness?.syncedAt
-                                  ? formatRelativeTime(
-                                      new Date(comparedEvent.event.freshness.syncedAt).getTime(),
-                                    )
-                                  : 'Unavailable'}
-                              </div>
-                            </div>
+                <div className="space-y-3">
+                  {compareQuery.data.events.map((comparedEvent) => (
+                    <div
+                      className="panel-elevated p-4"
+                      key={comparedEvent.event.id}
+                    >
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_120px_120px_120px] lg:items-center">
+                        <div className="min-w-0">
+                          <PlatformBadge platform={comparedEvent.event.provider} size="sm" />
+                          <h3 className="mt-3 text-lg font-medium leading-snug text-[var(--color-text-primary)]">
+                            {comparedEvent.event.title}
+                          </h3>
+                          <div className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
+                            {comparedEvent.marketTitle}
                           </div>
                         </div>
 
-                        <div className="mt-4 flex flex-wrap gap-3">
-                          <Link
-                            className="terminal-button text-sm font-medium"
-                            {...getEventRoute(comparedEvent.event)}
-                          >
-                            Open event page
-                          </Link>
-                          <span className="terminal-chip text-sm">
-                            {comparedEvent.event.category}
-                          </span>
+                        <div className="text-left lg:text-right">
+                          <div className="stat-label">Yes price</div>
+                          <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
+                            {formatProbability(comparedEvent.yesPrice)}
+                          </div>
+                        </div>
+
+                        <div className="text-left lg:text-right">
+                          <div className="stat-label">Volume</div>
+                          <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
+                            {formatCompactNumber(comparedEvent.totalVolume)}
+                          </div>
+                        </div>
+
+                        <div className="text-left lg:text-right">
+                          <div className="stat-label">Resolution</div>
+                          <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
+                            {formatDate(comparedEvent.event.resolutionDate)}
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
 
-                  <div className="flex flex-wrap gap-3">
-                    <Link
-                      className="terminal-button terminal-button-primary text-sm font-medium"
-                      to="/divergence"
-                    >
-                      Open divergence board
-                    </Link>
-                  </div>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <Link
+                          className="terminal-button text-sm font-medium"
+                          {...getEventRoute(comparedEvent.event)}
+                        >
+                          Open event page
+                        </Link>
+                        <span className="terminal-chip text-sm">
+                          {comparedEvent.event.category}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="panel-elevated px-4 py-5 text-sm leading-7 text-[var(--color-text-secondary)]">
-                  No cross-platform match has been confirmed for this event yet. The matcher only links events when title overlap and timing are strong enough to avoid false positives.
+
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    className="terminal-button terminal-button-primary text-sm font-medium"
+                    to="/divergence"
+                  >
+                    Open divergence board
+                  </Link>
                 </div>
-              ),
-              description: 'This is the cross-platform read: how the same event prices on other venues, and how wide the spread has become.',
-              id: 'compare',
-              kicker: 'Cross-platform read',
-              label: 'Compare',
-              title: 'How other venues are pricing this story',
-            },
-            {
-              content: (
-                <div>
-                  <p className="whitespace-pre-line text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
-                    {primaryMarket?.rules || 'Rules have not been published for this market yet.'}
-                  </p>
-                  {liveSourceUrl ? (
-                    <a
-                      className="terminal-button terminal-button-primary mt-6 text-sm font-medium"
-                      href={liveSourceUrl}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      {event.provider === 'polymarket'
-                        ? 'View on Polymarket'
-                        : 'View resolution source'}
-                    </a>
-                  ) : null}
-                </div>
-              ),
-              description: 'The rules matter more than the narrative. This is where you check what actually resolves the market before reading too much into the price.',
-              id: 'rules',
-              kicker: 'Resolution rules',
-              label: 'Rules',
-              title: 'What this market is asking',
-            },
-          ]}
-          onTabChange={setActiveTabId}
+              </div>
+            ) : (
+              <div className="panel-elevated px-4 py-5 text-sm leading-7 text-[var(--color-text-secondary)]">
+                No cross-platform match has been confirmed for this event yet. The matcher only links events when title overlap and timing are strong enough to avoid false positives.
+              </div>
+            ),
+            description: 'This is the cross-platform read: how the same event prices on other venues, and how wide the spread has become.',
+            id: 'compare',
+            kicker: 'Cross-platform read',
+            label: 'Compare',
+            title: 'How other venues are pricing this story',
+          },
+          {
+            content: (
+              <div className="space-y-5">
+                <p className="whitespace-pre-line text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
+                  {primaryMarket?.rules || 'Rules have not been published for this market yet.'}
+                </p>
+                {liveSourceUrl ? (
+                  <a
+                    className="terminal-button terminal-button-primary text-sm font-medium"
+                    href={liveSourceUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {event.provider === 'polymarket'
+                      ? 'View on Polymarket'
+                      : 'View resolution source'}
+                  </a>
+                ) : null}
+              </div>
+            ),
+            description: 'The rules matter more than the narrative. This is where you check what actually resolves the market before reading too much into the price.',
+            id: 'rules',
+            kicker: 'Resolution rules',
+            label: 'Rules',
+            title: 'What this market is asking',
+          },
+        ]}
+        onTabChange={setActiveTabId}
+      />
+
+      <section className="panel p-4 sm:p-5">
+        <SectionHeader
+          description="If an event has more than one sub-market, they live here. Some providers package a single event as multiple binary markets, so this board keeps the internal structure visible."
+          kicker="Market board"
+          title="Markets inside this event"
         />
-      </div>
+
+        <div className="mt-5 space-y-3">
+          {event.markets.map((market) => (
+            <MarketBoardRow
+              key={market.id}
+              market={market}
+              provider={event.provider}
+            />
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
