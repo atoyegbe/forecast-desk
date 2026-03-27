@@ -7,6 +7,8 @@ import {
   type PulseDivergenceListParams,
   type PulseEventListParams,
   type PulseEventsListData,
+  type PulseSearchParams,
+  type PulseSearchResultsData,
 } from '../../contracts/pulse-events.js'
 import {
   getEventCompare,
@@ -14,6 +16,7 @@ import {
   getPriceHistory,
   listEvents,
   listDivergence,
+  searchEvents,
 } from '../../app/events-service.js'
 
 export const v1EventsRoutes: FastifyPluginAsync = async (app) => {
@@ -30,6 +33,17 @@ export const v1EventsRoutes: FastifyPluginAsync = async (app) => {
       })
     },
   )
+
+  app.get<{
+    Querystring: PulseSearchParams
+  }>('/search', async (request) => {
+    const items = await searchEvents(request.query)
+    const data: PulseSearchResultsData = { items }
+
+    return createApiResponse(data, {
+      total: items.length,
+    })
+  })
 
   app.get<{
     Params: {

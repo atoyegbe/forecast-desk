@@ -40,6 +40,7 @@ import {
 import {
   getCategoryRoute,
   getEventRoute,
+  getSearchRoute,
 } from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 import type {
@@ -345,20 +346,31 @@ export function HomePage() {
             />
 
             <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
-              <label className="terminal-input">
-                <span className="section-kicker !tracking-[0.14em]">Search</span>
-                <input
-                  onChange={(event) => {
-                    const nextValue = event.target.value
+              <div className="space-y-2">
+                <label className="terminal-input">
+                  <span className="section-kicker !tracking-[0.14em]">Search</span>
+                  <input
+                    onChange={(event) => {
+                      const nextValue = event.target.value
 
-                    startTransition(() => {
-                      setSearchTerm(nextValue)
-                    })
-                  }}
-                  placeholder="Ayra, election, AFCON..."
-                  value={searchTerm}
-                />
-              </label>
+                      startTransition(() => {
+                        setSearchTerm(nextValue)
+                      })
+                    }}
+                    placeholder="Ayra, election, AFCON..."
+                    value={searchTerm}
+                  />
+                </label>
+
+                {searchTerm.trim().length >= 2 ? (
+                  <Link
+                    className="inline-flex text-sm font-medium text-[var(--color-brand)] transition hover:text-[var(--color-text-primary)]"
+                    {...getSearchRoute(searchTerm)}
+                  >
+                    Open full search results
+                  </Link>
+                ) : null}
+              </div>
 
               <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start xl:min-w-[28rem]">
                 <div className="space-y-2 lg:min-w-[11rem]">

@@ -18,3 +18,14 @@ export function getEventRoute(event: Pick<PulseEvent, 'id' | 'slug'>) {
     to: '/events/$eventId/$slug' as const,
   }
 }
+
+export function getSearchRoute(query?: string) {
+  return {
+    search: query?.trim()
+      ? {
+          q: query.trim(),
+        }
+      : {},
+    to: '/search' as const,
+  }
+}

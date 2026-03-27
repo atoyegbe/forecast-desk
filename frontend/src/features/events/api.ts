@@ -6,6 +6,7 @@ import type {
   PulseEventListParams,
   PulsePriceHistory,
   PulseComparisonGroup,
+  PulseSearchParams,
 } from './types'
 
 function buildQueryString(params: PulseEventListParams = {}) {
@@ -84,6 +85,30 @@ function buildDivergenceQueryString(params: PulseDivergenceListParams = {}) {
   return query ? `?${query}` : ''
 }
 
+function buildSearchQueryString(params: PulseSearchParams = {}) {
+  const searchParams = new URLSearchParams()
+
+  if (params.category) {
+    searchParams.set('category', params.category)
+  }
+
+  if (params.provider) {
+    searchParams.set('provider', params.provider)
+  }
+
+  if (params.q) {
+    searchParams.set('q', params.q)
+  }
+
+  if (params.status) {
+    searchParams.set('status', params.status)
+  }
+
+  const query = searchParams.toString()
+
+  return query ? `?${query}` : ''
+}
+
 export async function getEventCompare(eventId: string) {
   const response = await fetchBackendJson<PulseEventComparison | null>(
     `/events/${encodeURIComponent(eventId)}/compare`,
@@ -95,6 +120,14 @@ export async function getEventCompare(eventId: string) {
 export async function listDivergence(params: PulseDivergenceListParams = {}) {
   const response = await fetchBackendJson<{ items: PulseComparisonGroup[] }>(
     `/divergence${buildDivergenceQueryString(params)}`,
+  )
+
+  return response.data.items
+}
+
+export async function searchEvents(params: PulseSearchParams = {}) {
+  const response = await fetchBackendJson<{ items: PulseEvent[] }>(
+    `/search${buildSearchQueryString(params)}`,
   )
 
   return response.data.items

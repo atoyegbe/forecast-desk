@@ -8,6 +8,7 @@ import type {
   PulseComparedEvent,
   PulsePriceHistory,
   PulseProvider,
+  PulseSearchParams,
 } from '../contracts/pulse-events.js'
 import { getDiscoveryRefreshIntervalMs } from '../db/config.js'
 import {
@@ -409,6 +410,17 @@ export async function listEvents(params: PulseEventListParams = {}) {
   await ensureDiscoveryCache(params.provider)
 
   return listStoredDiscoveryEvents(params)
+}
+
+export async function searchEvents(params: PulseSearchParams = {}) {
+  await ensureDiscoveryCache(params.provider)
+
+  return listStoredDiscoveryEvents({
+    category: params.category,
+    keyword: params.q,
+    provider: params.provider,
+    status: params.status,
+  })
 }
 
 export async function getEvent(eventId: string) {

@@ -7,6 +7,7 @@ import {
   getPriceHistoryForEvent,
   listEvents,
   listDivergence,
+  searchEvents,
 } from './api'
 import {
   buildMover,
@@ -16,6 +17,7 @@ import type {
   PulseDivergenceListParams,
   PulseEvent,
   PulseEventListParams,
+  PulseSearchParams,
 } from './types'
 
 const eventKeys = {
@@ -28,6 +30,8 @@ const eventKeys = {
     [...eventKeys.all, 'divergence', params] as const,
   priceHistory: (eventId: string, interval: string) =>
     [...eventKeys.all, 'price-history', eventId, interval] as const,
+  search: (params: PulseSearchParams) =>
+    [...eventKeys.all, 'search', params] as const,
 }
 
 export function useEventsQuery(params: PulseEventListParams) {
@@ -78,6 +82,15 @@ export function useDivergenceQuery(params: PulseDivergenceListParams) {
     queryFn: () => listDivergence(params),
     staleTime: 90_000,
     refetchInterval: 120_000,
+  })
+}
+
+export function useSearchEventsQuery(params: PulseSearchParams) {
+  return useQuery({
+    enabled: Boolean(params.q?.trim()),
+    queryKey: eventKeys.search(params),
+    queryFn: () => searchEvents(params),
+    staleTime: 45_000,
   })
 }
 

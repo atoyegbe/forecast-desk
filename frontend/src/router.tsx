@@ -26,6 +26,9 @@ const CategoryPage = lazy(async () => ({
 const DivergencePage = lazy(async () => ({
   default: (await import('./routes/divergence-page')).DivergencePage,
 }))
+const SearchPage = lazy(async () => ({
+  default: (await import('./routes/search-page')).SearchPage,
+}))
 const NotFoundPage = lazy(async () => ({
   default: (await import('./routes/not-found-page')).NotFoundPage,
 }))
@@ -96,12 +99,19 @@ const divergenceRoute = createRoute({
   component: withSuspense(DivergencePage),
 })
 
+const searchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'search',
+  component: withSuspense(SearchPage),
+})
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   eventRoute,
   eventSlugRoute,
   categoryRoute,
   divergenceRoute,
+  searchRoute,
 ])
 
 export const router = createRouter({

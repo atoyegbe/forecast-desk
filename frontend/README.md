@@ -38,6 +38,7 @@ The app expects the owned backend to serve:
 The current frontend surface includes:
 
 - backend-backed discovery, detail, and stored history
+- a dedicated `/search` results desk backed by the owned search endpoint
 - backend-owned live event updates
 - an event-level compare view driven by `/api/v1/events/:eventId/compare`
 - a divergence leaderboard driven by `/api/v1/divergence`

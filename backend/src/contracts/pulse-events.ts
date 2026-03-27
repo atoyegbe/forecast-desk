@@ -112,6 +112,17 @@ export type PulseEventsListData = {
   items: PulseEvent[]
 }
 
+export type PulseSearchParams = {
+  category?: string
+  provider?: PulseProvider
+  q?: string
+  status?: string
+}
+
+export type PulseSearchResultsData = {
+  items: PulseEvent[]
+}
+
 export type PulseComparedEvent = {
   event: PulseEvent
   liquidity: number

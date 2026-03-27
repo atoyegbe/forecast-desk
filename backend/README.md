@@ -31,6 +31,7 @@ that `frontend/` consumes.
 - `GET /api/v1/events/:eventId/history`
 - `GET /api/v1/events/:eventId/compare`
 - `GET /api/v1/divergence`
+- `GET /api/v1/search`
 - `WS /api/v1/live/runtime`
 - `WS /api/v1/live/events/:eventId`
 

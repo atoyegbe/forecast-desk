@@ -78,6 +78,13 @@ export type PulseEventListParams = {
   status?: string
 }
 
+export type PulseSearchParams = {
+  category?: string
+  provider?: PulseProvider
+  q?: string
+  status?: string
+}
+
 export type PulseComparedEvent = {
   event: PulseEvent
   liquidity: number
