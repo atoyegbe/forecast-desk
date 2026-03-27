@@ -24,21 +24,19 @@ npm install
 npm run dev
 ```
 
-The app expects `/api` to proxy upstream market APIs:
+The app expects the owned backend to serve:
 
-- `/api/*` -> Bayse relay
-- `/api/polymarket/gamma/*` -> Polymarket Gamma
-- `/api/polymarket/clob/*` -> Polymarket CLOB
+- `/health`
+- `/api/v1/*`
+- `/api/v1/live/*` for websocket subscriptions
 
 ## Deployment
 
 The app is configured for `Netlify` via
 [netlify.toml](/Users/atoyegbe/dev/quant/projects/naija-pulse/frontend/netlify.toml):
 
-- `/api/*` proxies to Bayse
-- `/api/polymarket/gamma/*` proxies to Polymarket Gamma
-- `/api/polymarket/clob/*` proxies to Polymarket CLOB
 - `/*` falls back to `index.html` for SPA routing
 
-If you move to `Railway` later, keep the same `/api` contract and add a tiny
-Node proxy in front of the built assets rather than changing the UI code.
+Before deploying the frontend, point `/health`, `/api/v1/*`, and
+`/api/v1/live/*` at the owned backend service. The frontend should not proxy
+directly to Bayse or Polymarket anymore.

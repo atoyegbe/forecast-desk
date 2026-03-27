@@ -90,6 +90,23 @@ export type LivePriceSnapshot = {
   markets: LiveMarketPrice[]
 }
 
+export type PulseLiveMessage =
+  | {
+      eventId: string
+      timestamp: number
+      type: 'connected'
+    }
+  | {
+      data: LivePriceSnapshot
+      timestamp: number
+      type: 'price_update'
+    }
+  | {
+      message: string
+      timestamp: number
+      type: 'error'
+    }
+
 export type PulseMoverWindow = '1h' | '6h' | '24h'
 
 export type PulseMoverWindowStats = {

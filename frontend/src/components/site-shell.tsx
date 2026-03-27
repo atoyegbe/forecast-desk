@@ -139,7 +139,7 @@ export function SiteShell() {
           <footer className="panel flex flex-col gap-3 px-5 py-4 text-sm text-stone-600 sm:flex-row sm:items-center sm:justify-between">
             <p>Built for market discovery, not order placement.</p>
             <div className="flex flex-col gap-2 sm:items-end">
-              <p>Public Bayse and Polymarket data flow through the `/api` layer where needed.</p>
+              <p>Public Bayse and Polymarket data now flow through the owned backend API and live stream.</p>
               <p
                 className={
                   backendHealthQuery.isSuccess

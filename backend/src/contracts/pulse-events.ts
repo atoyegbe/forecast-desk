@@ -70,6 +70,36 @@ export type PulsePriceHistory = {
   previousInterval?: PulsePricePoint
 }
 
+export type LiveMarketPrice = {
+  marketId: string
+  noPrice: number
+  title: string
+  yesPrice: number
+}
+
+export type LivePriceSnapshot = {
+  eventId: string
+  markets: LiveMarketPrice[]
+  timestamp: number
+}
+
+export type PulseLiveMessage =
+  | {
+      eventId: string
+      timestamp: number
+      type: 'connected'
+    }
+  | {
+      data: LivePriceSnapshot
+      timestamp: number
+      type: 'price_update'
+    }
+  | {
+      message: string
+      timestamp: number
+      type: 'error'
+    }
+
 export type PulseEventListParams = {
   category?: string
   keyword?: string

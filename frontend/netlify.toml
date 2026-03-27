@@ -3,24 +3,6 @@
   publish = "dist"
 
 [[redirects]]
-  from = "/api/polymarket/gamma/*"
-  to = "https://gamma-api.polymarket.com/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/polymarket/clob/*"
-  to = "https://clob.polymarket.com/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/*"
-  to = "https://relay.bayse.markets/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

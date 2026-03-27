@@ -2,10 +2,14 @@ import {
   useEffect,
   useEffectEvent,
   useMemo,
+  useRef,
   useState,
 } from 'react'
-import { buildProviderScopedId, parseProviderScopedId } from './provider-ids'
-import type { LivePriceSnapshot } from './types'
+import { parseProviderScopedId } from './provider-ids'
+import type {
+  LivePriceSnapshot,
+  PulseLiveMessage,
+} from './types'
 
 type LiveStatus = 'connecting' | 'streaming' | 'closed' | 'error'
 
@@ -15,37 +19,75 @@ type LiveState = {
   status: LiveStatus
 }
 
-function extractMarketPrices(payload: Record<string, unknown>) {
-  const marketId = typeof payload.id === 'string' ? payload.id : ''
-  const title =
-    typeof payload.question === 'string'
-      ? payload.question
-      : typeof payload.title === 'string'
-        ? payload.title
-        : 'Market'
-  const prices =
-    typeof payload.prices === 'object' && payload.prices !== null
-      ? (payload.prices as Record<string, unknown>)
-      : null
-  const yesPrice =
-    typeof prices?.YES === 'number'
-      ? prices.YES
-      : typeof payload.outcome1Price === 'number'
-        ? payload.outcome1Price
-        : 0
-  const noPrice =
-    typeof prices?.NO === 'number'
-      ? prices.NO
-      : typeof payload.outcome2Price === 'number'
-        ? payload.outcome2Price
-        : Math.max(0, 1 - yesPrice)
+const LIVE_RECONNECT_DELAY_MS = 1_500
 
-  return {
-    marketId: buildProviderScopedId('bayse', marketId),
-    noPrice,
-    title,
-    yesPrice,
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isLivePriceSnapshot(value: unknown): value is LivePriceSnapshot {
+  if (!isRecord(value)) {
+    return false
   }
+
+  return (
+    typeof value.eventId === 'string' &&
+    typeof value.timestamp === 'number' &&
+    Array.isArray(value.markets)
+  )
+}
+
+function parseLiveMessage(rawMessage: string): PulseLiveMessage | null {
+  try {
+    const payload = JSON.parse(rawMessage) as unknown
+
+    if (!isRecord(payload) || typeof payload.type !== 'string') {
+      return null
+    }
+
+    if (payload.type === 'connected' && typeof payload.eventId === 'string') {
+      return {
+        eventId: payload.eventId,
+        timestamp:
+          typeof payload.timestamp === 'number' ? payload.timestamp : Date.now(),
+        type: 'connected',
+      }
+    }
+
+    if (payload.type === 'price_update' && isLivePriceSnapshot(payload.data)) {
+      return {
+        data: payload.data,
+        timestamp:
+          typeof payload.timestamp === 'number' ? payload.timestamp : payload.data.timestamp,
+        type: 'price_update',
+      }
+    }
+
+    if (payload.type === 'error' && typeof payload.message === 'string') {
+      return {
+        message: payload.message,
+        timestamp:
+          typeof payload.timestamp === 'number' ? payload.timestamp : Date.now(),
+        type: 'error',
+      }
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
+function buildBackendLiveUrl(eventId: string) {
+  const configuredBase = import.meta.env.VITE_BACKEND_WS_BASE?.trim()
+
+  if (configuredBase) {
+    return `${configuredBase.replace(/\/$/, '')}/api/v1/live/events/${encodeURIComponent(eventId)}`
+  }
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+
+  return `${protocol}//${window.location.host}/api/v1/live/events/${encodeURIComponent(eventId)}`
 }
 
 export function useLiveEventPrices(eventId?: string) {
@@ -54,78 +96,49 @@ export function useLiveEventPrices(eventId?: string) {
     snapshot: null,
     status: 'closed',
   })
+  const reconnectTimeoutRef = useRef<number | null>(null)
   const parsedEventId = useMemo(
     () => (eventId ? parseProviderScopedId(eventId) : null),
     [eventId],
   )
 
   const handleMessage = useEffectEvent((event: MessageEvent<string>) => {
-    const providerEventId = parsedEventId?.providerId
-    const chunks = event.data.split('\n')
+    const message = parseLiveMessage(event.data)
 
-    for (const chunk of chunks) {
-      const message = chunk.trim()
+    if (!message) {
+      setState((current) => ({
+        ...current,
+        status: 'error',
+      }))
+      return
+    }
 
-      if (!message) {
-        continue
+    if (message.type === 'connected') {
+      setState((current) => ({
+        ...current,
+        status: 'streaming',
+      }))
+      return
+    }
+
+    if (message.type === 'price_update') {
+      if (message.data.eventId !== eventId) {
+        return
       }
 
-      try {
-        const payload = JSON.parse(message) as Record<string, unknown>
-        const type = payload.type
+      setState({
+        lastUpdateAt: message.timestamp,
+        snapshot: message.data,
+        status: 'streaming',
+      })
+      return
+    }
 
-        if (type === 'connected') {
-          setState((current) => ({
-            ...current,
-            status: 'streaming',
-          }))
-          continue
-        }
-
-        if (type !== 'price_update') {
-          continue
-        }
-
-        const data =
-          typeof payload.data === 'object' && payload.data !== null
-            ? (payload.data as Record<string, unknown>)
-            : null
-
-        if (!data || data.id !== providerEventId) {
-          continue
-        }
-
-        const markets = Array.isArray(data.markets)
-          ? data.markets
-              .filter(
-                (market): market is Record<string, unknown> =>
-                  typeof market === 'object' && market !== null,
-              )
-              .map(extractMarketPrices)
-          : []
-
-        setState({
-          lastUpdateAt:
-            typeof payload.timestamp === 'number' ? payload.timestamp : Date.now(),
-          snapshot: {
-            eventId:
-              typeof data.id === 'string'
-                ? buildProviderScopedId('bayse', data.id)
-                : eventId ?? '',
-            markets,
-            timestamp:
-              typeof payload.timestamp === 'number'
-                ? payload.timestamp
-                : Date.now(),
-          },
-          status: 'streaming',
-        })
-      } catch {
-        setState((current) => ({
-          ...current,
-          status: 'error',
-        }))
-      }
+    if (message.type === 'error') {
+      setState((current) => ({
+        ...current,
+        status: 'error',
+      }))
     }
   })
 
@@ -138,45 +151,68 @@ export function useLiveEventPrices(eventId?: string) {
       return
     }
 
-    const socketUrl =
-      import.meta.env.VITE_MARKETS_WS_URL ??
-      'wss://socket.bayse.markets/ws/v1/markets'
-    const socket = new WebSocket(socketUrl)
+    let isActive = true
+    let socket: WebSocket | null = null
 
-    socket.addEventListener('open', () => {
-      socket.send(
-        JSON.stringify({
-          channel: 'prices',
-          eventId: parsedEventId.providerId,
-          type: 'subscribe',
-        }),
-      )
-    })
-    socket.addEventListener('message', handleMessage)
-    socket.addEventListener('error', () => {
-      setState((current) => ({
-        ...current,
-        status: 'error',
-      }))
-    })
-    socket.addEventListener('close', () => {
-      setState((current) => ({
-        ...current,
-        status: current.status === 'error' ? 'error' : 'closed',
-      }))
-    })
+    const clearReconnectTimeout = () => {
+      if (reconnectTimeoutRef.current !== null) {
+        window.clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
+    }
 
-    return () => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(
-          JSON.stringify({
-            room: `prices:${parsedEventId.providerId}`,
-            type: 'unsubscribe',
-          }),
-        )
+    const connect = () => {
+      if (!isActive) {
+        return
       }
 
-      socket.close()
+      clearReconnectTimeout()
+      setState((current) => ({
+        ...current,
+        status: 'connecting',
+      }))
+
+      socket = new WebSocket(buildBackendLiveUrl(eventId))
+
+      socket.addEventListener('open', () => {
+        setState((current) => ({
+          ...current,
+          status: 'connecting',
+        }))
+      })
+      socket.addEventListener('message', handleMessage)
+      socket.addEventListener('error', () => {
+        setState((current) => ({
+          ...current,
+          status: 'error',
+        }))
+      })
+      socket.addEventListener('close', () => {
+        if (!isActive) {
+          setState((current) => ({
+            ...current,
+            status: 'closed',
+          }))
+          return
+        }
+
+        setState((current) => ({
+          ...current,
+          status: current.status === 'error' ? 'error' : 'connecting',
+        }))
+        reconnectTimeoutRef.current = window.setTimeout(
+          connect,
+          LIVE_RECONNECT_DELAY_MS,
+        )
+      })
+    }
+
+    connect()
+
+    return () => {
+      isActive = false
+      clearReconnectTimeout()
+      socket?.close()
     }
   }, [eventId, parsedEventId])
 

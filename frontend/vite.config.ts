@@ -14,21 +14,7 @@ export default defineConfig({
       '/api/v1': {
         target: 'http://localhost:8787',
         changeOrigin: true,
-      },
-      '/api/polymarket/gamma': {
-        target: 'https://gamma-api.polymarket.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/polymarket\/gamma/, ''),
-      },
-      '/api/polymarket/clob': {
-        target: 'https://clob.polymarket.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/polymarket\/clob/, ''),
-      },
-      '/api': {
-        target: 'https://relay.bayse.markets',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        ws: true,
       },
     },
   },
