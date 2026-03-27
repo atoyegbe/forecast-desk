@@ -29,6 +29,16 @@ Build a public-facing web app that makes prediction markets legible for normal u
 - auto-trading
 - private authenticated features
 
+## Workspace Structure
+
+- `frontend/` holds the public UI and is locked to `Vite + React`, moving toward `TanStack Router + TanStack Query`.
+- `backend/` is the owned API, ingestion, normalization, matching, and real-time workspace.
+- `docs/` holds the product blueprint and supporting architecture notes.
+
+## Tracking
+
+- Delivery tracker: `docs/implementation-tracker.md`
+
 ## Bayse API Mapping
 
 - `GET /v1/pm/events` for discovery and category pages
@@ -48,4 +58,4 @@ If you want a broader brand later, these are better than locking into `Naija`:
 
 ## Next Build Step
 
-Use an adapter layer from day one so Bayse is one provider, not the whole app. See `docs/provider-model.md`.
+Use an adapter layer from day one so Bayse is one provider, not the whole app, and keep the repo split between `frontend/` and `backend/`. See `docs/provider-model.md`.
