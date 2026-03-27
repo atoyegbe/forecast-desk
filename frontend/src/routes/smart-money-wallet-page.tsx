@@ -3,7 +3,10 @@ import { PriceDisplay } from '../components/price-display'
 import { ScoreBadge } from '../components/score-badge'
 import { SectionHeader } from '../components/section-header'
 import { SignalCard } from '../components/signal-card'
-import { useSmartMoneyWalletQuery } from '../features/smart-money/hooks'
+import {
+  useSmartMoneyLiveSignals,
+  useSmartMoneyWalletQuery,
+} from '../features/smart-money/hooks'
 import { formatCompactCurrency, formatCompactNumber, formatDate, formatSignedPercent, formatTimeAgo } from '../lib/format'
 import { getEventRoute, getSmartMoneyLeaderboardRoute } from '../lib/routes'
 
@@ -56,6 +59,7 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 export function SmartMoneyWalletPage() {
+  useSmartMoneyLiveSignals()
   const { walletAddress } = useParams({
     from: '/smart-money/wallets/$walletAddress',
   })

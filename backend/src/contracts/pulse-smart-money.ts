@@ -110,3 +110,19 @@ export type PulseSmartMoneySignalListData = {
 export type PulseSmartMoneyWalletListData = {
   items: PulseSmartMoneyWallet[]
 }
+
+export type PulseSmartMoneyLiveMessage =
+  | {
+      timestamp: number
+      type: 'connected' | 'heartbeat'
+    }
+  | {
+      data: PulseSmartMoneySignal
+      timestamp: number
+      type: 'signal'
+    }
+  | {
+      message: string
+      timestamp: number
+      type: 'error'
+    }

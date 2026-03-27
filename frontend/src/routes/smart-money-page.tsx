@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { ScoreBadge } from '../components/score-badge'
 import { SmartMoneyFeedCard } from '../components/smart-money-feed-card'
 import {
+  useSmartMoneyLiveSignals,
   useSmartMoneySignalsQuery,
   useSmartMoneyWalletsQuery,
 } from '../features/smart-money/hooks'
@@ -225,6 +226,7 @@ function LatestActivityRow({ signal }: { signal: PulseSmartMoneySignal }) {
 }
 
 export function SmartMoneyPage() {
+  useSmartMoneyLiveSignals()
   const navigate = useNavigate()
   const search = useSearch({ strict: false })
   const activeCategory = getSearchValue(search.category) || 'All'

@@ -41,6 +41,14 @@ function setCachedValue<T>(
   })
 }
 
+export function invalidateCachedResponses(prefix: string) {
+  for (const cacheKey of responseCache.keys()) {
+    if (cacheKey.startsWith(prefix)) {
+      responseCache.delete(cacheKey)
+    }
+  }
+}
+
 export function applyHttpCacheHeaders(
   reply: FastifyReply,
   policy: HttpCachePolicy,

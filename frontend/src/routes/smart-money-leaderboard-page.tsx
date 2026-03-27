@@ -1,7 +1,10 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { ScoreBadge } from '../components/score-badge'
 import { SectionHeader } from '../components/section-header'
-import { useSmartMoneyWalletsQuery } from '../features/smart-money/hooks'
+import {
+  useSmartMoneyLiveSignals,
+  useSmartMoneyWalletsQuery,
+} from '../features/smart-money/hooks'
 import { formatCompactCurrency, formatCompactNumber, formatSignedPercent, formatTimeAgo } from '../lib/format'
 import { getSmartMoneyWalletRoute } from '../lib/routes'
 import type { AppSearch } from '../router'
@@ -11,6 +14,7 @@ function getSearchValue(value: unknown) {
 }
 
 export function SmartMoneyLeaderboardPage() {
+  useSmartMoneyLiveSignals()
   const navigate = useNavigate()
   const search = useSearch({ strict: false })
   const minScore = Number.parseInt(getSearchValue(search.minScore) || '50', 10)

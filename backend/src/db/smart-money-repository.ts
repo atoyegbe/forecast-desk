@@ -518,6 +518,17 @@ export async function countStoredSmartMoneyWallets() {
   return Number.parseInt(result.rows[0]?.count ?? '0', 10)
 }
 
+export async function listStoredSmartMoneySignalIds() {
+  const result = await getDbPool().query<{ id: string }>(
+    `
+      SELECT id
+      FROM pulse_smart_money_signals
+    `,
+  )
+
+  return result.rows.map((row) => row.id)
+}
+
 export async function getSmartMoneySyncState(syncKey = 'smart-money') {
   const result = await getDbPool().query<{
     last_error: string | null
@@ -689,6 +700,47 @@ export async function listStoredSmartMoneySignals(
       LIMIT $${values.length}
     `,
     values,
+  )
+
+  return result.rows.map(mapSignalRow)
+}
+
+export async function listStoredSmartMoneySignalsByIds(ids: string[]) {
+  if (!ids.length) {
+    return [] as PulseSmartMoneySignal[]
+  }
+
+  const result = await getDbPool().query<SignalRow>(
+    `
+      SELECT
+        s.category,
+        s.closing_date,
+        s.current_price,
+        s.entry_price,
+        s.event_id,
+        s.event_slug,
+        s.icon_url,
+        s.id,
+        s.market_title,
+        s.outcome,
+        s.price_delta,
+        s.provider,
+        s.provider_event_id,
+        s.signal_timestamp,
+        s.size_usd,
+        s.wallet_address,
+        w.display_name AS wallet_display_name,
+        w.profile_image_url AS wallet_profile_image_url,
+        w.rank AS wallet_rank,
+        w.score AS wallet_score,
+        w.verified_badge AS wallet_verified
+      FROM pulse_smart_money_signals s
+      INNER JOIN pulse_smart_money_wallets w
+        ON w.address = s.wallet_address
+      WHERE s.id = ANY($1::text[])
+      ORDER BY s.signal_timestamp DESC, s.size_usd DESC
+    `,
+    [ids],
   )
 
   return result.rows.map(mapSignalRow)

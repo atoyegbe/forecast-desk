@@ -3,6 +3,7 @@ import websocket from '@fastify/websocket'
 import { closeDbPool } from '../db/pool.js'
 import { ensureDiscoverySchema } from '../db/schema.js'
 import { bayseLiveHub } from '../realtime/bayse-live-hub.js'
+import { smartMoneyLiveHub } from '../realtime/smart-money-live-hub.js'
 import { healthRoute } from '../routes/health.js'
 import { v1EventsRoutes } from '../routes/v1/events.js'
 import { v1LiveRoutes } from '../routes/v1/live.js'
@@ -19,6 +20,7 @@ export async function createApp() {
 
   app.addHook('onClose', async () => {
     bayseLiveHub.closeAll()
+    smartMoneyLiveHub.closeAll()
     await closeDbPool()
   })
 

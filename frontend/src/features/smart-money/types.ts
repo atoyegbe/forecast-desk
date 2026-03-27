@@ -106,3 +106,19 @@ export type PulseSmartMoneyWalletListParams = {
   minScore?: number | string
   minVolume?: number | string
 }
+
+export type PulseSmartMoneyLiveMessage =
+  | {
+      timestamp: number
+      type: 'connected' | 'heartbeat'
+    }
+  | {
+      data: PulseSmartMoneySignal
+      timestamp: number
+      type: 'signal'
+    }
+  | {
+      message: string
+      timestamp: number
+      type: 'error'
+    }

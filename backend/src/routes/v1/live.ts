@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { bayseLiveHub } from '../../realtime/bayse-live-hub.js'
+import { smartMoneyLiveHub } from '../../realtime/smart-money-live-hub.js'
 
 const RUNTIME_HEARTBEAT_INTERVAL_MS = 20_000
 
@@ -64,5 +65,12 @@ export const v1LiveRoutes: FastifyPluginAsync = async (app) => {
     socket.on('error', () => {
       unsubscribe?.()
     })
+  })
+
+  app.get('/live/smart-money/signals', { websocket: true }, (socket) => {
+    const unsubscribe = smartMoneyLiveHub.subscribe(socket)
+
+    socket.on('close', unsubscribe)
+    socket.on('error', unsubscribe)
   })
 }

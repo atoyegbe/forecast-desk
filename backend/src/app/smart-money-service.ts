@@ -17,6 +17,8 @@ import {
   countStoredSmartMoneyWallets,
   getSmartMoneySyncState,
   getStoredSmartMoneyWallet,
+  listStoredSmartMoneySignalIds,
+  listStoredSmartMoneySignalsByIds,
   listStoredSmartMoneySignals,
   listStoredSmartMoneyWallets,
   recordSmartMoneySyncAttempt,
@@ -39,9 +41,10 @@ import {
 } from '../providers/polymarket-smart-money.js'
 import { formatCategory, normalizeText, toNumber } from '../providers/shared.js'
 import { listEvents } from './events-service.js'
+import { invalidateCachedResponses } from './response-cache.js'
 
 const SMART_MONEY_SYNC_KEY = 'smart-money'
-let smartMoneyRefreshPromise: Promise<void> | null = null
+let smartMoneyRefreshPromise: Promise<PulseSmartMoneySignal[]> | null = null
 
 type EventLookup = {
   byProviderEventId: Map<string, PulseEvent>
@@ -614,12 +617,24 @@ async function buildSmartMoneySnapshot() {
 
 async function refreshSmartMoneySnapshot() {
   const attemptedAt = new Date()
+  const existingSignalIds = new Set(await listStoredSmartMoneySignalIds())
 
   await recordSmartMoneySyncAttempt(SMART_MONEY_SYNC_KEY, attemptedAt)
 
   try {
     const snapshot = await buildSmartMoneySnapshot()
     await replaceStoredSmartMoneySnapshot(snapshot, attemptedAt, SMART_MONEY_SYNC_KEY)
+    invalidateCachedResponses('/api/v1/smart-money')
+
+    if (!existingSignalIds.size) {
+      return [] as PulseSmartMoneySignal[]
+    }
+
+    const nextSignalIds = snapshot.signals
+      .map((signal) => signal.id)
+      .filter((signalId) => !existingSignalIds.has(signalId))
+
+    return listStoredSmartMoneySignalsByIds(nextSignalIds)
   } catch (error) {
     await recordSmartMoneySyncFailure(
       SMART_MONEY_SYNC_KEY,
@@ -630,18 +645,18 @@ async function refreshSmartMoneySnapshot() {
   }
 }
 
-async function ensureSmartMoneySnapshot() {
+async function runSmartMoneyRefresh(force = false) {
+  if (smartMoneyRefreshPromise) {
+    return smartMoneyRefreshPromise
+  }
+
   const [walletCount, state] = await Promise.all([
     countStoredSmartMoneyWallets(),
     getSmartMoneySyncState(SMART_MONEY_SYNC_KEY),
   ])
 
-  if (walletCount > 0 && !isSmartMoneySyncStale(state?.lastRunAt)) {
-    return
-  }
-
-  if (smartMoneyRefreshPromise) {
-    return smartMoneyRefreshPromise
+  if (!force && walletCount > 0 && !isSmartMoneySyncStale(state?.lastRunAt)) {
+    return [] as PulseSmartMoneySignal[]
   }
 
   smartMoneyRefreshPromise = refreshSmartMoneySnapshot().finally(() => {
@@ -649,6 +664,14 @@ async function ensureSmartMoneySnapshot() {
   })
 
   return smartMoneyRefreshPromise
+}
+
+async function ensureSmartMoneySnapshot() {
+  await runSmartMoneyRefresh()
+}
+
+export async function pollSmartMoneySignals() {
+  return runSmartMoneyRefresh(true)
 }
 
 export async function listSmartMoneySignals(params: PulseSmartMoneySignalListParams) {

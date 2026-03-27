@@ -19,6 +19,7 @@ import {
 } from '../features/events/hooks'
 import {
   useSmartMoneySignalsQuery,
+  useSmartMoneyLiveSignals,
   useSmartMoneyWalletsQuery,
 } from '../features/smart-money/hooks'
 import {
@@ -151,6 +152,7 @@ function getBoardCategory(category: string) {
 }
 
 export function HomePage() {
+  useSmartMoneyLiveSignals()
   const [activeCategory, setActiveCategory] = useState('All')
   const [activeTabId, setActiveTabId] = useUrlSelection({
     fallback: 'briefing',
