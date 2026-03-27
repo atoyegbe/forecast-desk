@@ -35,6 +35,18 @@ Build a public-facing web app that makes prediction markets legible for normal u
 - `backend/` is the owned API, ingestion, normalization, matching, and real-time workspace.
 - `docs/` holds the product blueprint and supporting architecture notes.
 
+## Local Development
+
+From the repo root:
+
+- `make api` starts the backend and the local Postgres container it expects
+- `make frontend` starts the frontend dev server
+- `make dev` starts backend + frontend together
+- `make postgres-down` stops the local Postgres container
+
+By default the root `Makefile` runs Postgres in Docker on `127.0.0.1:54329` and
+passes that connection string to the backend.
+
 ## Tracking
 
 - Delivery tracker: `docs/implementation-tracker.md`
