@@ -1,5 +1,8 @@
 import { DeskTabs } from '../components/desk-tabs'
-import { Link, useParams } from 'react-router-dom'
+import {
+  Link,
+  useParams,
+} from '@tanstack/react-router'
 import { MarketRow } from '../components/market-row'
 import { SectionHeader } from '../components/section-header'
 import { getProviderLabel } from '../features/events/provider-ids'
@@ -19,12 +22,16 @@ import {
   formatDate,
   formatProbability,
 } from '../lib/format'
+import { getEventRoute } from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 
 const CATEGORY_TAB_IDS = ['summary', 'conviction'] as const
 
 export function CategoryPage() {
-  const { categorySlug } = useParams()
+  const categorySlug = useParams({
+    strict: false,
+    select: (params) => ('categorySlug' in params ? params.categorySlug : undefined),
+  })
   const [activeTabId, setActiveTabId] = useUrlSelection({
     fallback: 'summary',
     key: 'tab',
@@ -160,7 +167,7 @@ export function CategoryPage() {
               </span>
               <Link
                 className="dark-pill px-4 py-2 text-sm"
-                to={`/events/${lead.id}/${lead.slug}`}
+                {...getEventRoute(lead)}
               >
                 Open event page
               </Link>

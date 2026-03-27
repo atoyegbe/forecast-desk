@@ -1,4 +1,8 @@
-import { useSearchParams } from 'react-router-dom'
+import {
+  useNavigate,
+  useSearch,
+} from '@tanstack/react-router'
+import type { AppSearch } from '../router'
 
 type UrlSelectionOptions<T extends string> = {
   fallback: T
@@ -22,8 +26,10 @@ export function useUrlSelection<T extends string>({
   key,
   values,
 }: UrlSelectionOptions<T>) {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const valueFromUrl = searchParams.get(key)
+  const search = useSearch({ strict: false })
+  const navigate = useNavigate()
+  const rawValue = search[key]
+  const valueFromUrl = typeof rawValue === 'string' ? rawValue : null
   const activeValue: T = isValidSelection(valueFromUrl, values)
     ? valueFromUrl
     : fallback
@@ -31,16 +37,22 @@ export function useUrlSelection<T extends string>({
   const setActiveValue = (nextValue: T) => {
     const value = values.includes(nextValue) ? nextValue : fallback
 
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current)
+    void navigate({
+      replace: true,
+      search: (current): AppSearch => {
+        const next = {
+          ...current,
+        } as AppSearch
 
-      if (value === fallback) {
-        next.delete(key)
-      } else {
-        next.set(key, value)
-      }
+        if (value === fallback) {
+          delete next[key]
+        } else {
+          next[key] = value
+        }
 
-      return next
+        return next
+      },
+      to: '.',
     })
   }
 

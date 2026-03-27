@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom'
+import { Link } from '@tanstack/react-router'
 import { getProviderLabel } from '../features/events/provider-ids'
 import type { PulseEvent } from '../features/events/types'
 import {
   formatCompactNumber,
   formatSignedProbabilityChange,
 } from '../lib/format'
+import { getEventRoute } from '../lib/routes'
 import { OutcomeStrip } from './outcome-strip'
 
 type MarketRowProps = {
@@ -35,7 +36,7 @@ export function MarketRow({
   return (
     <Link
       className={`panel group block border-l-4 p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(28,25,23,0.12)] sm:p-5 ${accentStyles[accent]}`}
-      to={`/events/${event.id}/${event.slug}`}
+      {...getEventRoute(event)}
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
         <div className="min-w-0">

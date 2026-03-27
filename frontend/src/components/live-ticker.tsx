@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from '@tanstack/react-router'
 import { getProviderLabel } from '../features/events/provider-ids'
 import { useEventsQuery } from '../features/events/hooks'
 import {
@@ -11,6 +11,7 @@ import {
   formatCompactNumber,
   formatProbability,
 } from '../lib/format'
+import { getEventRoute } from '../lib/routes'
 
 function TickerTrack() {
   const eventsQuery = useEventsQuery({ status: 'open' })
@@ -36,7 +37,7 @@ function TickerTrack() {
         <Link
           className="flex min-w-[290px] items-center gap-3 rounded-full border border-stone-900/10 bg-white px-4 py-3 text-sm shadow-[0_10px_30px_rgba(28,25,23,0.05)] transition hover:border-stone-900/20 hover:bg-stone-50"
           key={`${event.id}-${index}`}
-          to={`/events/${event.id}/${event.slug}`}
+          {...getEventRoute(event)}
         >
           <span className="rounded-full bg-amber-600/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-amber-800">
             {event.category}

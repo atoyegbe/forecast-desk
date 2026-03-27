@@ -1,5 +1,8 @@
 import { DeskTabs } from '../components/desk-tabs'
-import { Link, useParams } from 'react-router-dom'
+import {
+  Link,
+  useParams,
+} from '@tanstack/react-router'
 import { DivergenceBar } from '../components/divergence-bar'
 import { OutcomeStrip } from '../components/outcome-strip'
 import { PriceHistoryChart } from '../components/price-history-chart'
@@ -23,12 +26,19 @@ import {
   formatProbabilityPoints,
   formatRelativeTime,
 } from '../lib/format'
+import {
+  getCategoryRoute,
+  getEventRoute,
+} from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 
 const EVENT_TAB_IDS = ['live', 'rules', 'compare'] as const
 
 export function EventPage() {
-  const { eventId } = useParams()
+  const eventId = useParams({
+    strict: false,
+    select: (params) => ('eventId' in params ? params.eventId : undefined),
+  })
   const [activeTabId, setActiveTabId] = useUrlSelection({
     fallback: 'live',
     key: 'tab',
@@ -105,7 +115,9 @@ export function EventPage() {
           <div className="p-6 sm:p-8 lg:p-10">
             <Link
               className="section-kicker text-stone-500 hover:text-stone-900"
-              to={`/categories/${event.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+              {...getCategoryRoute(
+                event.category.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              )}
             >
               {event.category} desk / {getProviderLabel(event.provider)}
             </Link>
@@ -394,7 +406,7 @@ export function EventPage() {
                         <div className="mt-5 flex flex-wrap gap-3">
                           <Link
                             className="dark-pill px-4 py-2 text-sm"
-                            to={`/events/${comparedEvent.event.id}/${comparedEvent.event.slug}`}
+                            {...getEventRoute(comparedEvent.event)}
                           >
                             Open event page
                           </Link>

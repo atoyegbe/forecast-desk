@@ -1,7 +1,8 @@
 import {
-  NavLink,
+  Link,
   Outlet,
-} from 'react-router-dom'
+  useRouterState,
+} from '@tanstack/react-router'
 import { useBackendHealthQuery } from '../features/runtime/hooks'
 import { LiveTicker } from './live-ticker'
 
@@ -30,6 +31,49 @@ function getNavMetaClass(isActive: boolean) {
   ].join(' ')
 }
 
+function isNavItemActive(
+  pathname: string,
+  item: (typeof primaryNav)[number],
+) {
+  if (item.end) {
+    return pathname === item.to
+  }
+
+  return pathname === item.to || pathname.startsWith(`${item.to}/`)
+}
+
+function ShellNavLink({
+  item,
+  mobile = false,
+}: {
+  item: (typeof primaryNav)[number]
+  mobile?: boolean
+}) {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const isActive = isNavItemActive(pathname, item)
+
+  return (
+    <Link
+      className={getNavItemClass(isActive)}
+      key={item.to}
+      to={item.to}
+    >
+      {mobile ? (
+        <span className={isActive ? 'text-white' : 'text-stone-700'}>
+          {item.label}
+        </span>
+      ) : (
+        <>
+          <span>{item.label}</span>
+          <span className={getNavMetaClass(isActive)}>Edit</span>
+        </>
+      )}
+    </Link>
+  )
+}
+
 export function SiteShell() {
   const backendHealthQuery = useBackendHealthQuery()
   const backendContractLabel = backendHealthQuery.isSuccess
@@ -56,19 +100,7 @@ export function SiteShell() {
 
             <nav className="space-y-2">
               {primaryNav.map((item) => (
-                <NavLink
-                  className={({ isActive }) => getNavItemClass(isActive)}
-                  end={item.end}
-                  key={item.to}
-                  to={item.to}
-                >
-                  {({ isActive }) => (
-                    <>
-                      <span>{item.label}</span>
-                      <span className={getNavMetaClass(isActive)}>Edit</span>
-                    </>
-                  )}
-                </NavLink>
+                <ShellNavLink item={item} key={item.to} />
               ))}
             </nav>
 
@@ -98,18 +130,7 @@ export function SiteShell() {
 
             <div className="flex flex-wrap gap-2">
               {primaryNav.map((item) => (
-                <NavLink
-                  className={({ isActive }) => getNavItemClass(isActive)}
-                  end={item.end}
-                  key={item.to}
-                  to={item.to}
-                >
-                  {({ isActive }) => (
-                    <span className={isActive ? 'text-white' : 'text-stone-700'}>
-                      {item.label}
-                    </span>
-                  )}
-                </NavLink>
+                <ShellNavLink item={item} key={item.to} mobile />
               ))}
             </div>
           </header>

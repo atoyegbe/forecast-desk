@@ -9,13 +9,13 @@ Bayse and Polymarket data.
 - `Vite`
 - `React`
 - `TypeScript`
-- `TanStack Router` (locked-in target)
+- `TanStack Router`
 - `TanStack Query`
 - `Tailwind CSS`
 - `Recharts`
 
-The current codebase still runs on `React Router`. The project direction is now
-locked to `TanStack Router` without introducing a framework rewrite.
+The frontend now runs on `TanStack Router` with the existing product URLs and
+page behavior preserved.
 
 ## Run locally
 

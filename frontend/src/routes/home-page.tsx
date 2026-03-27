@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 import { DeskTabs } from '../components/desk-tabs'
-import { Link } from 'react-router-dom'
+import { Link } from '@tanstack/react-router'
 import { MarketRow } from '../components/market-row'
 import { SectionHeader } from '../components/section-header'
 import { getProviderLabel } from '../features/events/provider-ids'
@@ -33,6 +33,10 @@ import {
   formatProbability,
   formatSignedProbabilityChange,
 } from '../lib/format'
+import {
+  getCategoryRoute,
+  getEventRoute,
+} from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 import type {
   PulseMoverWindow,
@@ -234,7 +238,7 @@ export function HomePage() {
               {spotlight ? (
                 <Link
                   className="dark-pill px-5 py-3 text-sm"
-                  to={`/events/${spotlight.id}/${spotlight.slug}`}
+                  {...getEventRoute(spotlight)}
                 >
                   Open lead story
                 </Link>
@@ -242,7 +246,7 @@ export function HomePage() {
               {spotlight ? (
                 <Link
                   className="inline-flex items-center justify-center rounded-full border border-stone-900/10 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-900/20"
-                  to={`/categories/${getCategorySlug(spotlight.category)}`}
+                  {...getCategoryRoute(getCategorySlug(spotlight.category))}
                 >
                   Browse {spotlight.category} desk
                 </Link>
@@ -262,7 +266,7 @@ export function HomePage() {
           <Link
             className="panel p-5 transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(28,25,23,0.1)]"
             key={desk.category}
-            to={`/categories/${getCategorySlug(desk.category)}`}
+            {...getCategoryRoute(getCategorySlug(desk.category))}
           >
             <div className="section-kicker">{desk.category} desk</div>
             <div className="mt-4 text-xl font-semibold leading-snug text-stone-950">

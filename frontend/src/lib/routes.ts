@@ -1,0 +1,20 @@
+import type { PulseEvent } from '../features/events/types'
+
+export function getCategoryRoute(categorySlug: string) {
+  return {
+    params: {
+      categorySlug,
+    },
+    to: '/categories/$categorySlug' as const,
+  }
+}
+
+export function getEventRoute(event: Pick<PulseEvent, 'id' | 'slug'>) {
+  return {
+    params: {
+      eventId: event.id,
+      slug: event.slug,
+    },
+    to: '/events/$eventId/$slug' as const,
+  }
+}

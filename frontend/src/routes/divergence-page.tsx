@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from '@tanstack/react-router'
 import { DivergenceBar } from '../components/divergence-bar'
 import { SectionHeader } from '../components/section-header'
 import { getProviderLabel } from '../features/events/provider-ids'
@@ -9,6 +9,7 @@ import {
   formatProbability,
   formatProbabilityPoints,
 } from '../lib/format'
+import { getEventRoute } from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 
 const DIVERGENCE_SORT_IDS = ['divergence', 'volume'] as const
@@ -215,7 +216,10 @@ export function DivergencePage() {
                     <div className="mt-5">
                       <Link
                         className="dark-pill px-4 py-2 text-sm"
-                        to={`/events/${comparedEvent.event.id}/${comparedEvent.event.slug}?tab=compare`}
+                        {...getEventRoute(comparedEvent.event)}
+                        search={{
+                          tab: 'compare',
+                        }}
                       >
                         Open compare view
                       </Link>
