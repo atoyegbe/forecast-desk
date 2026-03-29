@@ -154,7 +154,6 @@ export function useRuntimeLiveConnection() {
 export function useRuntimeFreshnessLabel() {
   const queryClient = useQueryClient()
   const [now, setNow] = useState(() => Date.now())
-  const [queryVersion, setQueryVersion] = useState(0)
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -166,18 +165,9 @@ export function useRuntimeFreshnessLabel() {
     }
   }, [])
 
-  useEffect(() => {
-    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
-      setQueryVersion((currentVersion) => currentVersion + 1)
-      setNow(Date.now())
-    })
-
-    return unsubscribe
-  }, [queryClient])
-
   const updatedAt = useMemo(
     () => getLatestActiveQueryUpdateAt(queryClient),
-    [queryClient, queryVersion],
+    [queryClient, now],
   )
 
   return useMemo(
