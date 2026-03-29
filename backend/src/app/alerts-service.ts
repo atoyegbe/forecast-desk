@@ -17,7 +17,10 @@ import {
   queueAlertDeliveriesForMatches,
   updateAlertSubscriptionStatus,
 } from '../db/alerts-repository.js'
-import { listStoredSmartMoneySignalsByIds } from '../db/smart-money-repository.js'
+import {
+  listStoredSmartMoneySignalsByIds,
+  listStoredSmartMoneyWalletsByAddresses,
+} from '../db/smart-money-repository.js'
 import { sendWalletSignalAlertEmail } from './email-service.js'
 
 type PostgresError = Error & {
@@ -184,6 +187,12 @@ export async function processPendingAlertDeliveries(limit = 25) {
     jobs.map((job) => job.delivery.signalId),
   )
   const signalById = new Map(signals.map((signal) => [signal.id, signal]))
+  const wallets = await listStoredSmartMoneyWalletsByAddresses(
+    signals.map((signal) => signal.walletAddress),
+  )
+  const walletByAddress = new Map(
+    wallets.map((wallet) => [wallet.address.toLowerCase(), wallet]),
+  )
   let failed = 0
   let sent = 0
 
@@ -207,6 +216,8 @@ export async function processPendingAlertDeliveries(limit = 25) {
         email: job.subscription.userEmail,
         signal,
         subscription: job.subscription,
+        unsubscribeToken: job.delivery.id,
+        wallet: walletByAddress.get(signal.walletAddress.toLowerCase()) ?? null,
       })
 
       await markAlertDeliverySent({

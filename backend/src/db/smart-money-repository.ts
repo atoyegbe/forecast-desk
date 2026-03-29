@@ -579,6 +579,49 @@ export async function listStoredSmartMoneyWalletAddresses(limit: number) {
   return result.rows.map((row) => row.address)
 }
 
+export async function listStoredSmartMoneyWalletsByAddresses(addresses: string[]) {
+  const normalizedAddresses = [...new Set(
+    addresses
+      .map((address) => address.trim().toLowerCase())
+      .filter(Boolean),
+  )]
+
+  if (!normalizedAddresses.length) {
+    return [] as PulseSmartMoneyWallet[]
+  }
+
+  const result = await getDbPool().query<WalletRow>(
+    `
+      SELECT
+        address,
+        category_stats_json,
+        closed_position_count,
+        display_name,
+        last_active_at,
+        market_count,
+        open_position_count,
+        profile_image_url,
+        rank,
+        recency_score,
+        roi,
+        score,
+        source_pnl,
+        source_rank,
+        source_volume,
+        synced_at,
+        total_volume,
+        verified_badge,
+        win_rate,
+        x_username
+      FROM pulse_smart_money_wallets
+      WHERE address = ANY($1::TEXT[])
+    `,
+    [normalizedAddresses],
+  )
+
+  return result.rows.map(mapWalletRow)
+}
+
 export async function getSmartMoneySyncState(syncKey = 'smart-money') {
   const result = await getDbPool().query<{
     attempt_count: number | string

@@ -269,10 +269,18 @@ describe('Alert delivery pipeline', () => {
       minSizeUsd: 1000,
     })
     const [matchingSignal] = await seedSmartMoneySignals()
-    const sentEmails: string[] = []
+    const sentEmails: Array<{
+      html?: string
+      subject: string
+      text: string
+    }> = []
 
     setTestEmailSender(async (input) => {
-      sentEmails.push(`${input.subject} | ${input.text}`)
+      sentEmails.push({
+        html: input.html,
+        subject: input.subject,
+        text: input.text,
+      })
 
       return {
         providerMessageId: 'email_123',
@@ -299,7 +307,18 @@ describe('Alert delivery pipeline', () => {
       sent: 1,
     })
     assert.equal(sentEmails.length, 1)
-    assert.match(sentEmails[0] ?? '', /Signal Whale/)
+    assert.match(sentEmails[0]?.subject ?? '', /Signal Whale/)
+    assert.match(sentEmails[0]?.text ?? '', /View market:/)
+    assert.match(sentEmails[0]?.html ?? '', /<table/i)
+    assert.match(
+      sentEmails[0]?.html ?? '',
+      /Signal Whale opened a new position\./,
+    )
+    assert.match(sentEmails[0]?.html ?? '', /View market on Quorum/)
+    assert.match(sentEmails[0]?.html ?? '', /Manage alerts/)
+    assert.match(sentEmails[0]?.html ?? '', /unsubscribe\?token=/i)
+    assert.doesNotMatch(sentEmails[0]?.html ?? '', /display:\s*flex/i)
+    assert.doesNotMatch(sentEmails[0]?.html ?? '', /var\(/i)
     assert.equal(delivery?.status, 'sent')
     assert.equal(delivery?.attempt_count, 1)
     assert.equal(delivery?.provider_message_id, 'email_123')
