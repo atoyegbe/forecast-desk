@@ -146,15 +146,15 @@ async function seedSmartMoneySignals() {
     },
   ]
 
-  await replaceStoredSmartMoneySnapshot(
-    {
-      positions: [],
-      signals,
-      wallets: [wallet],
-    },
-    new Date('2026-03-29T10:30:00.000Z'),
-    'phase7-alert-tests',
-  )
+    await replaceStoredSmartMoneySnapshot(
+      {
+        positions: [],
+        signals,
+        wallets: [wallet],
+      },
+      new Date('2026-03-29T10:30:00.000Z'),
+      'alert-delivery-tests',
+    )
 
   return signals.map(
     (signal): PulseSmartMoneySignal => ({
@@ -185,7 +185,7 @@ async function seedSmartMoneySignals() {
   )
 }
 
-describe('Phase 7 alert delivery pipeline', () => {
+describe('Alert delivery pipeline', () => {
   test('queues only matching wallet alert deliveries and dedupes repeats', async () => {
     await createWalletAlert('0xAbC123', {
       minScore: 70,

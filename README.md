@@ -52,8 +52,8 @@ By default the root `Makefile` runs Postgres in Docker on `127.0.0.1:54329` and
 passes that connection string to the backend. `make dev` disables the scheduler
 inside the API process and runs it in the dedicated worker instead.
 
-For Phase 7 email delivery, the backend worker will use Resend when these env
-vars are set:
+For email delivery, the backend worker will use Resend when these env vars are
+set:
 
 - `RESEND_API_KEY=...`
 - `PULSE_EMAIL_FROM=alerts@your-domain.com`

@@ -26,7 +26,7 @@ async function verifyLoginCode(email: string, code = AUTH_CODE) {
   })
 }
 
-describe('Phase 7 auth and alerts', () => {
+describe('Auth and alerts', () => {
   test('requests a passwordless login code for a valid email', async () => {
     const response = await requestLoginCode('reader@example.com')
 

@@ -72,7 +72,7 @@ export function AlertsPage() {
       <section className="panel p-5 sm:p-6">
         <SectionHeader
           description={`Email alerts for ${user?.email ?? 'your account'}. Wallet subscriptions fire when a new smart-money signal matches your score and size filters.`}
-          kicker="Phase 7"
+          kicker="Alerts"
           status={isRefreshing ? <RefreshBadge /> : null}
           title="Alert subscriptions"
         />
