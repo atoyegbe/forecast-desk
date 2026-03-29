@@ -346,11 +346,13 @@ img {
     position: relative;
     display: inline-flex;
     align-items: center;
-    height: 40px;
+    margin-right: 2px;
+    border-radius: 5px;
     color: var(--color-text-secondary);
     font-size: 13px;
     font-weight: 500;
-    transition: color 180ms ease;
+    padding: 6px 10px;
+    transition: color 150ms ease;
   }
 
   .nav-link:hover {
@@ -364,12 +366,12 @@ img {
   .nav-link[data-active='true']::after {
     content: '';
     position: absolute;
-    right: 0;
-    bottom: -13px;
-    left: 0;
+    right: 10px;
+    bottom: -15px;
+    left: 10px;
     height: 2px;
-    border-radius: 999px;
-    background: var(--color-brand);
+    border-radius: 1px;
+    background: #00c58e;
   }
 
   .terminal-input {
@@ -436,29 +438,32 @@ img {
   .nav-status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    border-radius: 6px;
-    padding: 5px 10px;
+    gap: 5px;
+    border-radius: 20px;
+    padding: 4px 10px;
   }
 
   .nav-status-pill[data-state='connected'] {
-    border: 1px solid rgba(0, 197, 142, 0.2);
+    border: 1px solid rgba(0, 197, 142, 0.15);
     background: rgba(0, 197, 142, 0.06);
+    color: #00c58e;
   }
 
   .nav-status-pill[data-state='reconnecting'] {
-    border: 1px solid rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.15);
     background: rgba(245, 158, 11, 0.06);
+    color: #f59e0b;
   }
 
   .nav-status-pill[data-state='disconnected'] {
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.15);
     background: rgba(239, 68, 68, 0.06);
+    color: #ef4444;
   }
 
   .nav-status-dot {
-    width: 7px;
-    height: 7px;
+    width: 5px;
+    height: 5px;
     flex-shrink: 0;
     border-radius: 999px;
   }
@@ -479,9 +484,9 @@ img {
   }
 
   .nav-status-label {
-    color: var(--color-text-primary);
+    color: inherit;
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1;
     white-space: nowrap;
   }
@@ -492,7 +497,7 @@ img {
     height: 32px;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--color-border);
+    border: 1px solid transparent;
     border-radius: 6px;
     background: transparent;
     color: var(--color-text-secondary);
@@ -504,40 +509,63 @@ img {
 
   .shell-icon-button:hover,
   .shell-icon-button[data-active='true'] {
-    background: var(--color-bg-hover);
-    border-color: var(--color-border-strong);
+    background: var(--color-bg-surface);
+    border-color: var(--color-border);
     color: var(--color-text-primary);
   }
 
-  .shell-select-wrapper {
+  .shell-divider {
+    width: 1px;
+    height: 20px;
+    flex-shrink: 0;
+    margin: 0 4px;
+    background: var(--color-border-subtle);
+  }
+
+  .shell-alert-dot {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 6px;
+    height: 6px;
+    border: 1.5px solid var(--color-bg-base);
+    border-radius: 999px;
+    background: #00c58e;
+  }
+
+  .shell-sign-in-button {
     display: inline-flex;
     align-items: center;
-  }
-
-  .shell-select {
-    width: 84px;
-    height: 32px;
-    padding: 0 1.75rem 0 0.75rem;
+    justify-content: center;
     border: 1px solid var(--color-border);
     border-radius: 6px;
-    background:
-      linear-gradient(45deg, transparent 50%, var(--color-text-secondary) 50%) calc(100% - 14px) calc(50% - 1px) / 5px 5px no-repeat,
-      linear-gradient(135deg, var(--color-text-secondary) 50%, transparent 50%) calc(100% - 9px) calc(50% - 1px) / 5px 5px no-repeat,
-      transparent;
+    background: transparent;
     color: var(--color-text-primary);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    appearance: none;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease;
   }
 
-  .shell-select:hover {
-    background:
-      linear-gradient(45deg, transparent 50%, var(--color-text-primary) 50%) calc(100% - 14px) calc(50% - 1px) / 5px 5px no-repeat,
-      linear-gradient(135deg, var(--color-text-primary) 50%, transparent 50%) calc(100% - 9px) calc(50% - 1px) / 5px 5px no-repeat,
-      var(--color-bg-hover);
+  .shell-sign-in-button:hover {
     border-color: var(--color-border-strong);
+    background: var(--color-bg-surface);
+  }
+
+  .shell-avatar {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-bg-elevated);
+    color: var(--color-text-secondary);
+    font-family: var(--font-mono);
+    font-size: 12px;
   }
 }
 
@@ -603,7 +631,7 @@ img {
   }
 
   50% {
-    opacity: 0.4;
+    opacity: 0.3;
   }
 }
 
