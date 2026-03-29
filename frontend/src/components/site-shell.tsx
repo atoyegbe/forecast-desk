@@ -41,6 +41,7 @@ const footerNav = [
   { label: 'Markets', to: '/markets' },
   { label: 'Divergence', to: '/divergence' },
   { label: 'Smart Money', to: '/smart-money' },
+  { label: 'Alerts', to: '/alerts' },
   { label: 'About', to: '/' },
 ] as const
 
@@ -429,7 +430,7 @@ export function SiteShell() {
     ? hasActiveAlerts
       ? 'Manage alerts'
       : 'Set up alerts'
-    : 'Sign in to get alerts'
+    : 'Preview alerts'
 
   useEffect(() => {
     if (!isAuthenticated || pendingAction?.type !== 'alerts-route') {
@@ -524,32 +525,15 @@ export function SiteShell() {
             </Link>
 
             <IconButtonTooltip label={bellTooltip}>
-              {isAuthenticated ? (
-                <Link
-                  aria-label={bellTooltip}
-                  className="shell-icon-button relative"
-                  data-active={isAlertsRoute ? 'true' : 'false'}
-                  {...getAlertsRoute()}
-                >
-                  <BellIcon />
-                  {hasActiveAlerts ? <span className="shell-alert-dot" /> : null}
-                </Link>
-              ) : (
-                <button
-                  aria-label={bellTooltip}
-                  className="shell-icon-button relative"
-                  onClick={() => {
-                    openAuthDialog({
-                      pendingAction: {
-                        type: 'alerts-route',
-                      },
-                    })
-                  }}
-                  type="button"
-                >
-                  <BellIcon />
-                </button>
-              )}
+              <Link
+                aria-label={bellTooltip}
+                className="shell-icon-button relative"
+                data-active={isAlertsRoute ? 'true' : 'false'}
+                {...getAlertsRoute()}
+              >
+                <BellIcon />
+                {isAuthenticated && hasActiveAlerts ? <span className="shell-alert-dot" /> : null}
+              </Link>
             </IconButtonTooltip>
 
             <button
