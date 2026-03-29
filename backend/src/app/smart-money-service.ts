@@ -37,6 +37,7 @@ import {
   type StoredSmartMoneyWalletInput,
 } from '../db/smart-money-repository.js'
 import type { PulseEvent } from '../contracts/pulse-events.js'
+import { withSmartMoneyJobLock } from '../db/job-locks.js'
 import {
   discoverPolymarketTradeWallets,
   listPolymarketLeaderboardWallets,
@@ -922,10 +923,15 @@ async function runSmartMoneySnapshotRefresh(force = false) {
   }
 
   snapshotJobRunning = true
-  smartMoneySnapshotRefreshPromise = refreshSmartMoneySnapshot().finally(() => {
-    smartMoneySnapshotRefreshPromise = null
-    snapshotJobRunning = false
-  })
+  smartMoneySnapshotRefreshPromise = withSmartMoneyJobLock(
+    SMART_MONEY_SNAPSHOT_SYNC_KEY,
+    () => refreshSmartMoneySnapshot(),
+  )
+    .then((signals) => signals ?? [])
+    .finally(() => {
+      smartMoneySnapshotRefreshPromise = null
+      snapshotJobRunning = false
+    })
 
   return smartMoneySnapshotRefreshPromise
 }
@@ -955,10 +961,15 @@ async function runSmartMoneySignalWatch(force = false) {
   }
 
   signalWatchJobRunning = true
-  smartMoneySignalWatchPromise = watchSmartMoneySignals().finally(() => {
-    smartMoneySignalWatchPromise = null
-    signalWatchJobRunning = false
-  })
+  smartMoneySignalWatchPromise = withSmartMoneyJobLock(
+    SMART_MONEY_SIGNAL_WATCH_SYNC_KEY,
+    () => watchSmartMoneySignals(),
+  )
+    .then((signals) => signals ?? [])
+    .finally(() => {
+      smartMoneySignalWatchPromise = null
+      signalWatchJobRunning = false
+    })
 
   return smartMoneySignalWatchPromise
 }

@@ -57,7 +57,9 @@ implementation seeds from the public Polymarket leaderboard plus a bounded
 recent-trade discovery pass, enriches those wallets with position and recent
 activity data from the public Data API, scores them locally, stores the
 snapshot in Postgres, and serves a public signal feed, leaderboard, and
-wallet-detail read model from owned routes.
+wallet-detail read model from owned routes. The scheduler can now be moved into
+its own worker process, with Postgres advisory locks guarding the smart-money
+jobs so an API process and worker can safely coexist.
 
 ## Local Setup
 
@@ -65,6 +67,12 @@ wallet-detail read model from owned routes.
 2. Create a local database, for example `createdb naija_pulse`
 3. Run `npm install`
 4. Run `npm run dev`
+
+If you want a dedicated smart-money worker instead of running the scheduler in
+the API process:
+
+1. Start the API with `SMART_MONEY_SCHEDULER_ENABLED=false npm run dev`
+2. Start the worker with `npm run dev:worker`
 
 The backend bootstraps its discovery schema on startup. If `DATABASE_URL` is not
 set, it falls back to `postgresql:///postgres` for local development.

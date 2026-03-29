@@ -4,6 +4,7 @@ import {
   startSmartMoneyScheduler,
   stopSmartMoneyScheduler,
 } from './smart-money-service.js'
+import { isSmartMoneySchedulerEnabled } from '../db/config.js'
 import { closeDbPool } from '../db/pool.js'
 import { ensureDiscoverySchema } from '../db/schema.js'
 import { bayseLiveHub } from '../realtime/bayse-live-hub.js'
@@ -22,7 +23,10 @@ export async function createApp() {
   })
 
   await app.register(websocket)
-  startSmartMoneyScheduler()
+
+  if (isSmartMoneySchedulerEnabled()) {
+    startSmartMoneyScheduler()
+  }
 
   app.addHook('onClose', async () => {
     bayseLiveHub.closeAll()
