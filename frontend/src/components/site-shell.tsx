@@ -19,7 +19,9 @@ import {
   type RuntimeConnectionState,
 } from '../features/runtime/hooks'
 import type { AppSearch } from '../router'
-import { getAlertsRoute } from '../lib/routes'
+import {
+  getAlertsRoute,
+} from '../lib/routes'
 import { AuthDialog } from './auth-dialog'
 import { LiveTicker } from './live-ticker'
 
@@ -27,13 +29,20 @@ const THEME_STORAGE_KEY = 'quorum-theme'
 const LEGACY_THEME_STORAGE_KEY = 'naijapulse-theme'
 
 const primaryNav = [
-  { end: true, label: 'Markets', to: '/' },
+  { label: 'Markets', to: '/markets' },
   { label: 'Divergence', to: '/divergence' },
   { label: 'Smart Money', to: '/smart-money' },
   { label: 'Politics', to: '/categories/politics' },
   { label: 'Sports', to: '/categories/sports' },
   { label: 'Finance', to: '/categories/finance' },
 ]
+
+const footerNav = [
+  { label: 'Markets', to: '/markets' },
+  { label: 'Divergence', to: '/divergence' },
+  { label: 'Smart Money', to: '/smart-money' },
+  { label: 'About', to: '/' },
+] as const
 
 const venueNav = [
   { id: 'all', label: 'All venues' },
@@ -50,7 +59,7 @@ function isVenueFilterId(value: string | null | undefined): value is VenueFilter
 }
 
 function shouldShowVenueFilter(pathname: string) {
-  return pathname === '/' || pathname === '/search' || pathname.startsWith('/categories/')
+  return pathname === '/markets' || pathname === '/search' || pathname.startsWith('/categories/')
 }
 
 function applyProviderSearch(
@@ -72,10 +81,6 @@ function isNavItemActive(
   pathname: string,
   item: (typeof primaryNav)[number],
 ) {
-  if (item.end) {
-    return pathname === item.to
-  }
-
   return pathname === item.to || pathname.startsWith(`${item.to}/`)
 }
 
@@ -361,6 +366,30 @@ function getLiveFreshnessLabel(freshnessLabel: string) {
   return freshnessLabel.replace(/^Updated\s+/i, '')
 }
 
+function GlobalFooter() {
+  return (
+    <footer className="border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-base)] px-5 py-4 md:px-10 md:py-0">
+      <div className="mx-auto flex min-h-[52px] max-w-[1380px] flex-col justify-center gap-[10px] md:flex-row md:items-center md:justify-between">
+        <nav aria-label="Footer" className="flex flex-wrap items-center gap-5">
+          {footerNav.map((item) => (
+            <Link
+              className="text-[12px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[var(--color-text-secondary)]"
+              key={item.to}
+              to={item.to}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <p className="font-mono text-[11px] text-[color:rgba(85,96,104,0.7)]">
+          Quorum is for reading public markets, not placing trades.
+        </p>
+      </div>
+    </footer>
+  )
+}
+
 export function SiteShell() {
   const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
@@ -381,6 +410,7 @@ export function SiteShell() {
     select: (state) => state.location.pathname,
   })
   const search = useSearch({ strict: false })
+  const isLandingRoute = pathname === '/'
   const isAlertsRoute = pathname === '/alerts'
   const isSearchRoute = pathname === '/search'
   const showVenueFilter = shouldShowVenueFilter(pathname)
@@ -437,7 +467,7 @@ export function SiteShell() {
   }, [isUserMenuOpen])
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <a
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--color-bg-elevated)] focus:px-3 focus:py-2 focus:text-sm focus:text-[var(--color-text-primary)]"
         href="#main-content"
@@ -449,9 +479,6 @@ export function SiteShell() {
         <div className="mx-auto flex h-[52px] max-w-[1380px] items-center px-6">
           <Link
             className="mr-8 flex shrink-0 items-center gap-[10px]"
-            search={(current): AppSearch =>
-              applyProviderSearch(current, currentProvider)
-            }
             to="/"
           >
             <img
@@ -646,19 +673,25 @@ export function SiteShell() {
         ) : null}
       </header>
 
-      <div className="mx-auto max-w-[1380px] px-4 py-3 sm:px-6 sm:py-4">
-        <LiveTicker />
+      <div className="flex flex-1 flex-col">
+        {isLandingRoute ? (
+          <main
+            className="flex flex-1 items-center justify-center px-6 py-10"
+            id="main-content"
+          >
+            <Outlet />
+          </main>
+        ) : (
+          <div className="mx-auto flex w-full max-w-[1380px] flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4">
+            <LiveTicker />
 
-        <main className="pb-24 pt-4" id="main-content">
-          <Outlet />
-        </main>
+            <main className="flex-1 pb-24 pt-4" id="main-content">
+              <Outlet />
+            </main>
+          </div>
+        )}
 
-        <footer className="mt-6 flex flex-col gap-2 border-t border-[var(--color-border-subtle)] px-1 pt-4 text-sm text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
-          <p>Owned market API, stored history, compare, and backend live fan-out.</p>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-tertiary)]">
-            Quorum is for reading public markets, not placing trades.
-          </p>
-        </footer>
+        <GlobalFooter />
       </div>
 
       <nav

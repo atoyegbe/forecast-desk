@@ -12,6 +12,7 @@ import {
 } from '@tanstack/react-router'
 import { RouteLoadingState } from './components/loading-state'
 import { SiteShell } from './components/site-shell'
+import { LandingPage } from './routes/landing-page'
 import { HomePage } from './routes/home-page'
 
 export type AppSearch = Record<string, string | undefined>
@@ -79,9 +80,15 @@ const rootRoute = createRootRoute({
   },
 })
 
-const homeRoute = createRoute({
+const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
+  component: LandingPage,
+})
+
+const marketsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'markets',
   component: HomePage,
 })
 
@@ -152,7 +159,8 @@ const smartMoneyWalletRoute = createRoute({
 })
 
 const routeTree = rootRoute.addChildren([
-  homeRoute,
+  landingRoute,
+  marketsRoute,
   eventRoute,
   eventSlugRoute,
   eventCompareRoute,

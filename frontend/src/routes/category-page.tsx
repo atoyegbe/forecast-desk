@@ -37,7 +37,10 @@ import {
   formatDate,
   formatProbability,
 } from '../lib/format'
-import { getEventRoute } from '../lib/routes'
+import {
+  getEventRoute,
+  getMarketsRoute,
+} from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 import type {
   PulseEvent,
@@ -128,7 +131,7 @@ export function CategoryPage() {
         <p className="text-lg text-[var(--color-down)]">That category desk does not exist yet.</p>
         <Link
           className="terminal-button mt-4 text-sm font-medium"
-          to="/"
+          {...getMarketsRoute()}
         >
           Back to markets
         </Link>
@@ -189,7 +192,7 @@ export function CategoryPage() {
           <div className="space-y-5">
             <Link
               className="section-kicker hover:text-[var(--color-text-primary)]"
-              to="/"
+              {...getMarketsRoute()}
             >
               Markets
             </Link>

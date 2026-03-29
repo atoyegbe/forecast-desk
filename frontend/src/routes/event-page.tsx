@@ -48,6 +48,7 @@ import {
   getCategoryRoute,
   getEventCompareRoute,
   getEventRoute,
+  getMarketsRoute,
 } from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 
@@ -251,7 +252,7 @@ export function EventPage() {
         </p>
         <Link
           className="terminal-button mt-4 text-sm font-medium"
-          to="/"
+          {...getMarketsRoute()}
         >
           Back to markets
         </Link>

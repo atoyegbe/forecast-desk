@@ -26,6 +26,7 @@ import {
 import { formatCompactNumber } from '../lib/format'
 import {
   getCategoryRoute,
+  getMarketsRoute,
 } from '../lib/routes'
 import type { AppSearch } from '../router'
 import type { PulseProvider } from '../features/events/types'
@@ -366,7 +367,7 @@ export function SearchPage() {
                     />
                     <Link
                       className="terminal-button text-sm font-medium"
-                      to="/"
+                      {...getMarketsRoute()}
                     >
                       Back to markets
                     </Link>
