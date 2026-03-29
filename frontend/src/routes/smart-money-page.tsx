@@ -99,6 +99,10 @@ function getJobLabel(job: PulseSmartMoneyJobStatus['job']) {
 }
 
 function getJobToneClass(job: PulseSmartMoneyJobStatus) {
+  if (job.isBackoffActive) {
+    return 'text-[#f59e0b]'
+  }
+
   if (job.lastError || job.isStale) {
     return 'text-[var(--color-down)]'
   }
@@ -111,6 +115,10 @@ function getJobToneClass(job: PulseSmartMoneyJobStatus) {
 }
 
 function getJobStateLabel(job: PulseSmartMoneyJobStatus) {
+  if (job.isBackoffActive) {
+    return 'Backing off'
+  }
+
   if (job.lastError) {
     return 'Degraded'
   }
@@ -124,6 +132,55 @@ function getJobStateLabel(job: PulseSmartMoneyJobStatus) {
   }
 
   return 'Healthy'
+}
+
+function formatRuntimeDuration(durationMs: number | null | undefined) {
+  if (!durationMs || durationMs <= 0) {
+    return '—'
+  }
+
+  if (durationMs < 1000) {
+    return `${durationMs}ms`
+  }
+
+  const seconds = durationMs / 1000
+
+  if (seconds < 60) {
+    return `${seconds.toFixed(seconds >= 10 ? 0 : 1)}s`
+  }
+
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = Math.round(seconds % 60)
+
+  return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`
+}
+
+function formatFutureRunLabel(value: string | null | undefined) {
+  if (!value) {
+    return null
+  }
+
+  const diffMs = new Date(value).getTime() - Date.now()
+
+  if (!Number.isFinite(diffMs) || diffMs <= 0) {
+    return null
+  }
+
+  const diffSeconds = Math.ceil(diffMs / 1000)
+
+  if (diffSeconds < 60) {
+    return `Retry in ${diffSeconds}s`
+  }
+
+  const diffMinutes = Math.ceil(diffSeconds / 60)
+
+  if (diffMinutes < 60) {
+    return `Retry in ${diffMinutes}m`
+  }
+
+  const diffHours = Math.ceil(diffMinutes / 60)
+
+  return `Retry in ${diffHours}h`
 }
 
 function RangeFilter({
@@ -404,6 +461,20 @@ export function SmartMoneyPage() {
                         ? `Last success ${formatTimeAgo(job.lastSuccessAt)}`
                         : 'No successful run yet'}
                     </div>
+                    <div className="mt-2 text-[11px] leading-5 text-[var(--color-text-tertiary)]">
+                      {job.attemptCount} runs · {job.successCount} ok · {job.failureCount} failed
+                    </div>
+                    <div className="mt-1 text-[11px] leading-5 text-[var(--color-text-tertiary)]">
+                      Last run {formatRuntimeDuration(job.lastDurationMs)}
+                      {job.consecutiveFailureCount > 0
+                        ? ` · ${job.consecutiveFailureCount} consecutive fail`
+                        : ''}
+                    </div>
+                    {job.isBackoffActive ? (
+                      <div className="mt-1 text-[11px] leading-5 text-[#f59e0b]">
+                        {formatFutureRunLabel(job.nextAllowedRunAt) ?? 'Retry scheduled'}
+                      </div>
+                    ) : null}
                     {job.lastError ? (
                       <div className="mt-2 line-clamp-2 text-[12px] leading-5 text-[var(--color-down)]">
                         {job.lastError}

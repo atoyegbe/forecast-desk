@@ -54,6 +54,7 @@ import { invalidateCachedResponses } from './response-cache.js'
 
 const SMART_MONEY_SIGNAL_WATCH_SYNC_KEY = 'smart-money-signal-watch'
 const SMART_MONEY_SNAPSHOT_SYNC_KEY = 'smart-money-snapshot'
+const MAX_SMART_MONEY_BACKOFF_MS = 60 * 60 * 1000
 let smartMoneySignalWatchPromise: Promise<PulseSmartMoneySignal[]> | null = null
 let smartMoneySnapshotRefreshPromise: Promise<PulseSmartMoneySignal[]> | null = null
 let signalWatchJobRunning = false
@@ -124,6 +125,62 @@ function isSmartMoneySyncStale(
   }
 
   return Date.now() - parsedTimestamp >= intervalMs
+}
+
+function isFutureTimestamp(value: string | null | undefined) {
+  if (!value) {
+    return false
+  }
+
+  const parsedTimestamp = new Date(value).getTime()
+
+  if (Number.isNaN(parsedTimestamp)) {
+    return false
+  }
+
+  return parsedTimestamp > Date.now()
+}
+
+function calculateBackoffDelayMs(
+  consecutiveFailureCount: number,
+  intervalMs: number,
+) {
+  if (consecutiveFailureCount <= 0) {
+    return 0
+  }
+
+  return Math.min(
+    intervalMs * 2 ** Math.max(0, consecutiveFailureCount - 1),
+    MAX_SMART_MONEY_BACKOFF_MS,
+  )
+}
+
+async function recordSmartMoneyJobFailure(
+  input: {
+    attemptedAt: Date
+    error: unknown
+    intervalMs: number
+    syncKey: string
+  },
+) {
+  const finishedAt = new Date()
+  const currentState = await getSmartMoneySyncState(input.syncKey)
+  const consecutiveFailureCount =
+    (currentState?.consecutiveFailureCount ?? 0) + 1
+  const backoffDelayMs = calculateBackoffDelayMs(
+    consecutiveFailureCount,
+    input.intervalMs,
+  )
+
+  await recordSmartMoneySyncFailure(
+    input.syncKey,
+    getErrorMessage(input.error),
+    input.attemptedAt,
+    Math.max(0, finishedAt.getTime() - input.attemptedAt.getTime()),
+    backoffDelayMs > 0
+      ? new Date(finishedAt.getTime() + backoffDelayMs)
+      : null,
+  )
 }
 
 function inferCategoryFromLabel(label: string) {
@@ -757,15 +814,17 @@ async function refreshSmartMoneySnapshot() {
     await recordSmartMoneySyncSuccess(
       SMART_MONEY_SNAPSHOT_SYNC_KEY,
       attemptedAt,
+      Math.max(0, Date.now() - attemptedAt.getTime()),
     )
 
     return [] as PulseSmartMoneySignal[]
   } catch (error) {
-    await recordSmartMoneySyncFailure(
-      SMART_MONEY_SNAPSHOT_SYNC_KEY,
-      getErrorMessage(error),
+    await recordSmartMoneyJobFailure({
       attemptedAt,
-    )
+      error,
+      intervalMs: getSmartMoneySnapshotRefreshIntervalMs(),
+      syncKey: SMART_MONEY_SNAPSHOT_SYNC_KEY,
+    })
     throw error
   }
 }
@@ -783,6 +842,7 @@ async function watchSmartMoneySignals() {
       await recordSmartMoneySyncSuccess(
         SMART_MONEY_SIGNAL_WATCH_SYNC_KEY,
         attemptedAt,
+        Math.max(0, Date.now() - attemptedAt.getTime()),
       )
 
       return [] as PulseSmartMoneySignal[]
@@ -809,6 +869,7 @@ async function watchSmartMoneySignals() {
     await recordSmartMoneySyncSuccess(
       SMART_MONEY_SIGNAL_WATCH_SYNC_KEY,
       attemptedAt,
+      Math.max(0, Date.now() - attemptedAt.getTime()),
     )
 
     if (!insertedSignalIds.length) {
@@ -822,11 +883,12 @@ async function watchSmartMoneySignals() {
 
     return nextSignals
   } catch (error) {
-    await recordSmartMoneySyncFailure(
-      SMART_MONEY_SIGNAL_WATCH_SYNC_KEY,
-      getErrorMessage(error),
+    await recordSmartMoneyJobFailure({
       attemptedAt,
-    )
+      error,
+      intervalMs: getSmartMoneySignalWatchIntervalMs(),
+      syncKey: SMART_MONEY_SIGNAL_WATCH_SYNC_KEY,
+    })
     throw error
   }
 }
@@ -840,6 +902,13 @@ async function runSmartMoneySnapshotRefresh(force = false) {
     countStoredSmartMoneyWallets(),
     getSmartMoneySyncState(SMART_MONEY_SNAPSHOT_SYNC_KEY),
   ])
+
+  if (
+    !force &&
+    isFutureTimestamp(state?.nextAllowedRunAt)
+  ) {
+    return [] as PulseSmartMoneySignal[]
+  }
 
   if (
     !force &&
@@ -867,6 +936,13 @@ async function runSmartMoneySignalWatch(force = false) {
   }
 
   const state = await getSmartMoneySyncState(SMART_MONEY_SIGNAL_WATCH_SYNC_KEY)
+
+  if (
+    !force &&
+    isFutureTimestamp(state?.nextAllowedRunAt)
+  ) {
+    return [] as PulseSmartMoneySignal[]
+  }
 
   if (
     !force &&
@@ -969,13 +1045,20 @@ function toJobStatus(
   intervalMs: number,
 ) {
   return {
+    attemptCount: state?.attemptCount ?? 0,
+    consecutiveFailureCount: state?.consecutiveFailureCount ?? 0,
+    failureCount: state?.failureCount ?? 0,
     intervalMs,
+    isBackoffActive: isFutureTimestamp(state?.nextAllowedRunAt),
     isRunning,
     isStale: isSmartMoneySyncStale(state?.lastSuccessAt, intervalMs),
+    lastDurationMs: state?.lastDurationMs ?? null,
     job,
     lastError: state?.lastError ?? null,
     lastRunAt: state?.lastRunAt ?? null,
     lastSuccessAt: state?.lastSuccessAt ?? null,
+    nextAllowedRunAt: state?.nextAllowedRunAt ?? null,
+    successCount: state?.successCount ?? 0,
   } satisfies PulseSmartMoneyJobStatus
 }
 

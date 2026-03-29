@@ -132,14 +132,52 @@ CREATE INDEX IF NOT EXISTS idx_pulse_event_link_members_event
 
 CREATE TABLE IF NOT EXISTS pulse_smart_money_sync_state (
   sync_key TEXT PRIMARY KEY,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  consecutive_failure_count INTEGER NOT NULL DEFAULT 0,
+  failure_count INTEGER NOT NULL DEFAULT 0,
+  last_duration_ms INTEGER,
   last_error TEXT,
   last_run_at TIMESTAMPTZ,
   last_success_at TIMESTAMPTZ,
+  next_allowed_run_at TIMESTAMPTZ,
+  success_count INTEGER NOT NULL DEFAULT 0,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE pulse_smart_money_sync_state
   ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMPTZ;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS attempt_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS consecutive_failure_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS failure_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS last_duration_ms INTEGER;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS next_allowed_run_at TIMESTAMPTZ;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS success_count INTEGER NOT NULL DEFAULT 0;
+
+UPDATE pulse_smart_money_sync_state
+SET
+  attempt_count = CASE
+    WHEN attempt_count = 0 AND last_run_at IS NOT NULL THEN 1
+    ELSE attempt_count
+  END,
+  success_count = CASE
+    WHEN success_count = 0 AND last_success_at IS NOT NULL THEN 1
+    ELSE success_count
+  END,
+  failure_count = CASE
+    WHEN failure_count = 0 AND last_error IS NOT NULL AND last_success_at IS NULL THEN 1
+    ELSE failure_count
+  END,
+  consecutive_failure_count = CASE
+    WHEN consecutive_failure_count = 0 AND last_error IS NOT NULL AND last_success_at IS NULL
+      THEN 1
+    ELSE consecutive_failure_count
+  END;
 
 CREATE TABLE IF NOT EXISTS pulse_smart_money_wallets (
   address TEXT PRIMARY KEY,

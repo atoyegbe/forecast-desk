@@ -86,9 +86,15 @@ type SignalRow = {
 }
 
 export type SmartMoneySyncState = {
+  attemptCount: number
+  consecutiveFailureCount: number
+  failureCount: number
+  lastDurationMs?: number | null
   lastError?: string | null
   lastRunAt?: string | null
   lastSuccessAt?: string | null
+  nextAllowedRunAt?: string | null
+  successCount: number
   syncKey: string
 }
 
@@ -555,16 +561,28 @@ export async function listStoredSmartMoneyWalletAddresses(limit: number) {
 
 export async function getSmartMoneySyncState(syncKey = 'smart-money') {
   const result = await getDbPool().query<{
+    attempt_count: number | string
+    consecutive_failure_count: number | string
+    failure_count: number | string
+    last_duration_ms: number | string | null
     last_error: string | null
     last_run_at: Date | string | null
     last_success_at: Date | string | null
+    next_allowed_run_at: Date | string | null
+    success_count: number | string
     sync_key: string
   }>(
     `
       SELECT
+        attempt_count,
+        consecutive_failure_count,
+        failure_count,
+        last_duration_ms,
         last_error,
         last_run_at,
         last_success_at,
+        next_allowed_run_at,
+        success_count,
         sync_key
       FROM pulse_smart_money_sync_state
       WHERE sync_key = $1
@@ -578,9 +596,20 @@ export async function getSmartMoneySyncState(syncKey = 'smart-money') {
   }
 
   return {
+    attemptCount: parsePositiveInteger(row.attempt_count, 0),
+    consecutiveFailureCount: parsePositiveInteger(
+      row.consecutive_failure_count,
+      0,
+    ),
+    failureCount: parsePositiveInteger(row.failure_count, 0),
+    lastDurationMs: row.last_duration_ms == null
+      ? null
+      : parsePositiveInteger(row.last_duration_ms, 0),
     lastError: row.last_error,
     lastRunAt: toIsoString(row.last_run_at),
     lastSuccessAt: toIsoString(row.last_success_at),
+    nextAllowedRunAt: toIsoString(row.next_allowed_run_at),
+    successCount: parsePositiveInteger(row.success_count, 0),
     syncKey: row.sync_key,
   } satisfies SmartMoneySyncState
 }
@@ -588,9 +617,15 @@ export async function getSmartMoneySyncState(syncKey = 'smart-money') {
 export async function recordSmartMoneySyncAttempt(syncKey: string, timestamp: Date) {
   await getDbPool().query(
     `
-      INSERT INTO pulse_smart_money_sync_state (sync_key, last_run_at, updated_at)
-      VALUES ($1, $2, NOW())
+      INSERT INTO pulse_smart_money_sync_state (
+        sync_key,
+        attempt_count,
+        last_run_at,
+        updated_at
+      )
+      VALUES ($1, 1, $2, NOW())
       ON CONFLICT (sync_key) DO UPDATE SET
+        attempt_count = pulse_smart_money_sync_state.attempt_count + 1,
         last_run_at = EXCLUDED.last_run_at,
         updated_at = NOW()
     `,
@@ -598,24 +633,36 @@ export async function recordSmartMoneySyncAttempt(syncKey: string, timestamp: Da
   )
 }
 
-export async function recordSmartMoneySyncSuccess(syncKey: string, timestamp: Date) {
+export async function recordSmartMoneySyncSuccess(
+  syncKey: string,
+  timestamp: Date,
+  durationMs: number,
+) {
   await getDbPool().query(
     `
       INSERT INTO pulse_smart_money_sync_state (
         sync_key,
         last_run_at,
+        last_duration_ms,
         last_success_at,
         last_error,
+        next_allowed_run_at,
+        success_count,
+        consecutive_failure_count,
         updated_at
       )
-      VALUES ($1, $2, $2, NULL, NOW())
+      VALUES ($1, $2, $3, $2, NULL, NULL, 1, 0, NOW())
       ON CONFLICT (sync_key) DO UPDATE SET
         last_run_at = EXCLUDED.last_run_at,
+        last_duration_ms = EXCLUDED.last_duration_ms,
         last_success_at = EXCLUDED.last_success_at,
         last_error = NULL,
+        next_allowed_run_at = NULL,
+        success_count = pulse_smart_money_sync_state.success_count + 1,
+        consecutive_failure_count = 0,
         updated_at = NOW()
     `,
-    [syncKey, timestamp.toISOString()],
+    [syncKey, timestamp.toISOString(), durationMs],
   )
 }
 
@@ -623,17 +670,38 @@ export async function recordSmartMoneySyncFailure(
   syncKey: string,
   message: string,
   timestamp: Date,
+  durationMs: number,
+  nextAllowedRunAt: Date | null,
 ) {
   await getDbPool().query(
     `
-      INSERT INTO pulse_smart_money_sync_state (sync_key, last_run_at, last_error, updated_at)
-      VALUES ($1, $2, $3, NOW())
+      INSERT INTO pulse_smart_money_sync_state (
+        sync_key,
+        consecutive_failure_count,
+        failure_count,
+        last_duration_ms,
+        last_run_at,
+        last_error,
+        next_allowed_run_at,
+        updated_at
+      )
+      VALUES ($1, 1, 1, $3, $2, $4, $5, NOW())
       ON CONFLICT (sync_key) DO UPDATE SET
+        consecutive_failure_count = pulse_smart_money_sync_state.consecutive_failure_count + 1,
+        failure_count = pulse_smart_money_sync_state.failure_count + 1,
+        last_duration_ms = EXCLUDED.last_duration_ms,
         last_run_at = EXCLUDED.last_run_at,
         last_error = EXCLUDED.last_error,
+        next_allowed_run_at = EXCLUDED.next_allowed_run_at,
         updated_at = NOW()
     `,
-    [syncKey, timestamp.toISOString(), message],
+    [
+      syncKey,
+      timestamp.toISOString(),
+      durationMs,
+      message,
+      nextAllowedRunAt?.toISOString() ?? null,
+    ],
   )
 }
 
