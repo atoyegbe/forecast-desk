@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useDisplayCurrency } from '../features/currency/context'
+import { getEventMoneyUnit } from '../features/currency/money'
 import { useEventsQuery } from '../features/events/hooks'
 import {
   EMPTY_EVENTS,
@@ -8,7 +10,6 @@ import {
   sortByVolume,
 } from '../features/events/insights'
 import {
-  formatCompactNumber,
   formatProbability,
 } from '../lib/format'
 import { getEventRoute } from '../lib/routes'
@@ -23,6 +24,7 @@ function truncateTitle(title: string, maxLength = 40) {
 }
 
 function TickerItem({ event }: { event: (typeof EMPTY_EVENTS)[number] }) {
+  const { formatMoney } = useDisplayCurrency()
   const yesPrice = getYesPrice(event)
 
   return (
@@ -50,7 +52,7 @@ function TickerItem({ event }: { event: (typeof EMPTY_EVENTS)[number] }) {
         {formatProbability(yesPrice)}
       </span>
       <span className="mono-data text-[11px] text-[var(--color-text-secondary)]">
-        {formatCompactNumber(event.totalVolume)}
+        {formatMoney(event.totalVolume, getEventMoneyUnit(event))}
       </span>
     </Link>
   )

@@ -8,6 +8,11 @@ import { PlatformBadge } from '../components/platform-badge'
 import { PriceDisplay } from '../components/price-display'
 import { PriceHistoryChart } from '../components/price-history-chart'
 import { SectionHeader } from '../components/section-header'
+import { useDisplayCurrency } from '../features/currency/context'
+import {
+  getEventMoneyUnit,
+  getProviderMoneyUnit,
+} from '../features/currency/money'
 import { getProviderLabel } from '../features/events/provider-ids'
 import { useLiveEventPrices } from '../features/events/live'
 import {
@@ -112,6 +117,7 @@ function MarketBoardRow({
   market: PulseMarket
   provider: PulseProvider
 }) {
+  const { formatMoney } = useDisplayCurrency()
   const secondaryMetricLabel =
     market.totalOrders > 0 ? 'Orders' : 'Liquidity'
   const secondaryMetricValue =
@@ -183,7 +189,9 @@ function MarketBoardRow({
         <div className="text-left xl:text-right">
           <div className="stat-label">{secondaryMetricLabel}</div>
           <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-            {formatCompactNumber(secondaryMetricValue)}
+            {market.totalOrders > 0
+              ? formatCompactNumber(secondaryMetricValue)
+              : formatMoney(secondaryMetricValue, getProviderMoneyUnit(provider))}
           </div>
         </div>
 
@@ -194,7 +202,7 @@ function MarketBoardRow({
           <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
             {market.totalOrders > 0
               ? `${market.feePercentage}%`
-              : formatCompactNumber(market.totalVolume)}
+              : formatMoney(market.totalVolume, getProviderMoneyUnit(provider))}
           </div>
         </div>
       </div>
@@ -203,6 +211,7 @@ function MarketBoardRow({
 }
 
 export function EventPage() {
+  const { formatMoney } = useDisplayCurrency()
   const eventId = useParams({
     strict: false,
     select: (params) => ('eventId' in params ? params.eventId : undefined),
@@ -354,11 +363,11 @@ export function EventPage() {
               </div>
               <div className="metric-card">
                 <div className="stat-label">Total volume</div>
-                <strong>{formatCompactNumber(event.totalVolume)}</strong>
+                <strong>{formatMoney(event.totalVolume, getEventMoneyUnit(event))}</strong>
               </div>
               <div className="metric-card">
                 <div className="stat-label">Liquidity</div>
-                <strong>{formatCompactNumber(event.liquidity)}</strong>
+                <strong>{formatMoney(event.liquidity, getEventMoneyUnit(event))}</strong>
               </div>
               <div className="metric-card">
                 <div className="stat-label">Resolves</div>
@@ -586,7 +595,10 @@ export function EventPage() {
                         <div className="text-left lg:text-right">
                           <div className="stat-label">Volume</div>
                           <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-                            {formatCompactNumber(comparedEvent.totalVolume)}
+                            {formatMoney(
+                              comparedEvent.totalVolume,
+                              getEventMoneyUnit(comparedEvent.event),
+                            )}
                           </div>
                         </div>
 

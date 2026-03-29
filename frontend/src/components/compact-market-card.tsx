@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
+import { useDisplayCurrency } from '../features/currency/context'
+import { getEventMoneyUnit } from '../features/currency/money'
 import type { PulseEvent } from '../features/events/types'
 import {
-  formatCompactNumber,
   formatDate,
   formatProbability,
 } from '../lib/format'
@@ -13,6 +14,7 @@ type CompactMarketCardProps = {
 }
 
 export function CompactMarketCard({ event }: CompactMarketCardProps) {
+  const { formatMoney } = useDisplayCurrency()
   const yesPrice = event.markets[0]?.yesOutcome.price ?? 0
   const noPrice = event.markets[0]?.noOutcome.price ?? 0
 
@@ -45,7 +47,9 @@ export function CompactMarketCard({ event }: CompactMarketCardProps) {
 
       <div className="mt-4 flex items-center justify-between gap-3 text-[12px] text-[var(--color-text-secondary)]">
         <span>Resolves {formatDate(event.resolutionDate)}</span>
-        <span className="mono-data">{formatCompactNumber(event.totalVolume)}</span>
+        <span className="mono-data">
+          {formatMoney(event.totalVolume, getEventMoneyUnit(event))}
+        </span>
       </div>
 
       <div className="mt-3 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">

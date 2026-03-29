@@ -9,6 +9,8 @@ import { DivergenceBar } from '../components/divergence-bar'
 import { PlatformBadge } from '../components/platform-badge'
 import { PriceDisplay } from '../components/price-display'
 import { SectionHeader } from '../components/section-header'
+import { useDisplayCurrency } from '../features/currency/context'
+import { getEventMoneyUnit } from '../features/currency/money'
 import { getProviderLabel } from '../features/events/provider-ids'
 import {
   useEventCompareQuery,
@@ -53,6 +55,7 @@ function getComparisonExplainer(providers: PulseProvider[]) {
 }
 
 export function EventComparePage() {
+  const { formatMoney } = useDisplayCurrency()
   const eventId = useParams({
     strict: false,
     select: (params) => ('eventId' in params ? params.eventId : undefined),
@@ -250,16 +253,16 @@ export function EventComparePage() {
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div>
+                  <div>
                   <div className="stat-label">Volume</div>
                   <div className="mono-data mt-1 text-sm text-[var(--color-text-primary)]">
-                    {formatCompactNumber(item.totalVolume)}
+                    {formatMoney(item.totalVolume, getEventMoneyUnit(item.event))}
                   </div>
                 </div>
                 <div>
                   <div className="stat-label">Liquidity</div>
                   <div className="mono-data mt-1 text-sm text-[var(--color-text-primary)]">
-                    {formatCompactNumber(item.liquidity)}
+                    {formatMoney(item.liquidity, getEventMoneyUnit(item.event))}
                   </div>
                 </div>
                 <div>

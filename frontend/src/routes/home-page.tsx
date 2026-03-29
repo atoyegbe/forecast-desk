@@ -11,6 +11,8 @@ import { PlatformBadge } from '../components/platform-badge'
 import { ScoreBadge } from '../components/score-badge'
 import { SectionHeader } from '../components/section-header'
 import { SignalCard } from '../components/signal-card'
+import { useDisplayCurrency } from '../features/currency/context'
+import { getEventMoneyUnit } from '../features/currency/money'
 import { getProviderLabel } from '../features/events/provider-ids'
 import {
   useDivergenceQuery,
@@ -36,7 +38,6 @@ import {
   sortByVolume,
 } from '../features/events/insights'
 import {
-  formatCompactCurrency,
   formatCompactNumber,
   formatProbabilityPoints,
   formatSignedProbabilityChange,
@@ -128,6 +129,7 @@ function getBoardCategory(category: string) {
 
 export function HomePage() {
   useSmartMoneyLiveSignals()
+  const { formatMoney } = useDisplayCurrency()
   const [activeCategory, setActiveCategory] = useState('All')
   const [activeTabId, setActiveTabId] = useUrlSelection({
     fallback: 'briefing',
@@ -273,7 +275,7 @@ export function HomePage() {
                 {formatCompactNumber(smartMoneySignals.length)} recent signals
               </span>
               <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
-                {formatCompactCurrency(smartMoneyFlow)} tracked size
+                {formatMoney(smartMoneyFlow)} tracked size
               </span>
             </div>
 
@@ -646,7 +648,9 @@ export function HomePage() {
                   <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-[var(--color-text-secondary)]">
                     <span>{desk.venueLabel}</span>
                     <span className="mono-data">
-                      {formatCompactNumber(desk.lead?.totalVolume ?? 0)}
+                      {desk.lead
+                        ? formatMoney(desk.lead.totalVolume, getEventMoneyUnit(desk.lead))
+                        : '—'}
                     </span>
                   </div>
                 </Link>

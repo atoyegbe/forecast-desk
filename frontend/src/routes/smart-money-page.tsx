@@ -2,6 +2,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { ScoreBadge } from '../components/score-badge'
 import { SmartMoneyFeedCard } from '../components/smart-money-feed-card'
+import { useDisplayCurrency } from '../features/currency/context'
 import {
   useSmartMoneyLiveSignals,
   useSmartMoneySignalsQuery,
@@ -14,7 +15,6 @@ import type {
 } from '../features/smart-money/types'
 import {
   formatCategory,
-  formatCompactCurrency,
   formatSignedPercent,
   formatSignedProbabilityChange,
   formatTimeAgo,
@@ -227,6 +227,7 @@ function LatestActivityRow({ signal }: { signal: PulseSmartMoneySignal }) {
 
 export function SmartMoneyPage() {
   useSmartMoneyLiveSignals()
+  const { formatMoney } = useDisplayCurrency()
   const navigate = useNavigate()
   const search = useSearch({ strict: false })
   const activeCategory = getSearchValue(search.category) || 'All'
@@ -365,7 +366,7 @@ export function SmartMoneyPage() {
                   Capital tracked
                 </div>
                 <div className="mono-data mt-2 text-[22px] font-medium text-[var(--color-text-primary)]">
-                  {formatCompactCurrency(totalSignalSize)}
+                  {formatMoney(totalSignalSize)}
                 </div>
                 <div className="mono-data mt-1 text-[11px] text-[var(--color-text-tertiary)]">
                   Across visible signals
@@ -395,7 +396,7 @@ export function SmartMoneyPage() {
                 </div>
                 <div className="mono-data mt-1 text-[11px] text-[var(--color-text-tertiary)]">
                   {topSignal
-                    ? `${formatCompactCurrency(topSignal.size)} · score ${topSignal.walletScore}`
+                    ? `${formatMoney(topSignal.size)} · score ${topSignal.walletScore}`
                     : 'No active signal yet'}
                 </div>
               </div>
@@ -426,7 +427,7 @@ export function SmartMoneyPage() {
 
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
                 <RangeFilter
-                  formatValue={(value) => formatCompactCurrency(value)}
+                  formatValue={(value) => formatMoney(value)}
                   label="Min position size"
                   max={5000}
                   onChange={(value) => updateSearch({ minSize: String(value) })}

@@ -1,10 +1,10 @@
 import { Link } from '@tanstack/react-router'
+import { useDisplayCurrency } from '../features/currency/context'
 import { PlatformBadge } from './platform-badge'
 import { PriceDisplay } from './price-display'
 import { ScoreBadge } from './score-badge'
 import type { PulseSmartMoneySignal } from '../features/smart-money/types'
 import {
-  formatCompactCurrency,
   formatSignedProbabilityChange,
   formatTimeAgo,
 } from '../lib/format'
@@ -18,6 +18,7 @@ type SignalCardProps = {
 }
 
 export function SignalCard({ signal }: SignalCardProps) {
+  const { formatMoney } = useDisplayCurrency()
   const walletLabel = signal.walletDisplayName || signal.walletShortAddress
   const deltaClass =
     signal.priceDelta > 0
@@ -65,7 +66,7 @@ export function SignalCard({ signal }: SignalCardProps) {
               @ <PriceDisplay size="sm" value={signal.entryPrice} />
             </span>
             <span>
-              Position: <span className="mono-data text-[var(--color-text-primary)]">{formatCompactCurrency(signal.size)}</span>
+              Position: <span className="mono-data text-[var(--color-text-primary)]">{formatMoney(signal.size)}</span>
             </span>
           </div>
         </div>

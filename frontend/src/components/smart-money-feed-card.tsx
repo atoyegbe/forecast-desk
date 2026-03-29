@@ -1,9 +1,9 @@
 import clsx from 'clsx'
 import { Link } from '@tanstack/react-router'
+import { useDisplayCurrency } from '../features/currency/context'
 import { PlatformBadge } from './platform-badge'
 import type { PulseSmartMoneySignal } from '../features/smart-money/types'
 import {
-  formatCompactCurrency,
   formatDate,
   formatProbability,
   formatSignedProbabilityChange,
@@ -87,20 +87,6 @@ function getTemperatureStyles(temperature: SignalTemperature) {
   }
 }
 
-function formatSignedCompactCurrency(value: number) {
-  const absolute = formatCompactCurrency(Math.abs(value))
-
-  if (value > 0) {
-    return `+${absolute}`
-  }
-
-  if (value < 0) {
-    return `-${absolute}`
-  }
-
-  return absolute
-}
-
 function getPnlValue(signal: PulseSmartMoneySignal) {
   if (
     !Number.isFinite(signal.currentPrice) ||
@@ -128,6 +114,10 @@ function getDeltaClassName(delta: number) {
 }
 
 export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
+  const {
+    formatMoney,
+    formatMoneyChange,
+  } = useDisplayCurrency()
   const walletLabel = signal.walletDisplayName || signal.walletShortAddress
   const temperature = getSignalTemperature(signal)
   const temperatureStyles = getTemperatureStyles(temperature)
@@ -199,7 +189,7 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
               </span>
               <span className="text-[var(--color-text-tertiary)]">·</span>
               <span className="mono-data font-medium text-[var(--color-text-primary)]">
-                {formatCompactCurrency(signal.size)}
+                {formatMoney(signal.size)}
               </span>
             </div>
 
@@ -242,7 +232,7 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
                         : 'text-[var(--color-text-secondary)]',
                 )}
               >
-                {pnlValue === null ? '—' : formatSignedCompactCurrency(pnlValue)}
+                {pnlValue === null ? '—' : formatMoneyChange(pnlValue)}
               </span>
             </div>
           </div>

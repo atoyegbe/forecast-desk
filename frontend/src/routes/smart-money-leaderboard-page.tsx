@@ -1,11 +1,16 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { ScoreBadge } from '../components/score-badge'
 import { SectionHeader } from '../components/section-header'
+import { useDisplayCurrency } from '../features/currency/context'
 import {
   useSmartMoneyLiveSignals,
   useSmartMoneyWalletsQuery,
 } from '../features/smart-money/hooks'
-import { formatCompactCurrency, formatCompactNumber, formatSignedPercent, formatTimeAgo } from '../lib/format'
+import {
+  formatCompactNumber,
+  formatSignedPercent,
+  formatTimeAgo,
+} from '../lib/format'
 import { getSmartMoneyWalletRoute } from '../lib/routes'
 import type { AppSearch } from '../router'
 
@@ -15,6 +20,7 @@ function getSearchValue(value: unknown) {
 
 export function SmartMoneyLeaderboardPage() {
   useSmartMoneyLiveSignals()
+  const { formatMoney } = useDisplayCurrency()
   const navigate = useNavigate()
   const search = useSearch({ strict: false })
   const minScore = Number.parseInt(getSearchValue(search.minScore) || '50', 10)
@@ -98,7 +104,7 @@ export function SmartMoneyLeaderboardPage() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="section-kicker">Minimum volume</span>
                   <span className="mono-data text-xs text-[var(--color-text-primary)]">
-                    {formatCompactCurrency(minVolume)}
+                    {formatMoney(minVolume)}
                   </span>
                 </div>
                 <input
@@ -167,7 +173,7 @@ export function SmartMoneyLeaderboardPage() {
                   </div>
 
                   <div className="mono-data text-sm text-[var(--color-text-primary)]">
-                    {formatCompactCurrency(wallet.totalVolume)}
+                    {formatMoney(wallet.totalVolume)}
                   </div>
 
                   <div className="mono-data text-sm text-[var(--color-text-primary)]">

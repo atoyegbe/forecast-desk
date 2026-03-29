@@ -12,6 +12,7 @@ import {
   hydrateQueryClientFromStorage,
   subscribeToQueryCachePersistence,
 } from './lib/query-persistence'
+import { DisplayCurrencyProvider } from './features/currency/context'
 
 const ReactQueryDevtools = lazy(async () => ({
   default: (await import('@tanstack/react-query-devtools')).ReactQueryDevtools,
@@ -37,7 +38,9 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppRouter />
+      <DisplayCurrencyProvider>
+        <AppRouter />
+      </DisplayCurrencyProvider>
       {import.meta.env.DEV ? (
         <Suspense fallback={null}>
           <ReactQueryDevtools initialIsOpen={false} />

@@ -508,6 +508,37 @@ img {
     border-color: var(--color-border-strong);
     color: var(--color-text-primary);
   }
+
+  .shell-select-wrapper {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .shell-select {
+    width: 84px;
+    height: 32px;
+    padding: 0 1.75rem 0 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background:
+      linear-gradient(45deg, transparent 50%, var(--color-text-secondary) 50%) calc(100% - 14px) calc(50% - 1px) / 5px 5px no-repeat,
+      linear-gradient(135deg, var(--color-text-secondary) 50%, transparent 50%) calc(100% - 9px) calc(50% - 1px) / 5px 5px no-repeat,
+      transparent;
+    color: var(--color-text-primary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    appearance: none;
+  }
+
+  .shell-select:hover {
+    background:
+      linear-gradient(45deg, transparent 50%, var(--color-text-primary) 50%) calc(100% - 14px) calc(50% - 1px) / 5px 5px no-repeat,
+      linear-gradient(135deg, var(--color-text-primary) 50%, transparent 50%) calc(100% - 9px) calc(50% - 1px) / 5px 5px no-repeat,
+      var(--color-bg-hover);
+    border-color: var(--color-border-strong);
+  }
 }
 
 .ticker-mask {

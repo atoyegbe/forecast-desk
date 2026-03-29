@@ -3,11 +3,17 @@ import { PriceDisplay } from '../components/price-display'
 import { ScoreBadge } from '../components/score-badge'
 import { SectionHeader } from '../components/section-header'
 import { SignalCard } from '../components/signal-card'
+import { useDisplayCurrency } from '../features/currency/context'
 import {
   useSmartMoneyLiveSignals,
   useSmartMoneyWalletQuery,
 } from '../features/smart-money/hooks'
-import { formatCompactCurrency, formatCompactNumber, formatDate, formatSignedPercent, formatTimeAgo } from '../lib/format'
+import {
+  formatCompactNumber,
+  formatDate,
+  formatSignedPercent,
+  formatTimeAgo,
+} from '../lib/format'
 import { getEventRoute, getSmartMoneyLeaderboardRoute } from '../lib/routes'
 
 function ScoreRing({ score }: { score: number }) {
@@ -60,6 +66,10 @@ function ScoreRing({ score }: { score: number }) {
 
 export function SmartMoneyWalletPage() {
   useSmartMoneyLiveSignals()
+  const {
+    formatMoney,
+    formatMoneyChange,
+  } = useDisplayCurrency()
   const { walletAddress } = useParams({
     from: '/smart-money/wallets/$walletAddress',
   })
@@ -132,7 +142,7 @@ export function SmartMoneyWalletPage() {
                 </div>
                 <div className="metric-card">
                   <div className="stat-label">Volume</div>
-                  <strong>{formatCompactCurrency(wallet.totalVolume)}</strong>
+                  <strong>{formatMoney(wallet.totalVolume)}</strong>
                 </div>
                 <div className="metric-card">
                   <div className="stat-label">Markets</div>
@@ -243,11 +253,11 @@ export function SmartMoneyWalletPage() {
                 </div>
 
                 <div className={`mono-data text-sm ${position.pnl >= 0 ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}`}>
-                  {formatCompactCurrency(position.pnl)}
+                  {formatMoneyChange(position.pnl)}
                 </div>
 
                 <div className="mono-data text-sm text-[var(--color-text-primary)]">
-                  {formatCompactCurrency(position.entryValue)}
+                  {formatMoney(position.entryValue)}
                 </div>
               </div>
             ))}

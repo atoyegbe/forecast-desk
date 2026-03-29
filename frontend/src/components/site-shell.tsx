@@ -6,6 +6,8 @@ import {
   useSearch,
 } from '@tanstack/react-router'
 import { useState } from 'react'
+import { useDisplayCurrency } from '../features/currency/context'
+import type { PulseDisplayCurrency } from '../features/currency/types'
 import {
   useRuntimeFreshnessLabel,
   useRuntimeLiveConnection,
@@ -291,6 +293,11 @@ function LiveStatusPill({
 export function SiteShell() {
   const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme)
   const navigate = useNavigate()
+  const {
+    availableCurrencies,
+    displayCurrency,
+    setDisplayCurrency,
+  } = useDisplayCurrency()
   const runtimeConnectionStatus = useRuntimeLiveConnection()
   const freshnessLabel = useRuntimeFreshnessLabel()
   const pathname = useRouterState({
@@ -348,6 +355,25 @@ export function SiteShell() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
+            <label className="shell-select-wrapper" htmlFor="display-currency">
+              <span className="sr-only">Display currency</span>
+              <select
+                className="shell-select"
+                id="display-currency"
+                onChange={(event) => {
+                  setDisplayCurrency(event.target.value as PulseDisplayCurrency)
+                }}
+                title="Display currency"
+                value={displayCurrency}
+              >
+                {availableCurrencies.map((currency) => (
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <Link
               aria-label="Open search"
               className="shell-icon-button"

@@ -1,5 +1,7 @@
 const DEFAULT_DATABASE_URL = 'postgresql:///postgres'
 const DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS = 2 * 60 * 1000
+const DEFAULT_FX_API_BASE = 'https://api.frankfurter.dev/v2'
+const DEFAULT_FX_CACHE_TTL_MS = 30 * 60 * 1000
 const DEFAULT_SMART_MONEY_REFRESH_INTERVAL_MS = 5 * 60 * 1000
 const DEFAULT_SMART_MONEY_LEADERBOARD_LIMIT = 20
 const DEFAULT_SMART_MONEY_ACTIVITY_LOOKBACK_DAYS = 7
@@ -46,6 +48,19 @@ export function getDiscoveryRefreshIntervalMs() {
   )
 }
 
+export function getFxApiBase() {
+  const value = process.env.FX_API_BASE?.trim()
+
+  return value || DEFAULT_FX_API_BASE
+}
+
+export function getFxCacheTtlMs() {
+  return parsePositiveInteger(
+    process.env.FX_CACHE_TTL_MS,
+    DEFAULT_FX_CACHE_TTL_MS,
+  )
+}
+
 export function getSmartMoneyRefreshIntervalMs() {
   return parsePositiveInteger(
     process.env.SMART_MONEY_REFRESH_INTERVAL_MS,
@@ -77,6 +92,8 @@ export function getSmartMoneyMinSignalSizeUsd() {
 export {
   DEFAULT_DATABASE_URL,
   DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS,
+  DEFAULT_FX_API_BASE,
+  DEFAULT_FX_CACHE_TTL_MS,
   DEFAULT_SMART_MONEY_ACTIVITY_LOOKBACK_DAYS,
   DEFAULT_SMART_MONEY_LEADERBOARD_LIMIT,
   DEFAULT_SMART_MONEY_MIN_SIGNAL_SIZE_USD,
