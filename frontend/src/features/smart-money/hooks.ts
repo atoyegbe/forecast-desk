@@ -7,6 +7,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import {
+  getSmartMoneyStatus,
   getSmartMoneyWallet,
   listSmartMoneySignals,
   listSmartMoneyWallets,
@@ -26,6 +27,7 @@ export const smartMoneyKeys = {
   signals: (params: PulseSmartMoneySignalListParams) =>
     [...SMART_MONEY_QUERY_ROOT, 'signals', params] as const,
   signalsAll: [...SMART_MONEY_QUERY_ROOT, 'signals'] as const,
+  status: [...SMART_MONEY_QUERY_ROOT, 'status'] as const,
   wallet: (address: string) =>
     [...SMART_MONEY_QUERY_ROOT, 'wallet', address.toLowerCase()] as const,
   wallets: (params: PulseSmartMoneyWalletListParams) =>
@@ -144,6 +146,15 @@ export function useSmartMoneySignalsQuery(params: PulseSmartMoneySignalListParam
   })
 }
 
+export function useSmartMoneyStatusQuery() {
+  return useQuery({
+    queryFn: () => getSmartMoneyStatus(),
+    queryKey: smartMoneyKeys.status,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  })
+}
+
 export function useSmartMoneyWalletsQuery(params: PulseSmartMoneyWalletListParams) {
   return useQuery({
     queryFn: () => listSmartMoneyWallets(params),
@@ -196,6 +207,9 @@ export function useSmartMoneyLiveSignals() {
           }
 
           updateSignalQueries(queryClient, message.data)
+          void queryClient.invalidateQueries({
+            queryKey: smartMoneyKeys.status,
+          })
           void queryClient.invalidateQueries({
             queryKey: smartMoneyKeys.walletsAll,
           })

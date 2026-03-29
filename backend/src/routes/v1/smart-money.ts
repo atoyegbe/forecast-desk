@@ -8,10 +8,12 @@ import { createApiResponse } from '../../contracts/api-response.js'
 import type {
   PulseSmartMoneySignalListData,
   PulseSmartMoneySignalListParams,
+  PulseSmartMoneyStatus,
   PulseSmartMoneyWalletListData,
   PulseSmartMoneyWalletListParams,
 } from '../../contracts/pulse-smart-money.js'
 import {
+  getSmartMoneyStatus,
   getSmartMoneyWallet,
   listSmartMoneySignals,
   listSmartMoneyWallets,
@@ -23,6 +25,20 @@ const SMART_MONEY_CACHE_POLICY = {
 } as const
 
 export const v1SmartMoneyRoutes: FastifyPluginAsync = async (app) => {
+  app.get('/smart-money/status', async (request, reply) => {
+    applyHttpCacheHeaders(reply, SMART_MONEY_CACHE_POLICY)
+
+    return withCachedResponse(
+      buildRequestCacheKey(request),
+      SMART_MONEY_CACHE_POLICY,
+      async () => {
+        const status = await getSmartMoneyStatus()
+
+        return createApiResponse<PulseSmartMoneyStatus>(status)
+      },
+    )
+  })
+
   app.get<{
     Querystring: PulseSmartMoneySignalListParams
   }>('/smart-money/signals', async (request, reply) => {

@@ -134,8 +134,12 @@ CREATE TABLE IF NOT EXISTS pulse_smart_money_sync_state (
   sync_key TEXT PRIMARY KEY,
   last_error TEXT,
   last_run_at TIMESTAMPTZ,
+  last_success_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS pulse_smart_money_wallets (
   address TEXT PRIMARY KEY,

@@ -1,5 +1,9 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
+import {
+  startSmartMoneyScheduler,
+  stopSmartMoneyScheduler,
+} from './smart-money-service.js'
 import { closeDbPool } from '../db/pool.js'
 import { ensureDiscoverySchema } from '../db/schema.js'
 import { bayseLiveHub } from '../realtime/bayse-live-hub.js'
@@ -18,10 +22,12 @@ export async function createApp() {
   })
 
   await app.register(websocket)
+  startSmartMoneyScheduler()
 
   app.addHook('onClose', async () => {
     bayseLiveHub.closeAll()
     smartMoneyLiveHub.closeAll()
+    stopSmartMoneyScheduler()
     await closeDbPool()
   })
 

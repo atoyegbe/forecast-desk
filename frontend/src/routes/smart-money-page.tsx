@@ -6,9 +6,11 @@ import { useDisplayCurrency } from '../features/currency/context'
 import {
   useSmartMoneyLiveSignals,
   useSmartMoneySignalsQuery,
+  useSmartMoneyStatusQuery,
   useSmartMoneyWalletsQuery,
 } from '../features/smart-money/hooks'
 import type {
+  PulseSmartMoneyJobStatus,
   PulseSmartMoneySignal,
   PulseSmartMoneySignalSort,
   PulseSmartMoneyWallet,
@@ -90,6 +92,38 @@ function getValueToneClass(value: number, threshold = 80) {
   }
 
   return value >= threshold ? 'text-[var(--color-up)]' : 'text-[#f59e0b]'
+}
+
+function getJobLabel(job: PulseSmartMoneyJobStatus['job']) {
+  return job === 'snapshot' ? 'Snapshot' : 'Signal watch'
+}
+
+function getJobToneClass(job: PulseSmartMoneyJobStatus) {
+  if (job.lastError || job.isStale) {
+    return 'text-[var(--color-down)]'
+  }
+
+  if (job.isRunning) {
+    return 'text-[var(--color-signal)]'
+  }
+
+  return 'text-[var(--color-up)]'
+}
+
+function getJobStateLabel(job: PulseSmartMoneyJobStatus) {
+  if (job.lastError) {
+    return 'Degraded'
+  }
+
+  if (job.isStale) {
+    return 'Delayed'
+  }
+
+  if (job.isRunning) {
+    return 'Running'
+  }
+
+  return 'Healthy'
 }
 
 function RangeFilter({
@@ -245,9 +279,11 @@ export function SmartMoneyPage() {
     limit: 24,
     sort: 'newest',
   })
+  const smartMoneyStatusQuery = useSmartMoneyStatusQuery()
   const topWalletsQuery = useSmartMoneyWalletsQuery({ limit: 5, minScore: 60 })
   const signals = signalsQuery.data ?? []
   const signalOverview = signalOverviewQuery.data ?? []
+  const smartMoneyStatus = smartMoneyStatusQuery.data
   const topWallets = topWalletsQuery.data ?? []
   const categoryOptions = useMemo(() => {
     const discoveredCategories = new Set<string>(DEFAULT_CATEGORY_OPTIONS)
@@ -294,6 +330,8 @@ export function SmartMoneyPage() {
         )
       : 0
   const latestActivitySignals = signalOverview.slice(0, 3)
+  const snapshotJob = smartMoneyStatus?.jobStatus.find((job) => job.job === 'snapshot')
+  const signalWatchJob = smartMoneyStatus?.jobStatus.find((job) => job.job === 'signal-watch')
 
   const updateSearch = (patch: Partial<AppSearch>) => {
     void navigate({
@@ -344,6 +382,50 @@ export function SmartMoneyPage() {
               <p className="max-w-2xl text-[13px] text-[var(--color-text-secondary)]">
                 Ranked Polymarket wallets. Every new position surfaces here within 5 minutes.
               </p>
+            </div>
+          </section>
+
+          <section className="border-b border-[var(--color-border-subtle)] px-7 py-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              {[snapshotJob, signalWatchJob].map((job) =>
+                job ? (
+                  <div
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3"
+                    key={job.job}
+                  >
+                    <div className="mono-data text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-tertiary)]">
+                      {getJobLabel(job.job)}
+                    </div>
+                    <div className={`mono-data mt-2 text-sm font-medium ${getJobToneClass(job)}`}>
+                      {getJobStateLabel(job)}
+                    </div>
+                    <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                      {job.lastSuccessAt
+                        ? `Last success ${formatTimeAgo(job.lastSuccessAt)}`
+                        : 'No successful run yet'}
+                    </div>
+                    {job.lastError ? (
+                      <div className="mt-2 line-clamp-2 text-[12px] leading-5 text-[var(--color-down)]">
+                        {job.lastError}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null,
+              )}
+
+              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3">
+                <div className="mono-data text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-tertiary)]">
+                  Stored coverage
+                </div>
+                <div className="mono-data mt-2 text-sm font-medium text-[var(--color-text-primary)]">
+                  {smartMoneyStatus
+                    ? `${smartMoneyStatus.walletCount} wallets · ${smartMoneyStatus.signalCount} signals`
+                    : 'Loading status'}
+                </div>
+                <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                  Watching top {smartMoneyStatus?.watchWalletLimit ?? '—'} wallets for new positions.
+                </div>
+              </div>
             </div>
           </section>
 

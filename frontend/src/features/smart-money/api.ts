@@ -2,6 +2,7 @@ import { fetchBackendJson } from '../../lib/api-client'
 import type {
   PulseSmartMoneySignal,
   PulseSmartMoneySignalListParams,
+  PulseSmartMoneyStatus,
   PulseSmartMoneyWallet,
   PulseSmartMoneyWalletDetail,
   PulseSmartMoneyWalletListParams,
@@ -63,6 +64,14 @@ export async function listSmartMoneySignals(
   )
 
   return response.data.items
+}
+
+export async function getSmartMoneyStatus() {
+  const response = await fetchBackendJson<PulseSmartMoneyStatus>(
+    '/smart-money/status',
+  )
+
+  return response.data
 }
 
 export async function listSmartMoneyWallets(

@@ -111,6 +111,23 @@ export type PulseSmartMoneyWalletListData = {
   items: PulseSmartMoneyWallet[]
 }
 
+export type PulseSmartMoneyJobStatus = {
+  intervalMs: number
+  isRunning: boolean
+  isStale: boolean
+  lastError?: string | null
+  lastRunAt?: string | null
+  lastSuccessAt?: string | null
+  job: 'signal-watch' | 'snapshot'
+}
+
+export type PulseSmartMoneyStatus = {
+  jobStatus: PulseSmartMoneyJobStatus[]
+  signalCount: number
+  walletCount: number
+  watchWalletLimit: number
+}
+
 export type PulseSmartMoneyLiveMessage =
   | {
       timestamp: number
