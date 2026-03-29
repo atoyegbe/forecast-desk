@@ -2,7 +2,7 @@
 
 `Quorum` is the frontend workspace for the `naija-pulse` project. It is
 the public read-only prediction market dashboard built on normalized public
-Bayse and Polymarket data.
+Bayse, Polymarket, Kalshi, and Manifold data.
 
 ## Frontend Direction
 
@@ -53,4 +53,4 @@ The app is configured for `Netlify` via
 
 Before deploying the frontend, point `/health`, `/api/v1/*`, and
 `/api/v1/live/*` at the owned backend service. The frontend should not proxy
-directly to Bayse or Polymarket anymore.
+directly to provider APIs anymore.

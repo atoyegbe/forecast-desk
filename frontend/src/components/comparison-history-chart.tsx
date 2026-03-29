@@ -49,6 +49,8 @@ type ComparisonTooltipProps = {
 
 const PLATFORM_STROKES: Record<PulseProvider, string> = {
   bayse: 'var(--color-bayse)',
+  kalshi: 'var(--color-kalshi)',
+  manifold: 'var(--color-manifold)',
   polymarket: 'var(--color-polymarket)',
 }
 

@@ -34,10 +34,12 @@
   --color-signal-border: rgba(245, 158, 11, 0.24);
   --color-neutral: #64748b;
   --color-polymarket: #0070f3;
-  --color-kalshi: #7c3aed;
+  --color-kalshi: #ff8b2d;
   --color-manifold: #ec4899;
   --color-bayse: #00c58e;
   --color-bayse-dim: rgba(0, 197, 142, 0.14);
+  --color-kalshi-dim: rgba(255, 139, 45, 0.14);
+  --color-manifold-dim: rgba(236, 72, 153, 0.14);
   --color-polymarket-dim: rgba(0, 112, 243, 0.14);
   --surface-panel-bg: rgba(22, 26, 28, 0.94);
   --surface-panel-muted-bg: rgba(30, 35, 38, 0.56);
@@ -73,6 +75,8 @@
   --color-down-dim: rgba(239, 68, 68, 0.1);
   --color-signal-dim: rgba(245, 158, 11, 0.1);
   --color-bayse-dim: rgba(0, 197, 142, 0.08);
+  --color-kalshi-dim: rgba(255, 139, 45, 0.08);
+  --color-manifold-dim: rgba(236, 72, 153, 0.08);
   --color-polymarket-dim: rgba(0, 112, 243, 0.08);
   --surface-panel-bg: #ffffff;
   --surface-panel-muted-bg: #f0f1f3;
@@ -318,6 +322,18 @@ img {
     --platform-badge-bg: var(--color-bayse-dim);
     --platform-badge-border: var(--color-bayse);
     --platform-badge-color: var(--color-bayse);
+  }
+
+  .platform-badge-kalshi {
+    --platform-badge-bg: var(--color-kalshi-dim);
+    --platform-badge-border: var(--color-kalshi);
+    --platform-badge-color: var(--color-kalshi);
+  }
+
+  .platform-badge-manifold {
+    --platform-badge-bg: var(--color-manifold-dim);
+    --platform-badge-border: var(--color-manifold);
+    --platform-badge-color: var(--color-manifold);
   }
 
   .platform-badge-polymarket {

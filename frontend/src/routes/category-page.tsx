@@ -5,6 +5,7 @@ import {
 import {
   Link,
   useParams,
+  useSearch,
 } from '@tanstack/react-router'
 import { CompactMarketCard } from '../components/compact-market-card'
 import { DeskTabs } from '../components/desk-tabs'
@@ -31,7 +32,10 @@ import {
 } from '../lib/format'
 import { getEventRoute } from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
-import type { PulseEvent } from '../features/events/types'
+import type {
+  PulseEvent,
+  PulseProvider,
+} from '../features/events/types'
 
 const CATEGORY_TAB_IDS = ['summary', 'conviction'] as const
 const INITIAL_VISIBLE_MARKETS = 6
@@ -64,21 +68,40 @@ function getResolutionLabel(event: PulseEvent) {
   return yesPrice >= noPrice ? 'YES' : 'NO'
 }
 
+function getProviderFilter(value: unknown): PulseProvider | undefined {
+  if (
+    value === 'bayse' ||
+    value === 'kalshi' ||
+    value === 'manifold' ||
+    value === 'polymarket'
+  ) {
+    return value
+  }
+
+  return undefined
+}
+
 export function CategoryPage() {
   const categorySlug = useParams({
     strict: false,
     select: (params) => ('categorySlug' in params ? params.categorySlug : undefined),
   })
+  const search = useSearch({ strict: false })
   const [showAllMostActive, setShowAllMostActive] = useState(false)
   const [activeTabId, setActiveTabId] = useUrlSelection({
     fallback: 'summary',
     key: 'tab',
     values: CATEGORY_TAB_IDS,
   })
-  const eventsQuery = useEventsQuery({ status: 'open' })
+  const activeProvider = getProviderFilter(search.provider)
+  const eventsQuery = useEventsQuery({
+    provider: activeProvider,
+    status: 'open',
+  })
   const requestedCategory = categorySlug ? formatCategory(categorySlug) : ''
   const resolvedEventsQuery = useEventsQuery({
     category: categorySlug === 'sports' ? requestedCategory : '__none__',
+    provider: activeProvider,
     status: 'closed',
   })
   const events = eventsQuery.data ?? EMPTY_EVENTS

@@ -28,6 +28,7 @@ export function SmartMoneyLeaderboardPage() {
 
   const updateSearch = (patch: Partial<AppSearch>) => {
     void navigate({
+      resetScroll: false,
       replace: true,
       search: (current): AppSearch => ({
         ...current,

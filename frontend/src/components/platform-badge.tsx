@@ -20,6 +20,16 @@ const PLATFORM_CONFIG: Record<
     label: 'Bayse',
     short: 'BY',
   },
+  kalshi: {
+    className: 'platform-badge-kalshi',
+    label: 'Kalshi',
+    short: 'KL',
+  },
+  manifold: {
+    className: 'platform-badge-manifold',
+    label: 'Manifold',
+    short: 'MF',
+  },
   polymarket: {
     className: 'platform-badge-polymarket',
     label: 'Polymarket',

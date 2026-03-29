@@ -37,6 +37,14 @@ function getComparisonExplainer(providers: PulseProvider[]) {
     return 'Bayse is the only prediction market platform built specifically for African markets. Divergences against global venues can reflect a different regional perspective, different local information, or a crowd with distinct liquidity conditions.'
   }
 
+  if (platformSet.has('kalshi')) {
+    return 'Kalshi is a regulated US exchange with a crowd composition that often differs from crypto-native venues. A spread against Kalshi can reflect different regulation, liquidity, and trader mix rather than a bad match.'
+  }
+
+  if (platformSet.has('manifold')) {
+    return 'Manifold is a play-money forecasting venue. When it diverges from cash or crypto-native venues, that often reflects a different forecaster crowd and weaker capital constraints rather than a simple pricing error.'
+  }
+
   if (platformSet.has('polymarket')) {
     return 'Polymarket is priced by a global crypto-native crowd. Differences across venues can reflect genuinely different trader compositions, information sets, and incentives rather than a simple data mismatch.'
   }

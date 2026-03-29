@@ -38,6 +38,8 @@ const PROVIDER_FILTERS: Array<{
 }> = [
   { label: 'All venues', value: 'all' },
   { label: 'Bayse', value: 'bayse' },
+  { label: 'Kalshi', value: 'kalshi' },
+  { label: 'Manifold', value: 'manifold' },
   { label: 'Polymarket', value: 'polymarket' },
 ]
 
@@ -98,6 +100,7 @@ export function SearchPage() {
 
     const timeoutId = window.setTimeout(() => {
       void navigate({
+        resetScroll: false,
         replace: true,
         search: (current): AppSearch => {
           const nextSearch: AppSearch = { ...current }
@@ -150,6 +153,7 @@ export function SearchPage() {
 
   const updateFilter = (key: 'category' | 'provider' | 'status', value: string) => {
     void navigate({
+      resetScroll: false,
       replace: true,
       search: (current): AppSearch => {
         const nextSearch: AppSearch = { ...current }
@@ -276,6 +280,7 @@ export function SearchPage() {
               onClick={() => {
                 setDraftQuery('')
                 void navigate({
+                  resetScroll: false,
                   replace: true,
                   search: {},
                   to: '/search',

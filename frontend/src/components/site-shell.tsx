@@ -1,7 +1,9 @@
 import {
   Link,
   Outlet,
+  useNavigate,
   useRouterState,
+  useSearch,
 } from '@tanstack/react-router'
 import { useState } from 'react'
 import {
@@ -9,6 +11,7 @@ import {
   useRuntimeLiveConnection,
   type RuntimeConnectionState,
 } from '../features/runtime/hooks'
+import type { AppSearch } from '../router'
 import { LiveTicker } from './live-ticker'
 
 const THEME_STORAGE_KEY = 'quorum-theme'
@@ -22,6 +25,39 @@ const primaryNav = [
   { label: 'Sports', to: '/categories/sports' },
   { label: 'Finance', to: '/categories/finance' },
 ]
+
+const venueNav = [
+  { id: 'all', label: 'All venues' },
+  { id: 'bayse', label: 'Bayse' },
+  { id: 'kalshi', label: 'Kalshi' },
+  { id: 'manifold', label: 'Manifold' },
+  { id: 'polymarket', label: 'Polymarket' },
+] as const
+
+type VenueFilterId = (typeof venueNav)[number]['id']
+
+function isVenueFilterId(value: string | null | undefined): value is VenueFilterId {
+  return venueNav.some((item) => item.id === value)
+}
+
+function shouldShowVenueFilter(pathname: string) {
+  return pathname === '/' || pathname === '/search' || pathname.startsWith('/categories/')
+}
+
+function applyProviderSearch(
+  current: AppSearch,
+  provider: VenueFilterId | undefined,
+): AppSearch {
+  const nextSearch: AppSearch = { ...current }
+
+  if (!provider || provider === 'all') {
+    delete nextSearch.provider
+  } else {
+    nextSearch.provider = provider
+  }
+
+  return nextSearch
+}
 
 function isNavItemActive(
   pathname: string,
@@ -44,7 +80,14 @@ function ShellNavLink({
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const search = useSearch({ strict: false })
   const isActive = isNavItemActive(pathname, item)
+  const routeProvider =
+    typeof search.provider === 'string' ? search.provider : undefined
+  const currentProvider = isVenueFilterId(routeProvider)
+    ? routeProvider
+    : undefined
+  const preserveProvider = shouldShowVenueFilter(item.to)
 
   return (
     <Link
@@ -60,6 +103,11 @@ function ShellNavLink({
       }
       data-active={!mobile && isActive ? 'true' : 'false'}
       key={item.to}
+      search={
+        preserveProvider
+          ? (current): AppSearch => applyProviderSearch(current, currentProvider)
+          : undefined
+      }
       to={item.to}
     >
       <span>{item.label}</span>
@@ -242,12 +290,23 @@ function LiveStatusPill({
 
 export function SiteShell() {
   const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme)
+  const navigate = useNavigate()
   const runtimeConnectionStatus = useRuntimeLiveConnection()
   const freshnessLabel = useRuntimeFreshnessLabel()
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const search = useSearch({ strict: false })
   const isSearchRoute = pathname === '/search'
+  const showVenueFilter = shouldShowVenueFilter(pathname)
+  const routeProvider =
+    typeof search.provider === 'string' ? search.provider : undefined
+  const currentProvider = isVenueFilterId(routeProvider)
+    ? routeProvider
+    : undefined
+  const activeVenueFilter: VenueFilterId = isVenueFilterId(currentProvider)
+    ? currentProvider
+    : 'all'
 
   return (
     <div className="min-h-screen">
@@ -259,7 +318,13 @@ export function SiteShell() {
       </a>
       <header className="sticky top-0 z-40 border-b border-[var(--color-border-subtle)] bg-[var(--surface-shell-bg)] backdrop-blur-md">
         <div className="mx-auto flex max-w-[1380px] items-center gap-4 px-4 py-3 sm:px-6">
-          <Link className="flex shrink-0 items-center gap-3" to="/">
+          <Link
+            className="flex shrink-0 items-center gap-3"
+            search={(current): AppSearch =>
+              applyProviderSearch(current, currentProvider)
+            }
+            to="/"
+          >
             <img
               alt=""
               aria-hidden="true"
@@ -287,6 +352,9 @@ export function SiteShell() {
               aria-label="Open search"
               className="shell-icon-button"
               data-active={isSearchRoute ? 'true' : 'false'}
+              search={(current): AppSearch =>
+                applyProviderSearch(current, currentProvider)
+              }
               title="Open search"
               to="/search"
             >
@@ -321,6 +389,49 @@ export function SiteShell() {
             </button>
           </div>
         </div>
+
+        {showVenueFilter ? (
+          <div className="border-t border-[var(--color-border-subtle)]">
+            <div className="mx-auto flex max-w-[1380px] items-center gap-3 overflow-x-auto px-4 py-2 sm:px-6">
+              <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
+                Venue
+              </span>
+              <div className="flex min-w-max gap-2">
+                {venueNav.map((item) => (
+                  <button
+                    className={`terminal-chip px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] ${
+                      activeVenueFilter === item.id
+                        ? 'terminal-chip-active'
+                        : 'border-[var(--color-border-subtle)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
+                    }`}
+                    key={item.id}
+                    onClick={() => {
+                      void navigate({
+                        replace: true,
+                        resetScroll: false,
+                        search: (current): AppSearch => {
+                          const nextSearch: AppSearch = { ...current }
+
+                          if (item.id === 'all') {
+                            delete nextSearch.provider
+                          } else {
+                            nextSearch.provider = item.id
+                          }
+
+                          return nextSearch
+                        },
+                        to: pathname,
+                      })
+                    }}
+                    type="button"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </header>
 
       <div className="mx-auto max-w-[1380px] px-4 py-3 sm:px-6 sm:py-4">

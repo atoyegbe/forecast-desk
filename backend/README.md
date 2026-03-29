@@ -2,9 +2,9 @@
 
 `backend/` is the owned service layer for `naija-pulse`.
 
-The backend now owns the v1 discovery contract for Bayse and Polymarket. It
-persists normalized discovery records in Postgres and serves the public read API
-that `frontend/` consumes.
+The backend now owns the v1 discovery contract for Bayse, Polymarket, Kalshi,
+and Manifold. It persists normalized discovery records in Postgres and serves
+the public read API that `frontend/` consumes.
 
 ## Planned Stack
 
@@ -45,6 +45,12 @@ separate backend concern and the browser now subscribes through the owned live
 route instead of Bayse directly. Cross-platform links are also persisted, so the
 backend now serves compare and divergence reads from owned event-link records
 instead of ad hoc frontend joins.
+
+Kalshi and Manifold now join Bayse and Polymarket as first-class read
+providers. Discovery uses Kalshi's public event feed with nested markets, while
+stored history is hydrated from Kalshi event candlesticks. Manifold discovery
+uses the public market search API plus batched probability reads, while price
+history is synthesized from public bet probability transitions.
 
 Smart money is now started as an owned backend surface as well. The current
 implementation seeds from the public Polymarket leaderboard, enriches those

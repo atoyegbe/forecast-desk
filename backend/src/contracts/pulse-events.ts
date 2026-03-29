@@ -1,4 +1,4 @@
-export type PulseProvider = 'bayse' | 'polymarket'
+export type PulseProvider = 'bayse' | 'kalshi' | 'manifold' | 'polymarket'
 export type PulseMatchMethod = 'exact' | 'fuzzy'
 
 export type PulseOutcome = {

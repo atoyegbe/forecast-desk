@@ -19,7 +19,10 @@ import {
   getMarketStance,
   getTempoLabel,
 } from '../features/events/insights'
-import type { PulseMarket } from '../features/events/types'
+import type {
+  PulseMarket,
+  PulseProvider,
+} from '../features/events/types'
 import {
   formatCompactNumber,
   formatDate,
@@ -107,7 +110,7 @@ function MarketBoardRow({
   provider,
 }: {
   market: PulseMarket
-  provider: 'bayse' | 'polymarket'
+  provider: PulseProvider
 }) {
   const secondaryMetricLabel =
     market.totalOrders > 0 ? 'Orders' : 'Liquidity'
@@ -248,7 +251,8 @@ export function EventPage() {
   const liveMarket = liveFeed.snapshot?.markets.find(
     (market) => market.marketId === primaryMarket?.id,
   )
-  const liveSourceUrl = event.sourceUrl ?? event.resolutionSource
+  const providerSourceUrl = event.sourceUrl
+  const liveSourceUrl = providerSourceUrl ?? event.resolutionSource
   const yesPrice = liveMarket?.yesPrice ?? primaryMarket?.yesOutcome.price ?? 0
   const noPrice = liveMarket?.noPrice ?? primaryMarket?.noOutcome.price ?? 0
   const eventFreshnessLabel = event.freshness?.syncedAt
@@ -414,8 +418,8 @@ export function EventPage() {
                   rel="noreferrer"
                   target="_blank"
                 >
-                  {event.provider === 'polymarket'
-                    ? 'Open on Polymarket'
+                  {providerSourceUrl
+                    ? `Open on ${getProviderLabel(event.provider)}`
                     : 'View resolution source'}
                 </a>
               </div>
@@ -648,8 +652,8 @@ export function EventPage() {
                     rel="noreferrer"
                     target="_blank"
                   >
-                    {event.provider === 'polymarket'
-                      ? 'View on Polymarket'
+                    {providerSourceUrl
+                      ? `Open on ${getProviderLabel(event.provider)}`
                       : 'View resolution source'}
                   </a>
                 ) : null}

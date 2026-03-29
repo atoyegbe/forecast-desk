@@ -9,6 +9,25 @@ type DivergenceBarProps = {
   items: PulseComparedEvent[]
 }
 
+const PROVIDER_PALETTE = {
+  bayse: {
+    dot: 'var(--color-bayse)',
+    glow: 'rgba(0, 197, 142, 0.18)',
+  },
+  kalshi: {
+    dot: 'var(--color-kalshi)',
+    glow: 'rgba(255, 139, 45, 0.18)',
+  },
+  manifold: {
+    dot: 'var(--color-manifold)',
+    glow: 'rgba(236, 72, 153, 0.18)',
+  },
+  polymarket: {
+    dot: 'var(--color-polymarket)',
+    glow: 'rgba(0, 112, 243, 0.18)',
+  },
+} as const
+
 function clampPercentage(value: number) {
   return Math.max(0, Math.min(100, value * 100))
 }
@@ -39,16 +58,7 @@ export function DivergenceBar({ items }: DivergenceBarProps) {
         <div className="absolute inset-x-0 top-8 h-2 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,var(--color-down-dim),rgba(100,116,139,0.08),var(--color-up-dim))]" />
         {sortedItems.map((item, index) => {
           const isUpperTrack = index % 2 === 0
-          const providerPalette =
-            item.event.provider === 'bayse'
-              ? {
-                  dot: '#00c58e',
-                  glow: 'rgba(0, 197, 142, 0.18)',
-                }
-              : {
-                  dot: '#0070f3',
-                  glow: 'rgba(0, 112, 243, 0.18)',
-                }
+          const providerPalette = PROVIDER_PALETTE[item.event.provider]
 
           return (
             <div

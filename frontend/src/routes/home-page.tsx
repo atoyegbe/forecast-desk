@@ -61,35 +61,10 @@ import type {
 
 const HOME_TAB_IDS = ['briefing', 'repricing', 'closest', 'velocity'] as const
 const MOVER_WINDOW_IDS: readonly PulseMoverWindow[] = ['1h', '6h', '24h']
-const PROVIDER_FILTER_IDS = ['all', 'bayse', 'polymarket'] as const
 const BOARD_CATEGORY_MERGE_MAP: Record<string, string> = {
   Starmer: 'Politics',
   Trump: 'Politics',
 }
-
-type HomeProviderSelection = (typeof PROVIDER_FILTER_IDS)[number]
-
-const providerFilterMeta: Array<{
-  description: string
-  id: HomeProviderSelection
-  label: string
-}> = [
-  {
-    description: 'Merge every tracked venue into one public board.',
-    id: 'all',
-    label: 'All venues',
-  },
-  {
-    description: 'Read only Bayse markets.',
-    id: 'bayse',
-    label: 'Bayse',
-  },
-  {
-    description: 'Read only Polymarket markets.',
-    id: 'polymarket',
-    label: 'Polymarket',
-  },
-]
 
 function TopWhaleHomeRow({
   signal,
@@ -164,10 +139,10 @@ export function HomePage() {
     key: 'window',
     values: MOVER_WINDOW_IDS,
   })
-  const [activeProviderId, setActiveProviderId] = useUrlSelection({
+  const [activeProviderId] = useUrlSelection({
     fallback: 'all',
     key: 'provider',
-    values: PROVIDER_FILTER_IDS,
+    values: ['all', 'bayse', 'kalshi', 'manifold', 'polymarket'] as const,
   })
   const eventsQuery = useEventsQuery({
     status: 'open',
@@ -450,60 +425,33 @@ export function HomePage() {
         <div className="space-y-6">
           <section className="panel p-4 sm:p-5">
             <SectionHeader
-              description="Use venue filters and category desks to tighten the main board without leaving the homepage feed."
+              description="Use the shell venue tabs and category desks to tighten the main board without leaving the homepage feed."
               kicker="Discovery"
               title="Scan the board"
             />
 
             <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start">
-              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start xl:min-w-[28rem]">
-                <div className="space-y-2 lg:min-w-[11rem]">
-                  <div className="section-kicker">Venue</div>
-                  <div className="flex flex-wrap gap-2">
-                    {providerFilterMeta.map((provider) => (
-                      <button
-                        className={`terminal-chip px-3 py-2 text-[11px] uppercase tracking-[0.18em] ${
-                          activeProviderId === provider.id
-                            ? 'terminal-chip-active'
-                            : 'border-[var(--color-border-subtle)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
-                        }`}
-                        key={provider.id}
-                        onClick={() => {
-                          startTransition(() => {
-                            setActiveProviderId(provider.id)
-                          })
-                        }}
-                        title={provider.description}
-                        type="button"
-                      >
-                        {provider.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2 lg:min-w-[18rem] lg:flex-1">
-                  <div className="section-kicker">Category</div>
-                  <div className="flex flex-wrap gap-2">
-                    {boardCategories.map((category) => (
-                      <button
-                        className={`rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
-                          effectiveCategory === category
-                            ? 'border-[var(--color-brand)] bg-[rgba(0,197,142,0.15)] text-[var(--color-brand)]'
-                            : 'border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]'
-                        }`}
-                        key={category}
-                        onClick={() => {
-                          startTransition(() => {
-                            setActiveCategory(category)
-                          })
-                        }}
-                        type="button"
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
+              <div className="space-y-2 lg:min-w-[18rem] lg:flex-1">
+                <div className="section-kicker">Category</div>
+                <div className="flex flex-wrap gap-2">
+                  {boardCategories.map((category) => (
+                    <button
+                      className={`rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
+                        effectiveCategory === category
+                          ? 'border-[var(--color-brand)] bg-[rgba(0,197,142,0.15)] text-[var(--color-brand)]'
+                          : 'border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]'
+                      }`}
+                      key={category}
+                      onClick={() => {
+                        startTransition(() => {
+                          setActiveCategory(category)
+                        })
+                      }}
+                      type="button"
+                    >
+                      {category}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

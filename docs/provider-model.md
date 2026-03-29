@@ -4,7 +4,7 @@ The product should not couple itself to a single API vendor.
 
 ## Principle
 
-Normalize external market data into a local domain model. The UI should consume the local shape, not raw Bayse responses.
+Normalize external market data into a local domain model. The UI should consume the local shape, not raw provider responses.
 
 ## Suggested Domain Objects
 

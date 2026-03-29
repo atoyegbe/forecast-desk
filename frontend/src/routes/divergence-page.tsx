@@ -61,10 +61,10 @@ export function DivergencePage() {
             <div className="eyebrow">Cross-platform spread</div>
             <div>
               <h1 className="display-title">
-                Where Bayse and Polymarket are furthest apart.
+                Where venues are furthest apart.
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
-                This board ranks the linked events with the widest current price gaps. It is the fastest read on where local and global crowds may be processing the same story differently.
+                This board ranks the linked events with the widest current price gaps. It is the fastest read on where different venue crowds may be processing the same story differently.
               </p>
             </div>
 
