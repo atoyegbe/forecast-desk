@@ -41,12 +41,14 @@ Build a public-facing web app that makes prediction markets legible for normal u
 From the repo root:
 
 - `make api` starts the backend and the local Postgres container it expects
+- `make worker` starts the smart-money worker and the local Postgres container it expects
 - `make frontend` starts the frontend dev server
-- `make dev` starts backend + frontend together
+- `make dev` starts backend + smart-money worker + frontend together
 - `make postgres-down` stops the local Postgres container
 
 By default the root `Makefile` runs Postgres in Docker on `127.0.0.1:54329` and
-passes that connection string to the backend.
+passes that connection string to the backend. `make dev` disables the scheduler
+inside the API process and runs it in the dedicated worker instead.
 
 ## Tracking
 

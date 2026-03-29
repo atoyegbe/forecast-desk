@@ -14,13 +14,14 @@ POSTGRES_DB ?= naija_pulse
 BACKEND_PORT ?= 8787
 DATABASE_URL ?= postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@127.0.0.1:$(POSTGRES_PORT)/$(POSTGRES_DB)
 
-.PHONY: help postgres-up postgres-down postgres-logs api frontend dev
+.PHONY: help postgres-up postgres-down postgres-logs api worker frontend dev
 
 help:
 	@printf "Naija Pulse development targets\n\n"
 	@printf "  make api           Start the API and its local Postgres dependency\n"
+	@printf "  make worker        Start the smart-money worker and its local Postgres dependency\n"
 	@printf "  make frontend      Start the frontend dev server\n"
-	@printf "  make dev           Start API + frontend together\n"
+	@printf "  make dev           Start API + worker + frontend together\n"
 	@printf "  make postgres-up   Start the local Postgres container only\n"
 	@printf "  make postgres-down Stop the local Postgres container\n"
 	@printf "  make postgres-logs Tail the local Postgres container logs\n\n"
@@ -75,11 +76,15 @@ postgres-logs:
 api: postgres-up
 	@cd $(BACKEND_DIR) && DATABASE_URL='$(DATABASE_URL)' PORT='$(BACKEND_PORT)' npm run dev
 
+worker: postgres-up
+	@cd $(BACKEND_DIR) && DATABASE_URL='$(DATABASE_URL)' npm run dev:worker
+
 frontend:
 	@cd $(FRONTEND_DIR) && npm run dev
 
 dev: postgres-up
 	@trap 'kill 0' EXIT INT TERM; \
-		(cd $(BACKEND_DIR) && DATABASE_URL='$(DATABASE_URL)' PORT='$(BACKEND_PORT)' npm run dev) & \
+		(cd $(BACKEND_DIR) && DATABASE_URL='$(DATABASE_URL)' PORT='$(BACKEND_PORT)' SMART_MONEY_SCHEDULER_ENABLED='false' npm run dev) & \
+		(cd $(BACKEND_DIR) && DATABASE_URL='$(DATABASE_URL)' npm run dev:worker) & \
 		(cd $(FRONTEND_DIR) && npm run dev) & \
 		wait
