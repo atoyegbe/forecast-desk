@@ -8,6 +8,7 @@ import {
   useNavigate,
   useSearch,
 } from '@tanstack/react-router'
+import { SearchResultsLoadingState } from '../components/loading-state'
 import { MarketRow } from '../components/market-row'
 import { SectionHeader } from '../components/section-header'
 import {
@@ -322,9 +323,7 @@ export function SearchPage() {
           ) : null}
 
           {hasQuery && searchResultsQuery.isLoading ? (
-            <div className="panel p-6 text-[var(--color-text-secondary)]">
-              Searching the stored market archive...
-            </div>
+            <SearchResultsLoadingState />
           ) : null}
 
           {hasQuery && searchResultsQuery.error ? (

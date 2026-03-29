@@ -1,5 +1,9 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useMemo } from 'react'
+import {
+  SignalCardsLoadingState,
+  SmartMoneyDeskLoadingState,
+} from '../components/loading-state'
 import { ScoreBadge } from '../components/score-badge'
 import { SmartMoneyFeedCard } from '../components/smart-money-feed-card'
 import { useDisplayCurrency } from '../features/currency/context'
@@ -403,11 +407,7 @@ export function SmartMoneyPage() {
   }
 
   if (signalsQuery.isLoading && !signals.length) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading smart money feed...
-      </div>
-    )
+    return <SmartMoneyDeskLoadingState />
   }
 
   if (signalsQuery.error) {
@@ -491,7 +491,7 @@ export function SmartMoneyPage() {
                 <div className="mono-data mt-2 text-sm font-medium text-[var(--color-text-primary)]">
                   {smartMoneyStatus
                     ? `${smartMoneyStatus.walletCount} wallets · ${smartMoneyStatus.signalCount} signals`
-                    : 'Loading status'}
+                    : 'Refreshing status'}
                 </div>
                 <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
                   Watching top {smartMoneyStatus?.watchWalletLimit ?? '—'} wallets for new positions.
@@ -623,6 +623,10 @@ export function SmartMoneyPage() {
               {signals.map((signal) => (
                 <SmartMoneyFeedCard key={signal.id} signal={signal} />
               ))}
+            </section>
+          ) : signalsQuery.isFetching ? (
+            <section className="px-7 py-6">
+              <SignalCardsLoadingState count={3} />
             </section>
           ) : (
             <section className="px-7 py-6 text-sm leading-7 text-[var(--color-text-secondary)]">

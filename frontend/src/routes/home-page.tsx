@@ -6,6 +6,11 @@ import {
 import { Link } from '@tanstack/react-router'
 import { CompactMarketCard } from '../components/compact-market-card'
 import { DeskTabs } from '../components/desk-tabs'
+import {
+  CompactCardsLoadingState,
+  MarketRowsLoadingState,
+  SignalCardsLoadingState,
+} from '../components/loading-state'
 import { MarketRow } from '../components/market-row'
 import { PlatformBadge } from '../components/platform-badge'
 import { ScoreBadge } from '../components/score-badge'
@@ -290,9 +295,7 @@ export function HomePage() {
             </div>
 
             {smartMoneySignalsQuery.isLoading && !smartMoneySignals.length ? (
-              <div className="panel-elevated p-6 text-[var(--color-text-secondary)]">
-                Loading smart money signal flow...
-              </div>
+              <SignalCardsLoadingState count={2} />
             ) : null}
 
             {smartMoneySignalsQuery.error ? (
@@ -341,9 +344,13 @@ export function HomePage() {
                 title="High-volume markets"
               />
               <div className="mt-4 space-y-3">
-                {trendingSidebarEvents.map((event) => (
-                  <CompactMarketCard event={event} key={event.id} />
-                ))}
+                {eventsQuery.isLoading && !trendingSidebarEvents.length ? (
+                  <CompactCardsLoadingState count={3} />
+                ) : (
+                  trendingSidebarEvents.map((event) => (
+                    <CompactMarketCard event={event} key={event.id} />
+                  ))
+                )}
               </div>
             </section>
 
@@ -354,7 +361,9 @@ export function HomePage() {
                 title="Where venues disagree"
               />
               <div className="mt-4 space-y-3">
-                {topDivergences.length ? topDivergences.map((entry) => (
+                {divergenceQuery.isLoading && !topDivergences.length ? (
+                  <CompactCardsLoadingState count={2} />
+                ) : topDivergences.length ? topDivergences.map((entry) => (
                   <Link
                     className="panel-elevated block p-4 transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
                     key={entry.linkId}
@@ -399,9 +408,7 @@ export function HomePage() {
               />
               <div className="mt-4 space-y-3">
                 {smartMoneyWalletsQuery.isLoading && !topWhales.length ? (
-                  <div className="panel-elevated p-4 text-sm leading-6 text-[var(--color-text-secondary)]">
-                    Loading whale board...
-                  </div>
+                  <CompactCardsLoadingState count={3} />
                 ) : null}
 
                 {smartMoneyWalletsQuery.error ? (
@@ -467,9 +474,7 @@ export function HomePage() {
             />
 
             {eventsQuery.isLoading ? (
-              <div className="panel p-6 text-[var(--color-text-secondary)]">
-                Loading the live market board...
-              </div>
+              <MarketRowsLoadingState count={4} />
             ) : null}
 
             {eventsQuery.error ? (

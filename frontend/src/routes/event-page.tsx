@@ -4,6 +4,11 @@ import {
 } from '@tanstack/react-router'
 import { DeskTabs } from '../components/desk-tabs'
 import { DivergenceBar } from '../components/divergence-bar'
+import {
+  EventDetailLoadingState,
+  MarketRowsLoadingState,
+  SkeletonText,
+} from '../components/loading-state'
 import { PlatformBadge } from '../components/platform-badge'
 import { PriceDisplay } from '../components/price-display'
 import { PriceHistoryChart } from '../components/price-history-chart'
@@ -232,11 +237,7 @@ export function EventPage() {
   const liveFeed = useLiveEventPrices(eventId)
 
   if (eventQuery.isLoading) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading event detail...
-      </div>
-    )
+    return <EventDetailLoadingState />
   }
 
   if (eventQuery.error || !eventQuery.data) {
@@ -534,8 +535,8 @@ export function EventPage() {
           },
           {
             content: compareQuery.isLoading ? (
-              <div className="panel-elevated px-4 py-5 text-sm text-[var(--color-text-secondary)]">
-                Matching this event against other venues...
+              <div className="panel-elevated px-4 py-5">
+                <SkeletonText lines={['h-3 w-36', 'h-4 w-full', 'h-4 w-4/5']} />
               </div>
             ) : compareQuery.data ? (
               <div className="space-y-5">
@@ -689,13 +690,17 @@ export function EventPage() {
         />
 
         <div className="mt-5 space-y-3">
-          {event.markets.map((market) => (
-            <MarketBoardRow
-              key={market.id}
-              market={market}
-              provider={event.provider}
-            />
-          ))}
+          {event.markets.length ? (
+            event.markets.map((market) => (
+              <MarketBoardRow
+                key={market.id}
+                market={market}
+                provider={event.provider}
+              />
+            ))
+          ) : (
+            <MarketRowsLoadingState count={2} />
+          )}
         </div>
       </section>
     </div>

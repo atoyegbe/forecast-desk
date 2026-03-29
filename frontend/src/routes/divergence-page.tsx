@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { DivergenceBoardLoadingState } from '../components/loading-state'
 import { PlatformBadge } from '../components/platform-badge'
 import { SectionHeader } from '../components/section-header'
 import { useDivergenceQuery } from '../features/events/hooks'
@@ -25,11 +26,7 @@ export function DivergencePage() {
   })
 
   if (divergenceQuery.isLoading) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading divergence board...
-      </div>
-    )
+    return <DivergenceBoardLoadingState />
   }
 
   if (divergenceQuery.error) {

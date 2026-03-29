@@ -13,6 +13,7 @@ import {
   formatProbability,
 } from '../lib/format'
 import { getEventRoute } from '../lib/routes'
+import { TickerLoadingState } from './loading-state'
 import { PlatformBadge } from './platform-badge'
 
 function truncateTitle(title: string, maxLength = 40) {
@@ -65,6 +66,10 @@ function TickerTrack() {
     .filter(isNigeriaRelevant)
     .sort(sortByVolume)
     .slice(0, 8)
+
+  if (eventsQuery.isLoading && !tickerEvents.length) {
+    return <TickerLoadingState />
+  }
 
   if (!tickerEvents.length) {
     return (

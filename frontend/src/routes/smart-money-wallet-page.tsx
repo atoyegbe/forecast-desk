@@ -1,4 +1,5 @@
 import { Link, useParams } from '@tanstack/react-router'
+import { SmartMoneyWalletLoadingState } from '../components/loading-state'
 import { PriceDisplay } from '../components/price-display'
 import { ScoreBadge } from '../components/score-badge'
 import { SectionHeader } from '../components/section-header'
@@ -76,11 +77,7 @@ export function SmartMoneyWalletPage() {
   const walletQuery = useSmartMoneyWalletQuery(walletAddress)
 
   if (walletQuery.isLoading) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading wallet profile...
-      </div>
-    )
+    return <SmartMoneyWalletLoadingState />
   }
 
   if (walletQuery.error) {

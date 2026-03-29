@@ -9,6 +9,12 @@ import {
 } from '@tanstack/react-router'
 import { CompactMarketCard } from '../components/compact-market-card'
 import { DeskTabs } from '../components/desk-tabs'
+import {
+  CategoryDeskLoadingState,
+  CompactCardsLoadingState,
+  MarketRowsLoadingState,
+  TableLoadingState,
+} from '../components/loading-state'
 import { MarketCard } from '../components/market-card'
 import { MarketRow } from '../components/market-row'
 import { MarketRowCard } from '../components/market-row-card'
@@ -112,11 +118,7 @@ export function CategoryPage() {
   }, [categorySlug])
 
   if (eventsQuery.isLoading) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading category desk...
-      </div>
-    )
+    return <CategoryDeskLoadingState />
   }
 
   if (!category) {
@@ -333,11 +335,8 @@ export function CategoryPage() {
                   <tbody>
                     {resolvedEventsQuery.isLoading ? (
                       <tr>
-                        <td
-                          className="px-4 py-4 text-sm text-[var(--color-text-secondary)]"
-                          colSpan={4}
-                        >
-                          Loading recently resolved sports markets...
+                        <td className="p-0" colSpan={4}>
+                          <TableLoadingState columns={4} rows={4} />
                         </td>
                       </tr>
                     ) : sportsResolved.length ? (
@@ -392,9 +391,13 @@ export function CategoryPage() {
               title="Where order flow is densest"
             />
             <div className="space-y-3">
-              {mostActive.map((event) => (
-                <MarketRow event={event} key={event.id} />
-              ))}
+              {mostActive.length ? (
+                mostActive.map((event) => (
+                  <MarketRow event={event} key={event.id} />
+                ))
+              ) : (
+                <MarketRowsLoadingState count={4} />
+              )}
             </div>
           </section>
 
@@ -457,9 +460,13 @@ export function CategoryPage() {
               title="Closest calls"
             />
             <div className="mt-4 space-y-3">
-              {closestCalls.map((event) => (
-                <CompactMarketCard event={event} key={event.id} />
-              ))}
+              {closestCalls.length ? (
+                closestCalls.map((event) => (
+                  <CompactMarketCard event={event} key={event.id} />
+                ))
+              ) : (
+                <CompactCardsLoadingState count={3} />
+              )}
             </div>
           </section>
 
@@ -470,9 +477,13 @@ export function CategoryPage() {
               title="Strongest current lean"
             />
             <div className="mt-4 space-y-3">
-              {convictionBoard.map((event) => (
-                <CompactMarketCard event={event} key={event.id} />
-              ))}
+              {convictionBoard.length ? (
+                convictionBoard.map((event) => (
+                  <CompactMarketCard event={event} key={event.id} />
+                ))
+              ) : (
+                <CompactCardsLoadingState count={3} />
+              )}
             </div>
           </section>
         </aside>

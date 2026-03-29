@@ -205,6 +205,26 @@ function toIsoString(value: Date | string | null | undefined) {
   return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString()
 }
 
+function toNullableTimestampInput(value: Date | string | null | undefined) {
+  const normalizedValue = typeof value === 'string' ? value.trim() : value
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  if (normalizedValue instanceof Date) {
+    return normalizedValue.toISOString()
+  }
+
+  const parsed = new Date(normalizedValue)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+
+  return parsed.toISOString()
+}
+
 function toFreshness(value: Date | string | null | undefined): PulseFreshness {
   const syncedAt = toIsoString(value) ?? new Date(0).toISOString()
   const parsedTimestamp = new Date(syncedAt).getTime()
@@ -392,7 +412,7 @@ async function insertWallet(
       wallet.closedPositionCount,
       wallet.marketCount,
       wallet.recencyScore,
-      wallet.lastActiveAt ?? null,
+      toNullableTimestampInput(wallet.lastActiveAt),
       JSON.stringify(wallet.categoryStats),
       syncedAt.toISOString(),
     ],
@@ -454,8 +474,8 @@ async function insertPosition(
       position.currentValue,
       position.pnl,
       position.realizedPnl,
-      position.closingDate ?? null,
-      position.timestamp ?? null,
+      toNullableTimestampInput(position.closingDate),
+      toNullableTimestampInput(position.timestamp),
       syncedAt.toISOString(),
     ],
   )
@@ -509,8 +529,8 @@ async function insertSignal(
       signal.currentPrice,
       signal.priceDelta,
       signal.size,
-      signal.signalAt,
-      signal.closingDate ?? null,
+      toNullableTimestampInput(signal.signalAt) ?? syncedAt.toISOString(),
+      toNullableTimestampInput(signal.closingDate),
       signal.transactionHash ?? null,
       syncedAt.toISOString(),
     ],

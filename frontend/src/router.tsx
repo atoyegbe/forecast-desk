@@ -10,6 +10,7 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router'
+import { RouteLoadingState } from './components/loading-state'
 import { SiteShell } from './components/site-shell'
 import { HomePage } from './routes/home-page'
 
@@ -44,15 +45,7 @@ const NotFoundPage = lazy(async () => ({
 }))
 
 function RouteSkeleton() {
-  return (
-    <div
-      aria-live="polite"
-      className="panel p-8 text-[var(--color-text-secondary)]"
-      role="status"
-    >
-      Loading view...
-    </div>
-  )
+  return <RouteLoadingState />
 }
 
 function withSuspense(Component: LazyExoticComponent<ComponentType>) {

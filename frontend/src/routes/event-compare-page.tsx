@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-router'
 import { ComparisonHistoryChart } from '../components/comparison-history-chart'
 import { DivergenceBar } from '../components/divergence-bar'
+import { EventCompareLoadingState } from '../components/loading-state'
 import { PlatformBadge } from '../components/platform-badge'
 import { PriceDisplay } from '../components/price-display'
 import { SectionHeader } from '../components/section-header'
@@ -87,11 +88,7 @@ export function EventComparePage() {
   }, [comparedEvents, historyQueries])
 
   if (eventQuery.isLoading || compareQuery.isLoading) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading comparison desk...
-      </div>
-    )
+    return <EventCompareLoadingState />
   }
 
   if (eventQuery.error || compareQuery.error) {

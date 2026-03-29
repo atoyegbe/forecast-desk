@@ -1,4 +1,5 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { SmartMoneyLeaderboardLoadingState } from '../components/loading-state'
 import { ScoreBadge } from '../components/score-badge'
 import { SectionHeader } from '../components/section-header'
 import { useDisplayCurrency } from '../features/currency/context'
@@ -45,11 +46,7 @@ export function SmartMoneyLeaderboardPage() {
   }
 
   if (walletsQuery.isLoading && !wallets.length) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading whale leaderboard...
-      </div>
-    )
+    return <SmartMoneyLeaderboardLoadingState />
   }
 
   if (walletsQuery.error) {
