@@ -16,6 +16,8 @@ import { getEventRoute } from '../lib/routes'
 import { TickerLoadingState } from './loading-state'
 import { PlatformBadge } from './platform-badge'
 
+type LiveTickerVariant = 'marquee' | 'rail'
+
 function truncateTitle(title: string, maxLength = 40) {
   if (title.length <= maxLength) {
     return title
@@ -24,9 +26,53 @@ function truncateTitle(title: string, maxLength = 40) {
   return `${title.slice(0, maxLength - 1).trimEnd()}…`
 }
 
-function TickerItem({ event }: { event: (typeof EMPTY_EVENTS)[number] }) {
+function TickerItem({
+  event,
+  variant,
+}: {
+  event: (typeof EMPTY_EVENTS)[number]
+  variant: LiveTickerVariant
+}) {
   const { formatMoney } = useDisplayCurrency()
   const yesPrice = getYesPrice(event)
+
+  if (variant === 'rail') {
+    return (
+      <Link
+        className="block rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-3 transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
+        {...getEventRoute(event)}
+      >
+        <div className="flex items-center gap-2">
+          <PlatformBadge platform={event.provider} short size="sm" />
+          <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
+            {event.category}
+          </span>
+        </div>
+
+        <div
+          className="mt-2 line-clamp-2 text-[13px] leading-6 text-[var(--color-text-primary)]"
+          title={event.title}
+        >
+          {event.title}
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <span
+            className={`mono-data text-sm font-medium ${
+              yesPrice >= 0.5
+                ? 'text-[var(--color-up)]'
+                : 'text-[var(--color-down)]'
+            }`}
+          >
+            {formatProbability(yesPrice)}
+          </span>
+          <span className="mono-data text-[11px] text-[var(--color-text-secondary)]">
+            {formatMoney(event.totalVolume, getEventMoneyUnit(event))}
+          </span>
+        </div>
+      </Link>
+    )
+  }
 
   return (
     <Link
@@ -59,7 +105,7 @@ function TickerItem({ event }: { event: (typeof EMPTY_EVENTS)[number] }) {
   )
 }
 
-function TickerTrack() {
+function TickerTrack({ variant }: { variant: LiveTickerVariant }) {
   const eventsQuery = useEventsQuery({ status: 'open' })
   const events = eventsQuery.data ?? EMPTY_EVENTS
   const tickerEvents = [...events]
@@ -84,6 +130,16 @@ function TickerTrack() {
     '--ticker-duration-mobile': `${Math.max(tickerEvents.length * 7.5, 60)}s`,
   } as CSSProperties
 
+  if (variant === 'rail') {
+    return (
+      <div className="space-y-2 px-3 py-3">
+        {tickerEvents.slice(0, 5).map((event) => (
+          <TickerItem event={event} key={event.id} variant={variant} />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div
       className="ticker-marquee"
@@ -91,7 +147,7 @@ function TickerTrack() {
     >
       <div className="ticker-lane px-3 py-2.5">
         {tickerEvents.map((event) => (
-          <TickerItem event={event} key={event.id} />
+          <TickerItem event={event} key={event.id} variant={variant} />
         ))}
       </div>
       <div
@@ -99,14 +155,14 @@ function TickerTrack() {
         className="ticker-lane px-3 py-2.5"
       >
         {tickerEvents.map((event) => (
-          <TickerItem event={event} key={`${event.id}-copy`} />
+          <TickerItem event={event} key={`${event.id}-copy`} variant={variant} />
         ))}
       </div>
     </div>
   )
 }
 
-export function LiveTicker() {
+export function LiveTicker({ variant = 'marquee' }: { variant?: LiveTickerVariant }) {
   return (
     <section className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] px-4 py-2.5">
@@ -119,9 +175,15 @@ export function LiveTicker() {
         </span>
       </div>
 
-      <div className="ticker-mask">
-        <TickerTrack />
-      </div>
+      {variant === 'rail' ? (
+        <div>
+          <TickerTrack variant={variant} />
+        </div>
+      ) : (
+        <div className="ticker-mask">
+          <TickerTrack variant={variant} />
+        </div>
+      )}
     </section>
   )
 }

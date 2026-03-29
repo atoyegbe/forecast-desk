@@ -369,7 +369,7 @@ function getLiveFreshnessLabel(freshnessLabel: string) {
 
 function GlobalFooter() {
   return (
-    <footer className="border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-base)] px-5 py-4 md:px-10 md:py-0">
+    <footer className="hidden border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-base)] px-5 py-4 md:block md:px-10 md:py-0">
       <div className="mx-auto flex min-h-[52px] max-w-[1380px] flex-col justify-center gap-[10px] md:flex-row md:items-center md:justify-between">
         <nav aria-label="Footer" className="flex flex-wrap items-center gap-5">
           {footerNav.map((item) => (
@@ -415,6 +415,7 @@ export function SiteShell() {
   const isAlertsRoute = pathname === '/alerts'
   const isSearchRoute = pathname === '/search'
   const showVenueFilter = shouldShowVenueFilter(pathname)
+  const showTopLiveTicker = !isLandingRoute && !isAlertsRoute
   const routeProvider =
     typeof search.provider === 'string' ? search.provider : undefined
   const currentProvider = isVenueFilterId(routeProvider)
@@ -667,7 +668,7 @@ export function SiteShell() {
           </main>
         ) : (
           <div className="mx-auto flex w-full max-w-[1380px] flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4">
-            <LiveTicker />
+            {showTopLiveTicker ? <LiveTicker /> : null}
 
             <main className="flex-1 pb-24 pt-4" id="main-content">
               <Outlet />
