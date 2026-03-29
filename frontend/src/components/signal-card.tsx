@@ -3,6 +3,7 @@ import { useDisplayCurrency } from '../features/currency/context'
 import { PlatformBadge } from './platform-badge'
 import { PriceDisplay } from './price-display'
 import { ScoreBadge } from './score-badge'
+import { WalletAlertButton } from './wallet-alert-button'
 import type { PulseSmartMoneySignal } from '../features/smart-money/types'
 import {
   formatSignedProbabilityChange,
@@ -113,6 +114,12 @@ export function SignalCard({ signal }: SignalCardProps) {
           >
             View wallet profile
           </Link>
+
+          <WalletAlertButton
+            buttonClassName="terminal-button border-[var(--color-border)] bg-transparent text-[var(--color-text-primary)] hover:border-[var(--color-brand)] hover:bg-[var(--color-brand-dim)]"
+            walletAddress={signal.walletAddress}
+            walletLabel={walletLabel}
+          />
         </div>
       </div>
     </article>

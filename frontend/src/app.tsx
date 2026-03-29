@@ -12,6 +12,7 @@ import {
   hydrateQueryClientFromStorage,
   subscribeToQueryCachePersistence,
 } from './lib/query-persistence'
+import { AuthProvider } from './features/auth/context'
 import { DisplayCurrencyProvider } from './features/currency/context'
 
 const ReactQueryDevtools = lazy(async () => ({
@@ -38,9 +39,11 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <DisplayCurrencyProvider>
-        <AppRouter />
-      </DisplayCurrencyProvider>
+      <AuthProvider>
+        <DisplayCurrencyProvider>
+          <AppRouter />
+        </DisplayCurrencyProvider>
+      </AuthProvider>
       {import.meta.env.DEV ? (
         <Suspense fallback={null}>
           <ReactQueryDevtools initialIsOpen={false} />

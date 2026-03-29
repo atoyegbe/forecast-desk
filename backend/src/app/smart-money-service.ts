@@ -50,6 +50,7 @@ import {
   type SmartMoneySeedWallet,
 } from '../providers/polymarket-smart-money.js'
 import { formatCategory, normalizeText, toNumber } from '../providers/shared.js'
+import { queueAlertDeliveriesForSignals } from './alerts-service.js'
 import { listEvents } from './events-service.js'
 import { invalidateCachedResponses } from './response-cache.js'
 
@@ -880,6 +881,7 @@ async function watchSmartMoneySignals() {
     invalidateCachedResponses('/api/v1/smart-money')
 
     const nextSignals = await listStoredSmartMoneySignalsByIds(insertedSignalIds)
+    await queueAlertDeliveriesForSignals(nextSignals)
     emitSmartMoneySignals(nextSignals)
 
     return nextSignals

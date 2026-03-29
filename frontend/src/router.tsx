@@ -25,6 +25,9 @@ const CategoryPage = lazy(async () => ({
 const DivergencePage = lazy(async () => ({
   default: (await import('./routes/divergence-page')).DivergencePage,
 }))
+const AlertsPage = lazy(async () => ({
+  default: (await import('./routes/alerts-page')).AlertsPage,
+}))
 const EventComparePage = lazy(async () => ({
   default: (await import('./routes/event-compare-page')).EventComparePage,
 }))
@@ -124,6 +127,12 @@ const searchRoute = createRoute({
   component: withSuspense(SearchPage),
 })
 
+const alertsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'alerts',
+  component: withSuspense(AlertsPage),
+})
+
 const smartMoneyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'smart-money',
@@ -151,6 +160,7 @@ const routeTree = rootRoute.addChildren([
   categoryRoute,
   divergenceRoute,
   searchRoute,
+  alertsRoute,
   smartMoneyRoute,
   smartMoneyLeaderboardRoute,
   smartMoneyWalletRoute,

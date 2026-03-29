@@ -1,7 +1,10 @@
 const DEFAULT_DATABASE_URL = 'postgresql:///postgres'
+const DEFAULT_ALERT_DELIVERY_INTERVAL_MS = 60 * 1000
 const DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS = 2 * 60 * 1000
 const DEFAULT_FX_API_BASE = 'https://api.frankfurter.dev/v2'
 const DEFAULT_FX_CACHE_TTL_MS = 30 * 60 * 1000
+const DEFAULT_PULSE_AUTH_CODE_TTL_MINUTES = 15
+const DEFAULT_PULSE_SESSION_TTL_DAYS = 30
 const DEFAULT_SMART_MONEY_SCHEDULER_ENABLED = true
 const DEFAULT_SMART_MONEY_DISCOVERY_LOOKBACK_DAYS = 30
 const DEFAULT_SMART_MONEY_DISCOVERY_WALLET_LIMIT = 40
@@ -64,6 +67,13 @@ export function getDatabaseUrl() {
   return value || DEFAULT_DATABASE_URL
 }
 
+export function getAlertDeliveryIntervalMs() {
+  return parsePositiveInteger(
+    process.env.ALERT_DELIVERY_INTERVAL_MS,
+    DEFAULT_ALERT_DELIVERY_INTERVAL_MS,
+  )
+}
+
 export function getDiscoveryRefreshIntervalMs() {
   return parsePositiveInteger(
     process.env.DISCOVERY_REFRESH_INTERVAL_MS,
@@ -82,6 +92,32 @@ export function getFxCacheTtlMs() {
     process.env.FX_CACHE_TTL_MS,
     DEFAULT_FX_CACHE_TTL_MS,
   )
+}
+
+export function getPulseAuthCodeTtlMinutes() {
+  return parsePositiveInteger(
+    process.env.PULSE_AUTH_CODE_TTL_MINUTES,
+    DEFAULT_PULSE_AUTH_CODE_TTL_MINUTES,
+  )
+}
+
+export function getPulseAuthTestCode() {
+  return process.env.PULSE_AUTH_TEST_CODE?.trim() || null
+}
+
+export function getPulseEmailFrom() {
+  return process.env.PULSE_EMAIL_FROM?.trim() || 'alerts@quorum.local'
+}
+
+export function getPulseSessionTtlDays() {
+  return parsePositiveInteger(
+    process.env.PULSE_SESSION_TTL_DAYS,
+    DEFAULT_PULSE_SESSION_TTL_DAYS,
+  )
+}
+
+export function getResendApiKey() {
+  return process.env.RESEND_API_KEY?.trim() || null
 }
 
 export function isSmartMoneySchedulerEnabled() {
@@ -149,9 +185,12 @@ export function getSmartMoneyMinSignalSizeUsd() {
 
 export {
   DEFAULT_DATABASE_URL,
+  DEFAULT_ALERT_DELIVERY_INTERVAL_MS,
   DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS,
   DEFAULT_FX_API_BASE,
   DEFAULT_FX_CACHE_TTL_MS,
+  DEFAULT_PULSE_AUTH_CODE_TTL_MINUTES,
+  DEFAULT_PULSE_SESSION_TTL_DAYS,
   DEFAULT_SMART_MONEY_ACTIVITY_LOOKBACK_DAYS,
   DEFAULT_SMART_MONEY_DISCOVERY_LOOKBACK_DAYS,
   DEFAULT_SMART_MONEY_DISCOVERY_WALLET_LIMIT,

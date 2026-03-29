@@ -13,6 +13,24 @@ export type ApiResponse<T> = {
   error?: ApiError
 }
 
+export function createApiErrorResponse(
+  code: string,
+  message: string,
+  meta: Partial<ApiResponse<null>['meta']> = {},
+): ApiResponse<null> {
+  return {
+    data: null,
+    error: {
+      code,
+      message,
+    },
+    meta: {
+      timestamp: new Date().toISOString(),
+      ...meta,
+    },
+  }
+}
+
 export function createApiResponse<T>(
   data: T,
   meta: Partial<ApiResponse<T>['meta']> = {},

@@ -7,6 +7,7 @@ import {
   SectionHeader,
 } from '../components/section-header'
 import { SignalCard } from '../components/signal-card'
+import { WalletAlertButton } from '../components/wallet-alert-button'
 import { useDisplayCurrency } from '../features/currency/context'
 import {
   useSmartMoneyLiveSignals,
@@ -152,6 +153,14 @@ export function SmartMoneyWalletPage() {
                   <div className="stat-label">Markets</div>
                   <strong>{formatCompactNumber(wallet.marketCount)}</strong>
                 </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <WalletAlertButton
+                  buttonClassName="terminal-button terminal-button-primary"
+                  walletAddress={wallet.address}
+                  walletLabel={wallet.displayName || wallet.shortAddress}
+                />
               </div>
             </div>
           </div>

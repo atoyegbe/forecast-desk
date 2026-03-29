@@ -13,6 +13,8 @@ import { manifoldLiveHub } from '../realtime/manifold-live-hub.js'
 import { polymarketLiveHub } from '../realtime/polymarket-live-hub.js'
 import { smartMoneyLiveHub } from '../realtime/smart-money-live-hub.js'
 import { healthRoute } from '../routes/health.js'
+import { v1AlertRoutes } from '../routes/v1/alerts.js'
+import { v1AuthRoutes } from '../routes/v1/auth.js'
 import { v1CurrencyRoutes } from '../routes/v1/currencies.js'
 import { v1EventsRoutes } from '../routes/v1/events.js'
 import { v1LiveRoutes } from '../routes/v1/live.js'
@@ -42,6 +44,8 @@ export async function createApp() {
   })
 
   app.register(healthRoute)
+  app.register(v1AuthRoutes, { prefix: '/api/v1' })
+  app.register(v1AlertRoutes, { prefix: '/api/v1' })
   app.register(v1CurrencyRoutes, { prefix: '/api/v1' })
   app.register(v1EventsRoutes, { prefix: '/api/v1' })
   app.register(v1LiveRoutes, { prefix: '/api/v1' })

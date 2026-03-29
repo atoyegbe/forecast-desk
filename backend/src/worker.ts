@@ -1,4 +1,8 @@
 import 'dotenv/config'
+import {
+  startAlertDeliveryWorker,
+  stopAlertDeliveryWorker,
+} from './app/alerts-service.js'
 import { startSmartMoneyScheduler, stopSmartMoneyScheduler } from './app/smart-money-service.js'
 import { closeDbPool } from './db/pool.js'
 import { ensureDiscoverySchema } from './db/schema.js'
@@ -12,6 +16,7 @@ async function shutdown(signal: string) {
 
   shuttingDown = true
   console.log(`[smart-money-worker] stopping on ${signal}`)
+  stopAlertDeliveryWorker()
   stopSmartMoneyScheduler()
   await closeDbPool()
   process.exit(0)
@@ -19,8 +24,9 @@ async function shutdown(signal: string) {
 
 async function start() {
   await ensureDiscoverySchema()
+  startAlertDeliveryWorker()
   startSmartMoneyScheduler()
-  console.log('[smart-money-worker] scheduler started')
+  console.log('[smart-money-worker] scheduler and alerts worker started')
 }
 
 process.on('SIGINT', () => {

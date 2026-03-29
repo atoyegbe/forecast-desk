@@ -40,6 +40,12 @@ export function getSearchRoute(query?: string) {
   }
 }
 
+export function getAlertsRoute() {
+  return {
+    to: '/alerts' as const,
+  }
+}
+
 export function getSmartMoneyRoute() {
   return {
     to: '/smart-money' as const,

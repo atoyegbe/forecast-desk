@@ -130,6 +130,66 @@ CREATE TABLE IF NOT EXISTS pulse_event_link_members (
 CREATE INDEX IF NOT EXISTS idx_pulse_event_link_members_event
   ON pulse_event_link_members(event_id);
 
+CREATE TABLE IF NOT EXISTS pulse_users (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  last_login_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_users_email
+  ON pulse_users(email);
+
+CREATE TABLE IF NOT EXISTS pulse_auth_codes (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES pulse_users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  resend_message_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_auth_codes_email
+  ON pulse_auth_codes(email, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pulse_auth_codes_user
+  ON pulse_auth_codes(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS pulse_auth_sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES pulse_users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_auth_sessions_user
+  ON pulse_auth_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_pulse_auth_sessions_expires
+  ON pulse_auth_sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS pulse_alert_subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES pulse_users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  channel TEXT NOT NULL DEFAULT 'email',
+  status TEXT NOT NULL DEFAULT 'active',
+  wallet_address TEXT NOT NULL,
+  min_score INTEGER,
+  min_size_usd DOUBLE PRECISION,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, type, channel, wallet_address)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_alert_subscriptions_user
+  ON pulse_alert_subscriptions(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_pulse_alert_subscriptions_wallet
+  ON pulse_alert_subscriptions(wallet_address, status);
+
 CREATE TABLE IF NOT EXISTS pulse_smart_money_sync_state (
   sync_key TEXT PRIMARY KEY,
   attempt_count INTEGER NOT NULL DEFAULT 0,
@@ -267,6 +327,28 @@ CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_signals_wallet
   ON pulse_smart_money_signals(wallet_address);
 CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_signals_category
   ON pulse_smart_money_signals(category);
+
+CREATE TABLE IF NOT EXISTS pulse_alert_deliveries (
+  id TEXT PRIMARY KEY,
+  subscription_id TEXT NOT NULL REFERENCES pulse_alert_subscriptions(id) ON DELETE CASCADE,
+  signal_id TEXT NOT NULL REFERENCES pulse_smart_money_signals(id) ON DELETE CASCADE,
+  channel TEXT NOT NULL DEFAULT 'email',
+  status TEXT NOT NULL DEFAULT 'pending',
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  last_attempt_at TIMESTAMPTZ,
+  next_attempt_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ,
+  last_error TEXT,
+  provider_message_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(subscription_id, signal_id, channel)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_alert_deliveries_status
+  ON pulse_alert_deliveries(status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_pulse_alert_deliveries_subscription
+  ON pulse_alert_deliveries(subscription_id);
 `
 
 let schemaReadyPromise: Promise<void> | null = null
@@ -281,4 +363,8 @@ export function ensureDiscoverySchema() {
   }
 
   return schemaReadyPromise
+}
+
+export function resetDiscoverySchemaState() {
+  schemaReadyPromise = null
 }

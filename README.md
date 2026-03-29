@@ -21,6 +21,8 @@ Build a public-facing web app that makes prediction markets legible for normal u
 - price history charts
 - category and trend views
 - smart money signal feed and whale leaderboard
+- email auth for alert subscriptions
+- wallet alert subscriptions and delivery
 - editorial framing around why a market moved
 
 ## v1 Non-Goals
@@ -28,7 +30,7 @@ Build a public-facing web app that makes prediction markets legible for normal u
 - trading execution
 - user portfolios
 - auto-trading
-- private authenticated features
+- broad account features beyond alerts
 
 ## Workspace Structure
 
@@ -49,6 +51,16 @@ From the repo root:
 By default the root `Makefile` runs Postgres in Docker on `127.0.0.1:54329` and
 passes that connection string to the backend. `make dev` disables the scheduler
 inside the API process and runs it in the dedicated worker instead.
+
+For Phase 7 email delivery, the backend worker will use Resend when these env
+vars are set:
+
+- `RESEND_API_KEY=...`
+- `PULSE_EMAIL_FROM=alerts@your-domain.com`
+
+Without a Resend key, auth code and alert email sending fall back to a local
+no-op mode that is useful for tests and UI development, but it will not deliver
+real email.
 
 ## Tracking
 

@@ -6,6 +6,7 @@ import {
   useSearch,
 } from '@tanstack/react-router'
 import { useState } from 'react'
+import { useAuth } from '../features/auth/context'
 import { useDisplayCurrency } from '../features/currency/context'
 import type { PulseDisplayCurrency } from '../features/currency/types'
 import {
@@ -14,6 +15,8 @@ import {
   type RuntimeConnectionState,
 } from '../features/runtime/hooks'
 import type { AppSearch } from '../router'
+import { getAlertsRoute } from '../lib/routes'
+import { AuthDialog } from './auth-dialog'
 import { LiveTicker } from './live-ticker'
 
 const THEME_STORAGE_KEY = 'quorum-theme'
@@ -294,6 +297,12 @@ export function SiteShell() {
   const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme)
   const navigate = useNavigate()
   const {
+    isAuthenticated,
+    openAuthDialog,
+    signOut,
+    user,
+  } = useAuth()
+  const {
     availableCurrencies,
     displayCurrency,
     setDisplayCurrency,
@@ -304,6 +313,7 @@ export function SiteShell() {
     select: (state) => state.location.pathname,
   })
   const search = useSearch({ strict: false })
+  const isAlertsRoute = pathname === '/alerts'
   const isSearchRoute = pathname === '/search'
   const showVenueFilter = shouldShowVenueFilter(pathname)
   const routeProvider =
@@ -375,6 +385,17 @@ export function SiteShell() {
             </label>
 
             <Link
+              className={`hidden sm:inline-flex ${
+                isAlertsRoute
+                  ? 'terminal-button terminal-button-primary text-sm font-medium'
+                  : 'terminal-button text-sm font-medium'
+              }`}
+              {...getAlertsRoute()}
+            >
+              Alerts
+            </Link>
+
+            <Link
               aria-label="Open search"
               className="shell-icon-button"
               data-active={isSearchRoute ? 'true' : 'false'}
@@ -391,6 +412,31 @@ export function SiteShell() {
               freshnessLabel={freshnessLabel}
               status={runtimeConnectionStatus}
             />
+
+            {isAuthenticated ? (
+              <>
+                <span className="hidden rounded-lg border border-[var(--color-border)] bg-[var(--surface-control-bg)] px-3 py-2 text-sm text-[var(--color-text-secondary)] lg:inline-flex">
+                  {user?.email}
+                </span>
+                <button
+                  className="terminal-button text-sm font-medium"
+                  onClick={() => {
+                    void signOut()
+                  }}
+                  type="button"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <button
+                className="terminal-button text-sm font-medium"
+                onClick={() => openAuthDialog()}
+                type="button"
+              >
+                Sign in
+              </button>
+            )}
 
             <button
               aria-label={
@@ -485,6 +531,8 @@ export function SiteShell() {
           ))}
         </div>
       </nav>
+
+      <AuthDialog />
     </div>
   )
 }
