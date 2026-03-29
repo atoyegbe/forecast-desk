@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
 } from 'react'
-import { LiveTicker } from '../components/live-ticker'
 import { useToast } from '../components/toast-provider'
 import type { PulseAlertSubscription, PulseAlertTriggerMode } from '../features/alerts/types'
 import {
@@ -36,91 +35,9 @@ type DemoDelivery = {
 
 const DEMO_DELIVERY_EMAIL = 'demo@quorum.so'
 
-const demoSubscriptions: DemoAlertSubscription[] = [
-  {
-    channel: 'email',
-    createdAt: '2026-03-28T09:10:00.000Z',
-    id: 'alert-swisstony',
-    lastDeliveredAt: '2026-03-30T18:42:00.000Z',
-    minScore: 82,
-    minSizeUsd: 2500,
-    status: 'active',
-    triggerMode: 'winning-moves-only',
-    type: 'wallet',
-    updatedAt: '2026-03-30T18:42:00.000Z',
-    walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
-    walletLabel: 'swisstony',
-    walletRoi: 0.187,
-    walletScore: 92,
-  },
-  {
-    channel: 'email',
-    createdAt: '2026-03-27T14:32:00.000Z',
-    id: 'alert-baltic',
-    lastDeliveredAt: null,
-    minScore: 74,
-    minSizeUsd: 500,
-    status: 'active',
-    triggerMode: 'any-new-position',
-    type: 'wallet',
-    updatedAt: '2026-03-29T07:10:00.000Z',
-    walletAddress: '0x4b08c9a37d7a1135f0af4996b708efc5f45a66c1',
-    walletLabel: 'BalticSignal',
-    walletRoi: 0.094,
-    walletScore: 79,
-  },
-  {
-    channel: 'email',
-    createdAt: '2026-03-26T11:05:00.000Z',
-    id: 'alert-sigma',
-    lastDeliveredAt: '2026-03-29T16:24:00.000Z',
-    minScore: 70,
-    minSizeUsd: 1200,
-    status: 'paused',
-    triggerMode: 'winning-moves-only',
-    type: 'wallet',
-    updatedAt: '2026-03-29T16:24:00.000Z',
-    walletAddress: '0x9f835bf7ac22555d603f89b0fae8f190c3b112a9',
-    walletLabel: 'Sigma Park',
-    walletRoi: 0.061,
-    walletScore: 75,
-  },
-]
+const demoSubscriptions: DemoAlertSubscription[] = []
 
-const demoDeliveries: DemoDelivery[] = [
-  {
-    id: 'delivery-1',
-    marketTitle: 'Will Switzerland win on 2026-03-27?',
-    sentAt: '2026-03-30T18:42:00.000Z',
-    status: 'delivered',
-    walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
-    walletLabel: 'swisstony',
-  },
-  {
-    id: 'delivery-2',
-    marketTitle: 'Who will win the next Nigerian presidential election?',
-    sentAt: '2026-03-29T16:24:00.000Z',
-    status: 'delivered',
-    walletAddress: '0x9f835bf7ac22555d603f89b0fae8f190c3b112a9',
-    walletLabel: 'Sigma Park',
-  },
-  {
-    id: 'delivery-3',
-    marketTitle: 'Will Arsenal finish above Liverpool in 2026 EPL?',
-    sentAt: '2026-03-28T12:14:00.000Z',
-    status: 'failed',
-    walletAddress: '0x4b08c9a37d7a1135f0af4996b708efc5f45a66c1',
-    walletLabel: 'BalticSignal',
-  },
-  {
-    id: 'delivery-4',
-    marketTitle: 'Will Brent crude settle above $92 before June 2026?',
-    sentAt: '2026-03-27T21:02:00.000Z',
-    status: 'delivered',
-    walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
-    walletLabel: 'swisstony',
-  },
-]
+const demoDeliveries: DemoDelivery[] = []
 
 function BellIcon({ className }: { className?: string }) {
   return (
@@ -624,198 +541,192 @@ export function AlertsPage() {
 
   return (
     <>
-      <div className="mx-auto grid w-full max-w-[1040px] gap-8 px-6 py-10 lg:grid-cols-[minmax(0,680px)_minmax(260px,320px)] lg:items-start">
-        <aside className="order-first lg:order-last lg:sticky lg:top-[84px]">
-          <LiveTicker variant="rail" />
-        </aside>
+      <div className="mx-auto max-w-[680px] px-6 py-10">
+        <header>
+          <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-text-tertiary)]">
+            Alerts
+          </div>
+          <h1 className="mt-2 text-[24px] font-semibold text-[var(--color-text-primary)]">
+            Your subscriptions
+          </h1>
+          <p className="mt-2 text-[14px] text-[var(--color-text-secondary)]">
+            You&apos;ll get an email when these wallets move.
+          </p>
+        </header>
 
-        <div>
-          <header>
-            <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-text-tertiary)]">
-              Alerts
-            </div>
-            <h1 className="mt-2 text-[24px] font-semibold text-[var(--color-text-primary)]">
-              Your subscriptions
-            </h1>
-            <p className="mt-2 text-[14px] text-[var(--color-text-secondary)]">
-              You&apos;ll get an email when these wallets move.
-            </p>
-          </header>
-
-          {subscriptions.length ? (
-            <section className="mt-8" ref={menuRootRef}>
-              {subscriptions.map((subscription) =>
-                deleteConfirmId === subscription.id ? (
-                  <div
-                    className="mb-2 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-5 py-4"
-                    key={subscription.id}
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
-                        Delete this alert?
+        {subscriptions.length ? (
+          <section className="mt-8" ref={menuRootRef}>
+            {subscriptions.map((subscription) =>
+              deleteConfirmId === subscription.id ? (
+                <div
+                  className="mb-2 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-5 py-4"
+                  key={subscription.id}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                      Delete this alert?
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        className="text-[13px] text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
+                        onClick={() => setDeleteConfirmId(null)}
+                        type="button"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="rounded-[6px] bg-[var(--color-down)] px-3 py-[7px] text-[13px] font-medium text-white transition-opacity hover:opacity-90"
+                        onClick={() => {
+                          handleDelete(subscription.id)
+                          pushToast({
+                            label: 'Alert deleted',
+                            message: `Removed ${getWalletTitle(subscription)} from your alerts.`,
+                          })
+                        }}
+                        type="button"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <article
+                  className="mb-2 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-5 py-4"
+                  key={subscription.id}
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <Link
+                        className="block truncate text-[14px] font-medium text-[var(--color-text-primary)] transition hover:text-[#00c58e]"
+                        {...getSmartMoneyWalletRoute(subscription.walletAddress)}
+                      >
+                        {getWalletTitle(subscription)}
+                      </Link>
+                      <div className="mt-1 font-mono text-[12px] text-[var(--color-text-tertiary)]">
+                        {getFilterSummary(subscription)}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="mt-1 font-mono text-[12px] text-[var(--color-text-tertiary)]">
+                        {subscription.lastDeliveredAt
+                          ? `Last alerted: ${formatTimeAgo(subscription.lastDeliveredAt)}`
+                          : 'No alerts sent yet'}
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
+                      <StatusPill status={subscription.status} />
+
+                      <div className="relative">
                         <button
-                          className="text-[13px] text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
-                          onClick={() => setDeleteConfirmId(null)}
-                          type="button"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          className="rounded-[6px] bg-[var(--color-down)] px-3 py-[7px] text-[13px] font-medium text-white transition-opacity hover:opacity-90"
+                          aria-expanded={openMenuId === subscription.id}
+                          aria-haspopup="menu"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] border border-transparent text-[var(--color-text-tertiary)] transition hover:border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]"
                           onClick={() => {
-                            handleDelete(subscription.id)
-                            pushToast({
-                              label: 'Alert deleted',
-                              message: `Removed ${getWalletTitle(subscription)} from your alerts.`,
-                            })
+                            setOpenMenuId((current) =>
+                              current === subscription.id ? null : subscription.id,
+                            )
                           }}
                           type="button"
                         >
-                          Delete
+                          <DotsIcon />
                         </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <article
-                    className="mb-2 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-5 py-4"
-                    key={subscription.id}
-                  >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <Link
-                          className="block truncate text-[14px] font-medium text-[var(--color-text-primary)] transition hover:text-[#00c58e]"
-                          {...getSmartMoneyWalletRoute(subscription.walletAddress)}
-                        >
-                          {getWalletTitle(subscription)}
-                        </Link>
-                        <div className="mt-1 font-mono text-[12px] text-[var(--color-text-tertiary)]">
-                          {getFilterSummary(subscription)}
-                        </div>
-                        <div className="mt-1 font-mono text-[12px] text-[var(--color-text-tertiary)]">
-                          {subscription.lastDeliveredAt
-                            ? `Last alerted: ${formatTimeAgo(subscription.lastDeliveredAt)}`
-                            : 'No alerts sent yet'}
-                        </div>
-                      </div>
 
-                      <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
-                        <StatusPill status={subscription.status} />
-
-                        <div className="relative">
-                          <button
-                            aria-expanded={openMenuId === subscription.id}
-                            aria-haspopup="menu"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] border border-transparent text-[var(--color-text-tertiary)] transition hover:border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]"
-                            onClick={() => {
-                              setOpenMenuId((current) =>
-                                current === subscription.id ? null : subscription.id,
-                              )
-                            }}
-                            type="button"
+                        {openMenuId === subscription.id ? (
+                          <div
+                            className="absolute top-full right-0 z-20 mt-1 min-w-[148px] rounded-[6px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] py-1 shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
+                            role="menu"
                           >
-                            <DotsIcon />
-                          </button>
-
-                          {openMenuId === subscription.id ? (
-                            <div
-                              className="absolute top-full right-0 z-20 mt-1 min-w-[148px] rounded-[6px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] py-1 shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
-                              role="menu"
+                            <button
+                              className="block w-full px-[14px] py-[8px] text-left text-[13px] text-[var(--color-text-primary)] transition hover:bg-[var(--color-bg-hover)]"
+                              onClick={() => {
+                                setDrawerSubscriptionId(subscription.id)
+                                setOpenMenuId(null)
+                              }}
+                              type="button"
                             >
-                              <button
-                                className="block w-full px-[14px] py-[8px] text-left text-[13px] text-[var(--color-text-primary)] transition hover:bg-[var(--color-bg-hover)]"
-                                onClick={() => {
-                                  setDrawerSubscriptionId(subscription.id)
-                                  setOpenMenuId(null)
-                                }}
-                                type="button"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                className="block w-full px-[14px] py-[8px] text-left text-[13px] text-[var(--color-text-primary)] transition hover:bg-[var(--color-bg-hover)]"
-                                onClick={() => {
-                                  handleStatusToggle(subscription.id)
-                                  pushToast({
-                                    label:
-                                      subscription.status === 'paused'
-                                        ? 'Alert resumed'
-                                        : 'Alert paused',
-                                    message:
-                                      subscription.status === 'paused'
-                                        ? `You’ll hear when ${getWalletTitle(subscription)} moves again.`
-                                        : `Paused email alerts for ${getWalletTitle(subscription)}.`,
-                                  })
-                                }}
-                                type="button"
-                              >
-                                {subscription.status === 'paused' ? 'Resume' : 'Pause'}
-                              </button>
-                              <button
-                                className="block w-full px-[14px] py-[8px] text-left text-[13px] text-[#ef4444] transition hover:bg-[var(--color-bg-hover)]"
-                                onClick={() => {
-                                  setDeleteConfirmId(subscription.id)
-                                  setOpenMenuId(null)
-                                }}
-                                type="button"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
+                              Edit
+                            </button>
+                            <button
+                              className="block w-full px-[14px] py-[8px] text-left text-[13px] text-[var(--color-text-primary)] transition hover:bg-[var(--color-bg-hover)]"
+                              onClick={() => {
+                                handleStatusToggle(subscription.id)
+                                pushToast({
+                                  label:
+                                    subscription.status === 'paused'
+                                      ? 'Alert resumed'
+                                      : 'Alert paused',
+                                  message:
+                                    subscription.status === 'paused'
+                                      ? `You’ll hear when ${getWalletTitle(subscription)} moves again.`
+                                      : `Paused email alerts for ${getWalletTitle(subscription)}.`,
+                                })
+                              }}
+                              type="button"
+                            >
+                              {subscription.status === 'paused' ? 'Resume' : 'Pause'}
+                            </button>
+                            <button
+                              className="block w-full px-[14px] py-[8px] text-left text-[13px] text-[#ef4444] transition hover:bg-[var(--color-bg-hover)]"
+                              onClick={() => {
+                                setDeleteConfirmId(subscription.id)
+                                setOpenMenuId(null)
+                              }}
+                              type="button"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
-                  </article>
-                ),
-              )}
-
-              {deliveries.length ? (
-                <section className="mt-8">
-                  <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-text-tertiary)]">
-                    Recent deliveries
                   </div>
+                </article>
+              ),
+            )}
 
-                  <div>
-                    {deliveries.slice(0, 10).map((delivery) => (
-                      <div
-                        className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-[var(--color-border-subtle)] py-3 text-[12px] sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.8fr)_auto_auto] sm:items-center sm:gap-3"
-                        key={delivery.id}
+            {deliveries.length ? (
+              <section className="mt-8">
+                <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-text-tertiary)]">
+                  Recent deliveries
+                </div>
+
+                <div>
+                  {deliveries.slice(0, 10).map((delivery) => (
+                    <div
+                      className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-[var(--color-border-subtle)] py-3 text-[12px] sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.8fr)_auto_auto] sm:items-center sm:gap-3"
+                      key={delivery.id}
+                    >
+                      <Link
+                        className="truncate text-[var(--color-text-primary)] transition hover:text-[#00c58e]"
+                        {...getSmartMoneyWalletRoute(delivery.walletAddress)}
                       >
-                        <Link
-                          className="truncate text-[var(--color-text-primary)] transition hover:text-[#00c58e]"
-                          {...getSmartMoneyWalletRoute(delivery.walletAddress)}
-                        >
-                          {getWalletTitle(delivery)}
-                        </Link>
-                        <div className="truncate text-[var(--color-text-secondary)] sm:order-none sm:block">
-                          {delivery.marketTitle}
-                        </div>
-                        <div className="font-mono text-[var(--color-text-tertiary)] sm:text-right">
-                          {formatTimeAgo(delivery.sentAt)}
-                        </div>
-                        <div
-                          className={clsx(
-                            'font-mono sm:text-right',
-                            delivery.status === 'delivered'
-                              ? 'text-[#00c58e]'
-                              : 'text-[#ef4444]',
-                          )}
-                        >
-                          {delivery.status === 'delivered' ? 'Delivered' : 'Failed'}
-                        </div>
+                        {getWalletTitle(delivery)}
+                      </Link>
+                      <div className="truncate text-[var(--color-text-secondary)] sm:order-none sm:block">
+                        {delivery.marketTitle}
                       </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-            </section>
-          ) : (
-            <EmptyState />
-          )}
-        </div>
+                      <div className="font-mono text-[var(--color-text-tertiary)] sm:text-right">
+                        {formatTimeAgo(delivery.sentAt)}
+                      </div>
+                      <div
+                        className={clsx(
+                          'font-mono sm:text-right',
+                          delivery.status === 'delivered'
+                            ? 'text-[#00c58e]'
+                            : 'text-[#ef4444]',
+                        )}
+                      >
+                        {delivery.status === 'delivered' ? 'Delivered' : 'Failed'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </section>
+        ) : (
+          <EmptyState />
+        )}
       </div>
 
       {drawerSubscription ? (
