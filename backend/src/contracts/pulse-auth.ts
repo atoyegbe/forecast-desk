@@ -13,20 +13,21 @@ export type PulseAuthSession = {
 
 export type PulseAuthSessionView = Omit<PulseAuthSession, 'token'>
 
-export type PulseAuthRequestCodeInput = {
+export type PulseAuthRequestLinkInput = {
   email: string
+  returnToPath?: string
 }
 
-export type PulseAuthRequestCodeResult = {
+export type PulseAuthRequestLinkResult = {
   delivered: true
 }
 
-export type PulseAuthVerifyCodeInput = {
-  code: string
+export type PulseAuthVerifyLinkInput = {
   email: string
+  token: string
 }
 
-export type PulseAuthVerifyCodeResult = {
+export type PulseAuthVerifyLinkResult = {
   session: PulseAuthSession
   user: PulseAuthUser
 }

@@ -2,16 +2,18 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useToast } from '../../components/toast-provider'
 import { BackendRequestError } from '../../lib/api-client'
 import {
   getCurrentSession,
   logoutSession,
-  requestLoginCode,
-  verifyLoginCode,
+  requestMagicLink,
+  verifyMagicLink,
 } from './api'
 import type {
   PulseAuthSession,
@@ -19,31 +21,81 @@ import type {
   PulseAuthUser,
 } from './types'
 
+const AUTH_CALLBACK_EMAIL_PARAM = 'auth_email'
+const AUTH_CALLBACK_TOKEN_PARAM = 'auth_token'
 const AUTH_TOKEN_STORAGE_KEY = 'quorum-auth-token'
+const PENDING_AUTH_ACTION_STORAGE_KEY = 'quorum-auth-pending-action'
 
 type AuthDialogState = {
   email: string
   error: string | null
   isOpen: boolean
   isSubmitting: boolean
-  step: 'request' | 'verify'
+  resendCooldownEndsAt: number | null
+  resentState: 'idle' | 'resent'
+  step: 'email' | 'check-email'
 }
+
+export type WalletAlertPendingAuthActionInput = {
+  type: 'wallet-alert'
+  walletAddress: string
+  walletLabel?: string | null
+}
+
+export type AlertsRoutePendingAuthActionInput = {
+  type: 'alerts-route'
+}
+
+export type PendingAuthActionInput =
+  | WalletAlertPendingAuthActionInput
+  | AlertsRoutePendingAuthActionInput
+
+export type PendingAuthAction =
+  | (WalletAlertPendingAuthActionInput & {
+      id: string
+      returnToPath: string
+    })
+  | (AlertsRoutePendingAuthActionInput & {
+      id: string
+      returnToPath: string
+    })
 
 type AuthContextValue = {
   authDialog: AuthDialogState
   closeAuthDialog: () => void
+  consumePendingAction: (id: string) => void
   currentSession: PulseAuthSessionView | null
   isAuthenticated: boolean
   isHydrating: boolean
-  openAuthDialog: (initialEmail?: string) => void
-  requestCode: (email: string) => Promise<boolean>
+  openAuthDialog: (input?: {
+    initialEmail?: string
+    pendingAction?: PendingAuthActionInput | null
+  }) => void
+  pendingAction: PendingAuthAction | null
+  requestMagicLink: (email: string) => Promise<boolean>
+  resetAuthDialogToEmailEntry: () => void
+  resendMagicLink: () => Promise<boolean>
   sessionToken: string | null
   signOut: () => Promise<void>
   user: PulseAuthUser | null
-  verifyCode: (code: string) => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+function createDefaultDialogState(
+  overrides: Partial<AuthDialogState> = {},
+): AuthDialogState {
+  return {
+    email: '',
+    error: null,
+    isOpen: false,
+    isSubmitting: false,
+    resendCooldownEndsAt: null,
+    resentState: 'idle',
+    step: 'email',
+    ...overrides,
+  }
+}
 
 function getStoredToken() {
   return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
@@ -58,6 +110,62 @@ function setStoredToken(token: string | null) {
   window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
 }
 
+function createPendingActionId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function getCurrentReturnToPath() {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`
+}
+
+function isPendingAuthAction(value: unknown): value is PendingAuthAction {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Record<string, unknown>
+
+  return (
+    (candidate.type === 'wallet-alert' || candidate.type === 'alerts-route') &&
+    typeof candidate.id === 'string' &&
+    typeof candidate.returnToPath === 'string' &&
+    (candidate.type === 'alerts-route' ||
+      typeof candidate.walletAddress === 'string')
+  )
+}
+
+function getStoredPendingAuthAction() {
+  const rawValue = window.sessionStorage.getItem(PENDING_AUTH_ACTION_STORAGE_KEY)
+
+  if (!rawValue) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as unknown
+
+    return isPendingAuthAction(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function setStoredPendingAuthAction(action: PendingAuthAction | null) {
+  if (!action) {
+    window.sessionStorage.removeItem(PENDING_AUTH_ACTION_STORAGE_KEY)
+    return
+  }
+
+  window.sessionStorage.setItem(
+    PENDING_AUTH_ACTION_STORAGE_KEY,
+    JSON.stringify(action),
+  )
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof BackendRequestError || error instanceof Error) {
     return error.message
@@ -66,43 +174,175 @@ function getErrorMessage(error: unknown) {
   return 'Something went wrong.'
 }
 
+function getAuthCallback() {
+  const url = new URL(window.location.href)
+  const email = url.searchParams.get(AUTH_CALLBACK_EMAIL_PARAM)?.trim() ?? ''
+  const token = url.searchParams.get(AUTH_CALLBACK_TOKEN_PARAM)?.trim() ?? ''
+
+  if (!email || !token) {
+    return null
+  }
+
+  url.searchParams.delete(AUTH_CALLBACK_EMAIL_PARAM)
+  url.searchParams.delete(AUTH_CALLBACK_TOKEN_PARAM)
+
+  return {
+    cleanUrl: `${url.pathname}${url.search}${url.hash}`,
+    email,
+    token,
+  }
+}
+
+function storeAuthCallbackRemoval(cleanUrl: string) {
+  window.history.replaceState(window.history.state, '', cleanUrl)
+  window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }))
+}
+
+function normalizePendingAction(
+  input?: PendingAuthActionInput | null,
+): PendingAuthAction | null {
+  if (!input) {
+    return null
+  }
+
+  if (input.type === 'alerts-route') {
+    return {
+      id: createPendingActionId(),
+      returnToPath: getCurrentReturnToPath(),
+      type: 'alerts-route',
+    }
+  }
+
+  return {
+    id: createPendingActionId(),
+    returnToPath: getCurrentReturnToPath(),
+    type: 'wallet-alert',
+    walletAddress: input.walletAddress.trim().toLowerCase(),
+    walletLabel: input.walletLabel ?? null,
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
+  const { pushToast } = useToast()
+  const didHydrateRef = useRef(false)
+  const pendingActionRef = useRef<PendingAuthAction | null>(null)
+  const resentTimerRef = useRef<number | null>(null)
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [currentSession, setCurrentSession] = useState<PulseAuthSessionView | null>(
     null,
   )
   const [user, setUser] = useState<PulseAuthUser | null>(null)
   const [isHydrating, setIsHydrating] = useState(true)
-  const [authDialog, setAuthDialog] = useState<AuthDialogState>({
-    email: '',
-    error: null,
-    isOpen: false,
-    isSubmitting: false,
-    step: 'request',
-  })
+  const [pendingAction, setPendingAction] = useState<PendingAuthAction | null>(null)
+  const [authDialog, setAuthDialog] = useState<AuthDialogState>(
+    createDefaultDialogState(),
+  )
 
   useEffect(() => {
-    const token = getStoredToken()
+    return () => {
+      if (resentTimerRef.current) {
+        window.clearTimeout(resentTimerRef.current)
+      }
+    }
+  }, [])
 
-    if (!token) {
-      setIsHydrating(false)
+  useEffect(() => {
+    if (didHydrateRef.current) {
       return
     }
 
+    didHydrateRef.current = true
     let isActive = true
-    setSessionToken(token)
 
-    void getCurrentSession(token)
-      .then((session) => {
+    const applySessionState = (nextSession: {
+      session: PulseAuthSession
+      user: PulseAuthUser
+    }) => {
+      const storedSession = nextSession.session
+
+      setSessionToken(storedSession.token)
+      setStoredToken(storedSession.token)
+      setCurrentSession({
+        expiresAt: storedSession.expiresAt,
+        id: storedSession.id,
+      })
+      setUser(nextSession.user)
+      void queryClient.invalidateQueries({
+        queryKey: ['alerts'],
+      })
+    }
+
+    void (async () => {
+      const authCallback = getAuthCallback()
+
+      if (authCallback) {
+        storeAuthCallbackRemoval(authCallback.cleanUrl)
+
+        try {
+          const nextSession = await verifyMagicLink(
+            authCallback.email,
+            authCallback.token,
+          )
+
+          if (!isActive) {
+            return
+          }
+
+          applySessionState(nextSession)
+          const nextPendingAction = getStoredPendingAuthAction()
+
+          pendingActionRef.current = nextPendingAction
+          setPendingAction(nextPendingAction)
+          setAuthDialog(createDefaultDialogState())
+          pushToast({
+            label: 'Signed in',
+            message: `Signed in as ${nextSession.user.email}`,
+          })
+        } catch (error) {
+          if (!isActive) {
+            return
+          }
+
+          pendingActionRef.current = getStoredPendingAuthAction()
+          setAuthDialog(
+            createDefaultDialogState({
+              email: authCallback.email,
+              error: getErrorMessage(error),
+              isOpen: true,
+            }),
+          )
+        } finally {
+          if (isActive) {
+            setIsHydrating(false)
+          }
+        }
+
+        return
+      }
+
+      const token = getStoredToken()
+
+      if (!token) {
+        if (isActive) {
+          setIsHydrating(false)
+        }
+
+        return
+      }
+
+      setSessionToken(token)
+
+      try {
+        const session = await getCurrentSession(token)
+
         if (!isActive) {
           return
         }
 
         setCurrentSession(session.session)
         setUser(session.user)
-      })
-      .catch(() => {
+      } catch {
         if (!isActive) {
           return
         }
@@ -111,26 +351,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentSession(null)
         setUser(null)
         setStoredToken(null)
-      })
-      .finally(() => {
+      } finally {
         if (isActive) {
           setIsHydrating(false)
         }
-      })
+      }
+    })()
 
     return () => {
       isActive = false
     }
-  }, [])
+  }, [pushToast, queryClient])
 
-  const openAuthDialog = (initialEmail = '') => {
-    setAuthDialog({
-      email: initialEmail,
-      error: null,
-      isOpen: true,
-      isSubmitting: false,
-      step: 'request',
-    })
+  const openAuthDialog = (input?: {
+    initialEmail?: string
+    pendingAction?: PendingAuthActionInput | null
+  }) => {
+    const nextPendingAction = normalizePendingAction(input?.pendingAction)
+
+    pendingActionRef.current = nextPendingAction
+    setPendingAction(null)
+    setStoredPendingAuthAction(nextPendingAction)
+    setAuthDialog(
+      createDefaultDialogState({
+        email: input?.initialEmail?.trim().toLowerCase() ?? '',
+        isOpen: true,
+      }),
+    )
   }
 
   const closeAuthDialog = () => {
@@ -142,13 +389,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }))
   }
 
-  const requestCodeForEmail = async (email: string) => {
+  const requestMagicLinkForEmail = async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase()
 
     if (!normalizedEmail) {
       setAuthDialog((current) => ({
         ...current,
-        error: 'Email is required.',
+        error: 'Enter your email to continue.',
       }))
 
       return false
@@ -162,13 +409,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }))
 
     try {
-      await requestLoginCode(normalizedEmail)
+      await requestMagicLink(
+        normalizedEmail,
+        pendingActionRef.current?.returnToPath ?? getCurrentReturnToPath(),
+      )
+
       setAuthDialog((current) => ({
         ...current,
         email: normalizedEmail,
         error: null,
         isSubmitting: false,
-        step: 'verify',
+        resendCooldownEndsAt: Date.now() + 60_000,
+        resentState: 'idle',
+        step: 'check-email',
       }))
 
       return true
@@ -183,14 +436,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const verifyAuthCode = async (code: string) => {
-    const normalizedCode = code.trim()
-    const email = authDialog.email
+  const resendMagicLinkForEmail = async () => {
+    const email = authDialog.email.trim().toLowerCase()
 
-    if (!email || normalizedCode.length < 6) {
+    if (!email) {
       setAuthDialog((current) => ({
         ...current,
-        error: 'Enter the 6-digit code sent to your email.',
+        error: 'Enter your email to continue.',
+        step: 'email',
       }))
 
       return false
@@ -203,26 +456,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }))
 
     try {
-      const nextSession = await verifyLoginCode(email, normalizedCode)
-      const storedSession: PulseAuthSession = nextSession.session
+      await requestMagicLink(
+        email,
+        pendingActionRef.current?.returnToPath ?? getCurrentReturnToPath(),
+      )
 
-      setSessionToken(storedSession.token)
-      setStoredToken(storedSession.token)
-      setCurrentSession({
-        expiresAt: storedSession.expiresAt,
-        id: storedSession.id,
-      })
-      setUser(nextSession.user)
-      setAuthDialog({
-        email: '',
+      if (resentTimerRef.current) {
+        window.clearTimeout(resentTimerRef.current)
+      }
+
+      resentTimerRef.current = window.setTimeout(() => {
+        setAuthDialog((current) => ({
+          ...current,
+          resentState: 'idle',
+        }))
+      }, 2_000)
+
+      setAuthDialog((current) => ({
+        ...current,
         error: null,
-        isOpen: false,
         isSubmitting: false,
-        step: 'request',
-      })
-      void queryClient.invalidateQueries({
-        queryKey: ['alerts'],
-      })
+        resendCooldownEndsAt: Date.now() + 60_000,
+        resentState: 'resent',
+      }))
 
       return true
     } catch (error) {
@@ -236,9 +492,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const resetAuthDialogToEmailEntry = () => {
+    setAuthDialog(
+      createDefaultDialogState({
+        isOpen: true,
+      }),
+    )
+  }
+
+  const consumePendingAction = (id: string) => {
+    setPendingAction((current) => {
+      if (!current || current.id !== id) {
+        return current
+      }
+
+      return null
+    })
+
+    if (pendingActionRef.current?.id === id) {
+      pendingActionRef.current = null
+    }
+
+    const storedAction = getStoredPendingAuthAction()
+
+    if (storedAction?.id === id) {
+      setStoredPendingAuthAction(null)
+    }
+  }
+
   const signOut = async () => {
     const activeToken = sessionToken
 
+    pendingActionRef.current = null
+    setPendingAction(null)
+    setStoredPendingAuthAction(null)
     setSessionToken(null)
     setCurrentSession(null)
     setUser(null)
@@ -262,15 +549,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         authDialog,
         closeAuthDialog,
+        consumePendingAction,
         currentSession,
         isAuthenticated: Boolean(sessionToken && user),
         isHydrating,
         openAuthDialog,
-        requestCode: requestCodeForEmail,
+        pendingAction,
+        requestMagicLink: requestMagicLinkForEmail,
+        resetAuthDialogToEmailEntry,
+        resendMagicLink: resendMagicLinkForEmail,
         sessionToken,
         signOut,
         user,
-        verifyCode: verifyAuthCode,
       }}
     >
       {children}

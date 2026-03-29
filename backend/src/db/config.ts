@@ -101,8 +101,12 @@ export function getPulseAuthCodeTtlMinutes() {
   )
 }
 
-export function getPulseAuthTestCode() {
-  return process.env.PULSE_AUTH_TEST_CODE?.trim() || null
+export function getPulseAuthFrontendBaseUrl() {
+  return process.env.PULSE_AUTH_FRONTEND_BASE_URL?.trim() || null
+}
+
+export function getPulseAuthTestMagicToken() {
+  return process.env.PULSE_AUTH_TEST_MAGIC_TOKEN?.trim() || null
 }
 
 export function getPulseEmailFrom() {

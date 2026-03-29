@@ -64,14 +64,14 @@ async function sendEmail(input: {
   } satisfies EmailSendResult
 }
 
-export async function sendPasswordlessCodeEmail(input: {
-  code: string
+export async function sendPasswordlessMagicLinkEmail(input: {
   email: string
+  magicLinkUrl: string
 }) {
   return sendEmail({
     email: input.email,
-    subject: 'Your Quorum login code',
-    text: `Your Quorum login code is ${input.code}. It expires in ${getPulseAuthCodeTtlMinutes()} minutes.`,
+    subject: 'Your Quorum magic link',
+    text: `Open this link to sign in to Quorum: ${input.magicLinkUrl} The link expires in ${getPulseAuthCodeTtlMinutes()} minutes.`,
   })
 }
 

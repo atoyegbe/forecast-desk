@@ -4,6 +4,7 @@ import {
   createWalletAlertSubscription,
   deleteUserAlertSubscription,
   listUserAlertSubscriptions,
+  updateUserAlertSubscription,
 } from '../../app/alerts-service.js'
 import { getBearerToken, getCurrentSession } from '../../app/auth-service.js'
 import {
@@ -15,6 +16,7 @@ import type {
   PulseAlertSubscription,
   PulseAlertSubscriptionCreateInput,
   PulseAlertSubscriptionListData,
+  PulseAlertSubscriptionUpdateInput,
 } from '../../contracts/pulse-alerts.js'
 
 function replyWithError(
@@ -139,5 +141,43 @@ export const v1AlertRoutes: FastifyPluginAsync = async (app) => {
     }
 
     return reply.code(204).send()
+  })
+
+  app.patch<{
+    Body: PulseAlertSubscriptionUpdateInput
+    Params: {
+      id: string
+    }
+  }>('/alerts/subscriptions/:id', async (request, reply) => {
+    const session = await requireSession(request, reply)
+
+    if (!session) {
+      return
+    }
+
+    try {
+      const subscription = await updateUserAlertSubscription(
+        session.user.id,
+        request.params.id,
+        request.body,
+      )
+
+      if (!subscription) {
+        return replyWithError(
+          reply,
+          404,
+          'ALERT_NOT_FOUND',
+          'Alert subscription was not found.',
+        )
+      }
+
+      return createApiResponse<PulseAlertSubscription>(subscription)
+    } catch (error) {
+      if (error instanceof Error) {
+        return replyWithError(reply, 400, 'INVALID_ALERT', error.message)
+      }
+
+      throw error
+    }
   })
 }

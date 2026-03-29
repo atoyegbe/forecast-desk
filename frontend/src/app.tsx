@@ -13,6 +13,7 @@ import {
   subscribeToQueryCachePersistence,
 } from './lib/query-persistence'
 import { AuthProvider } from './features/auth/context'
+import { ToastProvider } from './components/toast-provider'
 import { DisplayCurrencyProvider } from './features/currency/context'
 
 const ReactQueryDevtools = lazy(async () => ({
@@ -39,11 +40,13 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <DisplayCurrencyProvider>
-          <AppRouter />
-        </DisplayCurrencyProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <DisplayCurrencyProvider>
+            <AppRouter />
+          </DisplayCurrencyProvider>
+        </AuthProvider>
+      </ToastProvider>
       {import.meta.env.DEV ? (
         <Suspense fallback={null}>
           <ReactQueryDevtools initialIsOpen={false} />

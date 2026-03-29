@@ -1,6 +1,7 @@
 import type {
   PulseAlertSubscription,
   PulseAlertSubscriptionCreateInput,
+  PulseAlertSubscriptionUpdateInput,
 } from '../contracts/pulse-alerts.js'
 import type { PulseSmartMoneySignal } from '../contracts/pulse-smart-money.js'
 import { getAlertDeliveryIntervalMs } from '../db/config.js'
@@ -14,6 +15,7 @@ import {
   markAlertDeliveryFailed,
   markAlertDeliverySent,
   queueAlertDeliveriesForMatches,
+  updateAlertSubscriptionStatus,
 } from '../db/alerts-repository.js'
 import { listStoredSmartMoneySignalsByIds } from '../db/smart-money-repository.js'
 import { sendWalletSignalAlertEmail } from './email-service.js'
@@ -74,6 +76,7 @@ export function validateAlertSubscriptionInput(
   const walletAddress = input.walletAddress.trim().toLowerCase()
   const minScore = parseOptionalNumber(input.minScore, 100)
   const minSizeUsd = parseOptionalNumber(input.minSizeUsd)
+  const triggerMode = input.triggerMode ?? 'any-new-position'
 
   if (input.type !== 'wallet') {
     throw new Error('Only wallet alerts are supported right now.')
@@ -91,9 +94,17 @@ export function validateAlertSubscriptionInput(
     throw new Error('Minimum signal size must be zero or greater.')
   }
 
+  if (
+    triggerMode !== 'any-new-position' &&
+    triggerMode !== 'winning-moves-only'
+  ) {
+    throw new Error('Trigger mode is invalid.')
+  }
+
   return {
     minScore,
     minSizeUsd,
+    triggerMode,
     type: 'wallet' as const,
     walletAddress,
   }
@@ -109,6 +120,7 @@ export async function createWalletAlertSubscription(
     return await createAlertSubscription({
       minScore: validatedInput.minScore,
       minSizeUsd: validatedInput.minSizeUsd,
+      triggerMode: validatedInput.triggerMode,
       type: validatedInput.type,
       userId,
       walletAddress: validatedInput.walletAddress,
@@ -125,6 +137,22 @@ export async function createWalletAlertSubscription(
 export async function deleteUserAlertSubscription(userId: string, id: string) {
   return deleteAlertSubscription({
     id,
+    userId,
+  })
+}
+
+export async function updateUserAlertSubscription(
+  userId: string,
+  id: string,
+  input: PulseAlertSubscriptionUpdateInput,
+) {
+  if (input.status !== 'active' && input.status !== 'paused') {
+    throw new Error('Alert status is invalid.')
+  }
+
+  return updateAlertSubscriptionStatus({
+    id,
+    status: input.status,
     userId,
   })
 }

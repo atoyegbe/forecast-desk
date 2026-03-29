@@ -3,6 +3,7 @@ import type {
   PulseAlertDelivery,
   PulseAlertDeliveryStatus,
   PulseAlertSubscription,
+  PulseAlertTriggerMode,
 } from '../contracts/pulse-alerts.js'
 import type { PulseSmartMoneySignal } from '../contracts/pulse-smart-money.js'
 import { getDbPool } from './pool.js'
@@ -11,9 +12,11 @@ type AlertSubscriptionRow = {
   channel: 'email'
   created_at: Date | string
   id: string
+  last_delivered_at: Date | string | null
   min_score: number | null
   min_size_usd: number | null
   status: 'active' | 'paused'
+  trigger_mode: PulseAlertTriggerMode
   type: 'wallet'
   updated_at: Date | string
   wallet_address: string
@@ -40,11 +43,13 @@ type AlertSubscriptionMatchRow = AlertSubscriptionRow & {
 }
 
 type PendingAlertDeliveryJobRow = AlertDeliveryRow & {
+  last_delivered_at: Date | string | null
   min_score: number | null
   min_size_usd: number | null
   subscription_channel: 'email'
   subscription_created_at: Date | string
   subscription_status: 'active' | 'paused'
+  trigger_mode: PulseAlertTriggerMode
   subscription_updated_at: Date | string
   type: 'wallet'
   user_email: string
@@ -79,9 +84,11 @@ function mapSubscription(row: AlertSubscriptionRow): PulseAlertSubscription {
     channel: row.channel,
     createdAt: toIsoString(row.created_at) ?? new Date(0).toISOString(),
     id: row.id,
+    lastDeliveredAt: toIsoString(row.last_delivered_at),
     minScore: row.min_score,
     minSizeUsd: row.min_size_usd,
     status: row.status,
+    triggerMode: row.trigger_mode,
     type: row.type,
     updatedAt: toIsoString(row.updated_at) ?? new Date(0).toISOString(),
     walletAddress: row.wallet_address,
@@ -109,6 +116,7 @@ function mapDelivery(row: AlertDeliveryRow): PulseAlertDelivery {
 export async function createAlertSubscription(input: {
   minScore?: number | null
   minSizeUsd?: number | null
+  triggerMode: PulseAlertTriggerMode
   type: 'wallet'
   userId: string
   walletAddress: string
@@ -121,9 +129,10 @@ export async function createAlertSubscription(input: {
         type,
         wallet_address,
         min_score,
-        min_size_usd
+        min_size_usd,
+        trigger_mode
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING
         id,
         type,
@@ -132,6 +141,8 @@ export async function createAlertSubscription(input: {
         wallet_address,
         min_score,
         min_size_usd,
+        trigger_mode,
+        NULL::TIMESTAMPTZ AS last_delivered_at,
         created_at,
         updated_at
     `,
@@ -142,6 +153,7 @@ export async function createAlertSubscription(input: {
       input.walletAddress,
       input.minScore ?? null,
       input.minSizeUsd ?? null,
+      input.triggerMode,
     ],
   )
 
@@ -186,6 +198,8 @@ export async function getActiveAlertSubscriptionsForSignals(
         subscriptions.wallet_address,
         subscriptions.min_score,
         subscriptions.min_size_usd,
+        subscriptions.trigger_mode,
+        NULL::TIMESTAMPTZ AS last_delivered_at,
         subscriptions.created_at,
         subscriptions.updated_at,
         users.email AS user_email
@@ -231,6 +245,13 @@ export async function getActiveAlertSubscriptionsForSignals(
           return false
         }
 
+        if (
+          subscription.triggerMode === 'winning-moves-only' &&
+          signal.priceDelta < 0.05
+        ) {
+          return false
+        }
+
         return true
       })
       .map((subscription) => ({
@@ -244,6 +265,55 @@ export async function listAlertSubscriptionsByUser(userId: string) {
   const result = await getDbPool().query<AlertSubscriptionRow>(
     `
       SELECT
+        subscriptions.id,
+        subscriptions.type,
+        subscriptions.channel,
+        subscriptions.status,
+        subscriptions.wallet_address,
+        subscriptions.min_score,
+        subscriptions.min_size_usd,
+        subscriptions.trigger_mode,
+        subscriptions.created_at,
+        subscriptions.updated_at,
+        MAX(deliveries.sent_at) AS last_delivered_at
+      FROM pulse_alert_subscriptions subscriptions
+      LEFT JOIN pulse_alert_deliveries deliveries
+        ON deliveries.subscription_id = subscriptions.id
+        AND deliveries.status = 'sent'
+      WHERE subscriptions.user_id = $1
+      GROUP BY
+        subscriptions.id,
+        subscriptions.type,
+        subscriptions.channel,
+        subscriptions.status,
+        subscriptions.wallet_address,
+        subscriptions.min_score,
+        subscriptions.min_size_usd,
+        subscriptions.trigger_mode,
+        subscriptions.created_at,
+        subscriptions.updated_at
+      ORDER BY subscriptions.created_at DESC
+    `,
+    [userId],
+  )
+
+  return result.rows.map((row) => mapSubscription(row))
+}
+
+export async function updateAlertSubscriptionStatus(input: {
+  id: string
+  status: 'active' | 'paused'
+  userId: string
+}) {
+  const result = await getDbPool().query<AlertSubscriptionRow>(
+    `
+      UPDATE pulse_alert_subscriptions
+      SET
+        status = $3,
+        updated_at = NOW()
+      WHERE id = $1
+        AND user_id = $2
+      RETURNING
         id,
         type,
         channel,
@@ -251,16 +321,15 @@ export async function listAlertSubscriptionsByUser(userId: string) {
         wallet_address,
         min_score,
         min_size_usd,
+        trigger_mode,
+        NULL::TIMESTAMPTZ AS last_delivered_at,
         created_at,
         updated_at
-      FROM pulse_alert_subscriptions
-      WHERE user_id = $1
-      ORDER BY created_at DESC
     `,
-    [userId],
+    [input.id, input.userId, input.status],
   )
 
-  return result.rows.map((row) => mapSubscription(row))
+  return result.rows[0] ? mapSubscription(result.rows[0]) : null
 }
 
 export async function listPendingAlertDeliveries(limit = 25) {
@@ -313,10 +382,17 @@ export async function listPendingAlertDeliveryJobs(limit = 25) {
         subscriptions.wallet_address,
         subscriptions.min_score,
         subscriptions.min_size_usd,
+        subscriptions.trigger_mode,
         subscriptions.status AS subscription_status,
         subscriptions.channel AS subscription_channel,
         subscriptions.created_at AS subscription_created_at,
         subscriptions.updated_at AS subscription_updated_at,
+        (
+          SELECT MAX(previous_deliveries.sent_at)
+          FROM pulse_alert_deliveries previous_deliveries
+          WHERE previous_deliveries.subscription_id = subscriptions.id
+            AND previous_deliveries.status = 'sent'
+        ) AS last_delivered_at,
         users.email AS user_email
       FROM pulse_alert_deliveries deliveries
       JOIN pulse_alert_subscriptions subscriptions
@@ -338,9 +414,11 @@ export async function listPendingAlertDeliveryJobs(limit = 25) {
       createdAt:
         toIsoString(row.subscription_created_at) ?? new Date(0).toISOString(),
       id: row.subscription_id,
+      lastDeliveredAt: toIsoString(row.last_delivered_at),
       minScore: row.min_score,
       minSizeUsd: row.min_size_usd,
       status: row.subscription_status,
+      triggerMode: row.trigger_mode,
       type: row.type,
       updatedAt:
         toIsoString(row.subscription_updated_at) ?? new Date(0).toISOString(),

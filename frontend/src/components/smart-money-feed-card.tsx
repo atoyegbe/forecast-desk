@@ -2,7 +2,10 @@ import clsx from 'clsx'
 import { Link } from '@tanstack/react-router'
 import { useDisplayCurrency } from '../features/currency/context'
 import { PlatformBadge } from './platform-badge'
-import { WalletAlertButton } from './wallet-alert-button'
+import {
+  createWalletAlertPropsFromSignal,
+  WalletAlertButton,
+} from './wallet-alert-button'
 import type { PulseSmartMoneySignal } from '../features/smart-money/types'
 import {
   formatDate,
@@ -201,7 +204,13 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
               </span>
             </div>
 
-            <PlatformBadge platform={signal.provider} short size="sm" />
+            <div className="flex items-center gap-2">
+              <PlatformBadge platform={signal.provider} short size="sm" />
+              <WalletAlertButton
+                {...createWalletAlertPropsFromSignal(signal)}
+                variant="feed"
+              />
+            </div>
           </div>
         </div>
 
@@ -271,12 +280,6 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
               View wallet
             </Link>
           )}
-
-          <WalletAlertButton
-            buttonClassName="terminal-button border-[var(--color-border)] bg-transparent text-[var(--color-text-primary)] hover:border-[var(--color-brand)] hover:bg-[var(--color-brand-dim)]"
-            walletAddress={signal.walletAddress}
-            walletLabel={walletLabel}
-          />
         </div>
       </div>
     </article>

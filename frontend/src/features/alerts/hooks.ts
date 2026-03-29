@@ -8,8 +8,12 @@ import {
   createAlertSubscription,
   deleteAlertSubscription,
   listAlertSubscriptions,
+  updateAlertSubscription,
 } from './api'
-import type { PulseAlertSubscriptionCreateInput } from './types'
+import type {
+  PulseAlertSubscriptionCreateInput,
+  PulseAlertSubscriptionUpdateInput,
+} from './types'
 
 const ALERTS_QUERY_ROOT = ['alerts'] as const
 
@@ -60,6 +64,29 @@ export function useDeleteAlertSubscriptionMutation() {
       }
 
       return deleteAlertSubscription(sessionToken, subscriptionId)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: alertKeys.all,
+      })
+    },
+  })
+}
+
+export function useUpdateAlertSubscriptionMutation() {
+  const { sessionToken } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: {
+      subscriptionId: string
+      update: PulseAlertSubscriptionUpdateInput
+    }) => {
+      if (!sessionToken) {
+        throw new Error('Sign in to manage alerts.')
+      }
+
+      return updateAlertSubscription(sessionToken, input.subscriptionId, input.update)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({

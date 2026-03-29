@@ -4,8 +4,8 @@ import {
   getCurrentSession,
   isValidEmail,
   logoutSession,
-  requestPasswordlessCode,
-  verifyPasswordlessCode,
+  requestPasswordlessLink,
+  verifyPasswordlessLink,
 } from '../../app/auth-service.js'
 import {
   createApiErrorResponse,
@@ -14,10 +14,10 @@ import {
 import type {
   PulseAuthCurrentSession,
   PulseAuthLogoutResult,
-  PulseAuthRequestCodeInput,
-  PulseAuthRequestCodeResult,
-  PulseAuthVerifyCodeInput,
-  PulseAuthVerifyCodeResult,
+  PulseAuthRequestLinkInput,
+  PulseAuthRequestLinkResult,
+  PulseAuthVerifyLinkInput,
+  PulseAuthVerifyLinkResult,
 } from '../../contracts/pulse-auth.js'
 
 function replyWithError(
@@ -31,10 +31,35 @@ function replyWithError(
   return reply.code(statusCode).send(createApiErrorResponse(code, message))
 }
 
+function getRequestOrigin(request: {
+  headers: {
+    origin?: string
+    referer?: string
+  }
+}) {
+  const origin = request.headers.origin?.trim()
+
+  if (origin) {
+    return origin
+  }
+
+  const referer = request.headers.referer?.trim()
+
+  if (!referer) {
+    return null
+  }
+
+  try {
+    return new URL(referer).origin
+  } catch {
+    return null
+  }
+}
+
 export const v1AuthRoutes: FastifyPluginAsync = async (app) => {
   app.post<{
-    Body: PulseAuthRequestCodeInput
-  }>('/auth/request-code', async (request, reply) => {
+    Body: PulseAuthRequestLinkInput
+  }>('/auth/request-link', async (request, reply) => {
     const email = request.body?.email?.trim() ?? ''
 
     if (!isValidEmail(email)) {
@@ -46,41 +71,45 @@ export const v1AuthRoutes: FastifyPluginAsync = async (app) => {
       )
     }
 
-    const result = await requestPasswordlessCode(email)
+    const result = await requestPasswordlessLink({
+      email,
+      requestOrigin: getRequestOrigin(request),
+      returnToPath: request.body?.returnToPath,
+    })
 
-    return createApiResponse<PulseAuthRequestCodeResult>(result)
+    return createApiResponse<PulseAuthRequestLinkResult>(result)
   })
 
   app.post<{
-    Body: PulseAuthVerifyCodeInput
-  }>('/auth/verify-code', async (request, reply) => {
+    Body: PulseAuthVerifyLinkInput
+  }>('/auth/verify-link', async (request, reply) => {
     const email = request.body?.email?.trim() ?? ''
-    const code = request.body?.code?.trim() ?? ''
+    const token = request.body?.token?.trim() ?? ''
 
-    if (!isValidEmail(email) || code.length < 6) {
+    if (!isValidEmail(email) || token.length < 8) {
       return replyWithError(
         reply,
         400,
-        'INVALID_LOGIN_CODE',
-        'A valid email address and 6-digit code are required.',
+        'INVALID_MAGIC_LINK',
+        'A valid email address and magic link token are required.',
       )
     }
 
-    const result = await verifyPasswordlessCode({
-      code,
+    const result = await verifyPasswordlessLink({
       email,
+      token,
     })
 
     if (!result) {
       return replyWithError(
         reply,
         401,
-        'INVALID_LOGIN_CODE',
-        'That login code is invalid or has expired.',
+        'INVALID_MAGIC_LINK',
+        'That magic link is invalid or has expired.',
       )
     }
 
-    return createApiResponse<PulseAuthVerifyCodeResult>(result)
+    return createApiResponse<PulseAuthVerifyLinkResult>(result)
   })
 
   app.get('/auth/me', async (request, reply) => {

@@ -1,149 +1,213 @@
 import {
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 import { useAuth } from '../features/auth/context'
+import { Modal } from './modal'
+
+function CheckIcon() {
+  return (
+    <div className="mx-auto mb-5 flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(0,197,142,0.3)] bg-[rgba(0,197,142,0.12)]">
+      <svg
+        aria-hidden="true"
+        fill="none"
+        height="16"
+        viewBox="0 0 16 16"
+        width="16"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M3.5 8.25L6.5 11.25L12.5 5.25"
+          stroke="#00c58e"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.6"
+        />
+      </svg>
+    </div>
+  )
+}
+
+function LoadingDots() {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span>Sending</span>
+      {[0, 160, 320].map((delay) => (
+        <span
+          className="h-1.5 w-1.5 rounded-full bg-current animate-[pulse_1s_ease-in-out_infinite]"
+          key={delay}
+          style={{ animationDelay: `${delay}ms` }}
+        />
+      ))}
+    </span>
+  )
+}
 
 export function AuthDialog() {
   const {
     authDialog,
     closeAuthDialog,
-    requestCode,
-    verifyCode,
+    requestMagicLink,
+    resendMagicLink,
+    resetAuthDialogToEmailEntry,
   } = useAuth()
   const [email, setEmail] = useState(authDialog.email)
-  const [code, setCode] = useState('')
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false)
+  const [secondsRemaining, setSecondsRemaining] = useState(0)
+  const emailError = useMemo(() => {
+    if (!hasAttemptedSubmit) {
+      return null
+    }
+
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(email.trim())
+      ? null
+      : 'Enter a valid email address.'
+  }, [email, hasAttemptedSubmit])
 
   useEffect(() => {
     if (!authDialog.isOpen) {
-      setCode('')
+      setHasAttemptedSubmit(false)
       return
     }
 
     setEmail(authDialog.email)
   }, [authDialog.email, authDialog.isOpen])
 
+  useEffect(() => {
+    if (!authDialog.resendCooldownEndsAt) {
+      setSecondsRemaining(0)
+      return
+    }
+
+    const update = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((authDialog.resendCooldownEndsAt! - Date.now()) / 1_000),
+      )
+
+      setSecondsRemaining(remaining)
+    }
+
+    update()
+    const interval = window.setInterval(update, 250)
+
+    return () => {
+      window.clearInterval(interval)
+    }
+  }, [authDialog.resendCooldownEndsAt])
+
   if (!authDialog.isOpen) {
     return null
   }
 
   return (
-    <div
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(13,15,16,0.72)] px-4 py-6 backdrop-blur-sm"
-      role="dialog"
-    >
-      <div className="panel w-full max-w-md p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="eyebrow">
-              {authDialog.step === 'request' ? 'Email sign in' : 'Verify code'}
-            </div>
-            <h2 className="section-title">
-              {authDialog.step === 'request'
-                ? 'Sign in to manage wallet alerts'
-                : 'Enter your login code'}
-            </h2>
-            <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
-              {authDialog.step === 'request'
-                ? 'We will send a one-time code through email. No password needed.'
-                : `A 6-digit code was sent to ${authDialog.email}.`}
-            </p>
-          </div>
+    <Modal isOpen={authDialog.isOpen} onClose={closeAuthDialog}>
+      {authDialog.step === 'email' ? (
+        <>
+          <img
+            alt=""
+            aria-hidden="true"
+            className="mx-auto mb-5 h-8 w-8"
+            height="32"
+            src="/logo-symbol-consensus-q-transparent.svg"
+            width="32"
+          />
 
-          <button
-            aria-label="Close sign in dialog"
-            className="shell-icon-button"
-            onClick={closeAuthDialog}
-            type="button"
+          <h2 className="text-center text-[20px] font-semibold text-[var(--color-text-primary)]">
+            Get alerts when whales move.
+          </h2>
+          <p className="mt-2 mb-6 text-center text-[13px] leading-5 text-[var(--color-text-secondary)]">
+            Enter your email to continue. No password needed.
+          </p>
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              setHasAttemptedSubmit(true)
+
+              if (emailError) {
+                return
+              }
+
+              void requestMagicLink(email)
+            }}
           >
-            ×
-          </button>
-        </div>
+            <input
+              autoComplete="email"
+              className="w-full rounded-[7px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-[14px] py-[11px] text-[14px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#00c58e] focus:shadow-[0_0_0_3px_rgba(0,197,142,0.1)]"
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              type="email"
+              value={email}
+            />
 
-        <form
-          className="mt-6 space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault()
+            {emailError || authDialog.error ? (
+              <div className="mt-3 text-[13px] text-[var(--color-down)]">
+                {emailError ?? authDialog.error}
+              </div>
+            ) : null}
 
-            if (authDialog.step === 'request') {
-              void requestCode(email)
-              return
-            }
+            <button
+              className="mt-[10px] inline-flex w-full items-center justify-center rounded-[7px] bg-[#00c58e] px-4 py-[11px] text-[14px] font-semibold text-[#0d0f10] transition-opacity disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={authDialog.isSubmitting}
+              type="submit"
+            >
+              {authDialog.isSubmitting ? <LoadingDots /> : 'Send magic link'}
+            </button>
+          </form>
 
-            void verifyCode(code)
-          }}
-        >
-          {authDialog.step === 'request' ? (
-            <label className="block space-y-2">
-              <span className="section-kicker">Email</span>
-              <input
-                autoComplete="email"
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--surface-control-bg)] px-3 py-3 text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-brand)]"
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="reader@example.com"
-                type="email"
-                value={email}
-              />
-            </label>
-          ) : (
-            <label className="block space-y-2">
-              <span className="section-kicker">6-digit code</span>
-              <input
-                autoComplete="one-time-code"
-                className="mono-data w-full rounded-lg border border-[var(--color-border)] bg-[var(--surface-control-bg)] px-3 py-3 text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-brand)]"
-                inputMode="numeric"
-                maxLength={6}
-                onChange={(event) => setCode(event.target.value.replace(/\D+/g, ''))}
-                placeholder="123456"
-                value={code}
-              />
-            </label>
-          )}
+          <p className="mt-4 text-center font-mono text-[11px] leading-5 text-[var(--color-text-tertiary)]">
+            By continuing you agree this is a read-only market intelligence tool.
+          </p>
+        </>
+      ) : (
+        <>
+          <CheckIcon />
+
+          <h2 className="text-center text-[20px] font-semibold text-[var(--color-text-primary)]">
+            Check your inbox.
+          </h2>
+          <p className="mt-3 mb-6 text-center text-[13px] leading-5 text-[var(--color-text-secondary)]">
+            We sent a link to {authDialog.email}. Click it to sign in, it expires
+            in 15 minutes.
+          </p>
 
           {authDialog.error ? (
-            <div className="rounded-lg border border-[var(--color-down-border)] bg-[var(--color-down-dim)] px-3 py-3 text-sm text-[var(--color-down)]">
+            <div className="mb-4 text-center text-[13px] text-[var(--color-down)]">
               {authDialog.error}
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex items-center justify-center gap-5 text-[13px]">
             <button
-              className="terminal-button terminal-button-primary min-w-[150px]"
-              disabled={authDialog.isSubmitting}
-              type="submit"
+              className="text-[#00c58e] transition hover:underline disabled:cursor-not-allowed disabled:text-[var(--color-text-tertiary)] disabled:no-underline"
+              disabled={authDialog.isSubmitting || secondsRemaining > 0}
+              onClick={() => {
+                void resendMagicLink()
+              }}
+              type="button"
             >
-              {authDialog.isSubmitting
-                ? authDialog.step === 'request'
-                  ? 'Sending...'
-                  : 'Verifying...'
-                : authDialog.step === 'request'
-                  ? 'Send code'
-                  : 'Verify and sign in'}
+              {authDialog.resentState === 'resent'
+                ? 'Resent'
+                : secondsRemaining > 0
+                  ? `Resend in ${secondsRemaining}s`
+                  : 'Resend link'}
             </button>
-
-            {authDialog.step === 'verify' ? (
-              <button
-                className="terminal-button"
-                onClick={() => void requestCode(authDialog.email)}
-                type="button"
-              >
-                Resend code
-              </button>
-            ) : null}
-
-            {authDialog.step === 'verify' ? (
-              <button
-                className="terminal-button"
-                onClick={() => setCode('')}
-                type="button"
-              >
-                Clear
-              </button>
-            ) : null}
+            <button
+              className="text-[#00c58e] transition hover:underline"
+              onClick={() => {
+                setEmail('')
+                setHasAttemptedSubmit(false)
+                resetAuthDialogToEmailEntry()
+              }}
+              type="button"
+            >
+              Use a different email
+            </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </>
+      )}
+    </Modal>
   )
 }

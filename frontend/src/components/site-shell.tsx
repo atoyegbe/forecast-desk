@@ -5,7 +5,10 @@ import {
   useRouterState,
   useSearch,
 } from '@tanstack/react-router'
-import { useState } from 'react'
+import {
+  useEffect,
+  useState,
+} from 'react'
 import { useAuth } from '../features/auth/context'
 import { useDisplayCurrency } from '../features/currency/context'
 import type { PulseDisplayCurrency } from '../features/currency/types'
@@ -297,8 +300,10 @@ export function SiteShell() {
   const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme)
   const navigate = useNavigate()
   const {
+    consumePendingAction,
     isAuthenticated,
     openAuthDialog,
+    pendingAction,
     signOut,
     user,
   } = useAuth()
@@ -324,6 +329,15 @@ export function SiteShell() {
   const activeVenueFilter: VenueFilterId = isVenueFilterId(currentProvider)
     ? currentProvider
     : 'all'
+
+  useEffect(() => {
+    if (!isAuthenticated || pendingAction?.type !== 'alerts-route') {
+      return
+    }
+
+    consumePendingAction(pendingAction.id)
+    void navigate(getAlertsRoute())
+  }, [consumePendingAction, isAuthenticated, navigate, pendingAction])
 
   return (
     <div className="min-h-screen">
@@ -384,16 +398,36 @@ export function SiteShell() {
               </select>
             </label>
 
-            <Link
-              className={`hidden sm:inline-flex ${
-                isAlertsRoute
-                  ? 'terminal-button terminal-button-primary text-sm font-medium'
-                  : 'terminal-button text-sm font-medium'
-              }`}
-              {...getAlertsRoute()}
-            >
-              Alerts
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                className={`hidden sm:inline-flex ${
+                  isAlertsRoute
+                    ? 'terminal-button terminal-button-primary text-sm font-medium'
+                    : 'terminal-button text-sm font-medium'
+                }`}
+                {...getAlertsRoute()}
+              >
+                Alerts
+              </Link>
+            ) : (
+              <button
+                className={`hidden sm:inline-flex ${
+                  isAlertsRoute
+                    ? 'terminal-button terminal-button-primary text-sm font-medium'
+                    : 'terminal-button text-sm font-medium'
+                }`}
+                onClick={() => {
+                  openAuthDialog({
+                    pendingAction: {
+                      type: 'alerts-route',
+                    },
+                  })
+                }}
+                type="button"
+              >
+                Alerts
+              </button>
+            )}
 
             <Link
               aria-label="Open search"

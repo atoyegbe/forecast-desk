@@ -177,6 +177,7 @@ CREATE TABLE IF NOT EXISTS pulse_alert_subscriptions (
   type TEXT NOT NULL,
   channel TEXT NOT NULL DEFAULT 'email',
   status TEXT NOT NULL DEFAULT 'active',
+  trigger_mode TEXT NOT NULL DEFAULT 'any-new-position',
   wallet_address TEXT NOT NULL,
   min_score INTEGER,
   min_size_usd DOUBLE PRECISION,
@@ -189,6 +190,9 @@ CREATE INDEX IF NOT EXISTS idx_pulse_alert_subscriptions_user
   ON pulse_alert_subscriptions(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_pulse_alert_subscriptions_wallet
   ON pulse_alert_subscriptions(wallet_address, status);
+
+ALTER TABLE pulse_alert_subscriptions
+  ADD COLUMN IF NOT EXISTS trigger_mode TEXT NOT NULL DEFAULT 'any-new-position';
 
 CREATE TABLE IF NOT EXISTS pulse_smart_money_sync_state (
   sync_key TEXT PRIMARY KEY,

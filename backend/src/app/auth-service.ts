@@ -1,28 +1,30 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type {
   PulseAuthCurrentSession,
-  PulseAuthRequestCodeResult,
+  PulseAuthRequestLinkResult,
   PulseAuthSession,
   PulseAuthUser,
-  PulseAuthVerifyCodeResult,
+  PulseAuthVerifyLinkResult,
 } from '../contracts/pulse-auth.js'
 import {
-  createAuthCode,
+  consumeAuthChallenge,
+  createAuthChallenge,
   createSession,
   createUser,
   getSessionByTokenHash,
   markUserLoggedIn,
   revokeSession,
-  useAuthCode,
 } from '../db/auth-repository.js'
 import {
   getPulseAuthCodeTtlMinutes,
-  getPulseAuthTestCode,
+  getPulseAuthFrontendBaseUrl,
+  getPulseAuthTestMagicToken,
   getPulseSessionTtlDays,
 } from '../db/config.js'
-import { sendPasswordlessCodeEmail } from './email-service.js'
+import { sendPasswordlessMagicLinkEmail } from './email-service.js'
 
 const AUTH_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i
+const FALLBACK_FRONTEND_BASE_URL = 'http://localhost:5173'
 
 function hashValue(value: string) {
   return createHash('sha256').update(value).digest('hex')
@@ -46,8 +48,8 @@ function toPublicUser(user: {
   }
 }
 
-function buildCodeHash(email: string, code: string) {
-  return hashValue(`${email}:${code}`)
+function buildOneTimeSecretHash(email: string, secret: string) {
+  return hashValue(`${email}:${secret}`)
 }
 
 function buildSessionTokenHash(token: string) {
@@ -58,14 +60,59 @@ function generateSessionToken() {
   return randomBytes(32).toString('hex')
 }
 
-function generateVerificationCode() {
-  const testCode = getPulseAuthTestCode()
+function generateMagicToken() {
+  const testToken = getPulseAuthTestMagicToken()
 
-  if (testCode) {
-    return testCode
+  if (testToken) {
+    return testToken
   }
 
-  return String(Math.floor(100000 + Math.random() * 900000))
+  return randomBytes(24).toString('base64url')
+}
+
+function sanitizeReturnToPath(value?: string | null) {
+  if (!value) {
+    return '/'
+  }
+
+  const trimmed = value.trim()
+
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) {
+    return '/'
+  }
+
+  return trimmed
+}
+
+function getFrontendBaseUrl(requestOrigin?: string | null) {
+  const configuredBaseUrl = getPulseAuthFrontendBaseUrl()
+
+  if (configuredBaseUrl) {
+    return configuredBaseUrl
+  }
+
+  if (requestOrigin?.trim()) {
+    return requestOrigin.trim()
+  }
+
+  return FALLBACK_FRONTEND_BASE_URL
+}
+
+function buildMagicLinkUrl(input: {
+  email: string
+  requestOrigin?: string | null
+  returnToPath?: string | null
+  token: string
+}) {
+  const url = new URL(
+    sanitizeReturnToPath(input.returnToPath),
+    getFrontendBaseUrl(input.requestOrigin),
+  )
+
+  url.searchParams.set('auth_email', input.email)
+  url.searchParams.set('auth_token', input.token)
+
+  return url.toString()
 }
 
 export function isValidEmail(email: string) {
@@ -112,25 +159,33 @@ export async function logoutSession(token: string) {
   }
 }
 
-export async function requestPasswordlessCode(
-  email: string,
-): Promise<PulseAuthRequestCodeResult> {
-  const normalizedEmail = normalizeEmail(email)
+export async function requestPasswordlessLink(input: {
+  email: string
+  requestOrigin?: string | null
+  returnToPath?: string | null
+}): Promise<PulseAuthRequestLinkResult> {
+  const normalizedEmail = normalizeEmail(input.email)
   const user = await createUser(normalizedEmail)
-  const code = generateVerificationCode()
-  const sendResult = await sendPasswordlessCodeEmail({
-    code,
+  const token = generateMagicToken()
+  const magicLinkUrl = buildMagicLinkUrl({
     email: normalizedEmail,
+    requestOrigin: input.requestOrigin,
+    returnToPath: input.returnToPath,
+    token,
+  })
+  const sendResult = await sendPasswordlessMagicLinkEmail({
+    email: normalizedEmail,
+    magicLinkUrl,
   })
   const expiresAt = new Date(
     Date.now() + getPulseAuthCodeTtlMinutes() * 60 * 1000,
   ).toISOString()
 
-  await createAuthCode({
-    codeHash: buildCodeHash(normalizedEmail, code),
+  await createAuthChallenge({
     email: normalizedEmail,
     expiresAt,
     resendMessageId: sendResult.providerMessageId,
+    secretHash: buildOneTimeSecretHash(normalizedEmail, token),
     userId: user.id,
   })
 
@@ -139,14 +194,14 @@ export async function requestPasswordlessCode(
   }
 }
 
-export async function verifyPasswordlessCode(input: {
-  code: string
+export async function verifyPasswordlessLink(input: {
   email: string
-}): Promise<PulseAuthVerifyCodeResult | null> {
+  token: string
+}): Promise<PulseAuthVerifyLinkResult | null> {
   const normalizedEmail = normalizeEmail(input.email)
-  const user = await useAuthCode(
+  const user = await consumeAuthChallenge(
     normalizedEmail,
-    buildCodeHash(normalizedEmail, input.code.trim()),
+    buildOneTimeSecretHash(normalizedEmail, input.token.trim()),
   )
 
   if (!user) {

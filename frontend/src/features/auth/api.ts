@@ -1,7 +1,7 @@
 import { fetchBackendJson } from '../../lib/api-client'
 import type {
   PulseAuthCurrentSession,
-  PulseAuthVerifyCodeResult,
+  PulseAuthVerifyLinkResult,
 } from './types'
 
 function buildAuthHeaders(token?: string) {
@@ -12,10 +12,11 @@ function buildAuthHeaders(token?: string) {
     : undefined
 }
 
-export async function requestLoginCode(email: string) {
-  const response = await fetchBackendJson<{ delivered: true }>('/auth/request-code', {
+export async function requestMagicLink(email: string, returnToPath?: string) {
+  const response = await fetchBackendJson<{ delivered: true }>('/auth/request-link', {
     body: JSON.stringify({
       email,
+      returnToPath,
     }),
     headers: {
       'Content-Type': 'application/json',
@@ -26,11 +27,11 @@ export async function requestLoginCode(email: string) {
   return response.data
 }
 
-export async function verifyLoginCode(email: string, code: string) {
-  const response = await fetchBackendJson<PulseAuthVerifyCodeResult>('/auth/verify-code', {
+export async function verifyMagicLink(email: string, token: string) {
+  const response = await fetchBackendJson<PulseAuthVerifyLinkResult>('/auth/verify-link', {
     body: JSON.stringify({
-      code,
       email,
+      token,
     }),
     headers: {
       'Content-Type': 'application/json',

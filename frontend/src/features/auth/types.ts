@@ -13,7 +13,7 @@ export type PulseAuthSession = {
 
 export type PulseAuthSessionView = Omit<PulseAuthSession, 'token'>
 
-export type PulseAuthVerifyCodeResult = {
+export type PulseAuthVerifyLinkResult = {
   session: PulseAuthSession
   user: PulseAuthUser
 }

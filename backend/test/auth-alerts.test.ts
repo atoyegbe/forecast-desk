@@ -1,36 +1,64 @@
 import assert from 'node:assert/strict'
-import { describe, test } from 'node:test'
+import { afterEach, describe, test } from 'node:test'
+import { setTestEmailSender } from '../src/app/email-service.js'
 import { registerAppTestLifecycle } from './helpers/test-app.js'
 
 const testApp = registerAppTestLifecycle()
-const AUTH_CODE = '123456'
+const AUTH_MAGIC_TOKEN = 'test-magic-token'
 
-async function requestLoginCode(email: string) {
+afterEach(() => {
+  setTestEmailSender(null)
+})
+
+async function requestMagicLink(email: string, returnToPath = '/smart-money') {
   return testApp.getApp().inject({
     method: 'POST',
     payload: {
       email,
+      returnToPath,
     },
-    url: '/api/v1/auth/request-code',
+    url: '/api/v1/auth/request-link',
   })
 }
 
-async function verifyLoginCode(email: string, code = AUTH_CODE) {
+async function verifyMagicLink(email: string, token = AUTH_MAGIC_TOKEN) {
   return testApp.getApp().inject({
     method: 'POST',
     payload: {
-      code,
       email,
+      token,
     },
-    url: '/api/v1/auth/verify-code',
+    url: '/api/v1/auth/verify-link',
   })
 }
 
 describe('Auth and alerts', () => {
-  test('requests a passwordless login code for a valid email', async () => {
-    const response = await requestLoginCode('reader@example.com')
+  test('requests a passwordless magic link for a valid email', async () => {
+    const response = await requestMagicLink('reader@example.com')
 
     assert.equal(response.statusCode, 200)
+  })
+
+  test('sends a magic link back to the app and ignores unsafe return paths', async () => {
+    const sentMessages: string[] = []
+
+    setTestEmailSender(async (input) => {
+      sentMessages.push(input.text)
+
+      return {
+        providerMessageId: 'email_auth_1',
+      }
+    })
+
+    const response = await requestMagicLink(
+      'reader@example.com',
+      'https://malicious.example/steal-session',
+    )
+
+    assert.equal(response.statusCode, 200)
+    assert.equal(sentMessages.length, 1)
+    assert.match(sentMessages[0] ?? '', /http:\/\/localhost:5173\/\?auth_email=reader%40example\.com&auth_token=test-magic-token/)
+    assert.doesNotMatch(sentMessages[0] ?? '', /malicious\.example/)
   })
 
   test('rejects malformed login email addresses', async () => {
@@ -39,16 +67,16 @@ describe('Auth and alerts', () => {
       payload: {
         email: 'not-an-email',
       },
-      url: '/api/v1/auth/request-code',
+      url: '/api/v1/auth/request-link',
     })
 
     assert.equal(response.statusCode, 400)
   })
 
-  test('verifies a passwordless code and returns a bearer session', async () => {
-    await requestLoginCode('reader@example.com')
+  test('verifies a passwordless magic link and returns a bearer session', async () => {
+    await requestMagicLink('reader@example.com')
 
-    const response = await verifyLoginCode('reader@example.com')
+    const response = await verifyMagicLink('reader@example.com')
 
     assert.equal(response.statusCode, 200)
 
@@ -59,23 +87,39 @@ describe('Auth and alerts', () => {
     assert.equal(payload.data.session.token.length > 20, true)
   })
 
-  test('rejects expired or invalid login codes', async () => {
-    await requestLoginCode('reader@example.com')
+  test('rejects expired or invalid magic links', async () => {
+    await requestMagicLink('reader@example.com')
 
-    const invalidCodeResponse = await verifyLoginCode('reader@example.com', '000000')
+    const invalidTokenResponse = await verifyMagicLink(
+      'reader@example.com',
+      'not-the-right-token',
+    )
 
-    assert.equal(invalidCodeResponse.statusCode, 401)
+    assert.equal(invalidTokenResponse.statusCode, 401)
 
-    const wrongEmailResponse = await verifyLoginCode('other@example.com')
+    const wrongEmailResponse = await verifyMagicLink('other@example.com')
 
     assert.equal(wrongEmailResponse.statusCode, 401)
   })
 
-  test('does not allow a passwordless code to be reused', async () => {
-    await requestLoginCode('reader@example.com')
+  test('rejects malformed verify-link payloads', async () => {
+    const response = await testApp.getApp().inject({
+      method: 'POST',
+      payload: {
+        email: 'reader@example.com',
+        token: 'short',
+      },
+      url: '/api/v1/auth/verify-link',
+    })
 
-    const firstResponse = await verifyLoginCode('reader@example.com')
-    const secondResponse = await verifyLoginCode('reader@example.com')
+    assert.equal(response.statusCode, 400)
+  })
+
+  test('does not allow a passwordless magic link to be reused', async () => {
+    await requestMagicLink('reader@example.com')
+
+    const firstResponse = await verifyMagicLink('reader@example.com')
+    const secondResponse = await verifyMagicLink('reader@example.com')
 
     assert.equal(firstResponse.statusCode, 200)
     assert.equal(secondResponse.statusCode, 401)
@@ -106,8 +150,8 @@ describe('Auth and alerts', () => {
   })
 
   test('returns the authenticated user session via /auth/me', async () => {
-    await requestLoginCode('reader@example.com')
-    const verifyResponse = await verifyLoginCode('reader@example.com')
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
     const token = verifyResponse.json().data.session.token as string
 
     const response = await testApp.getApp().inject({
@@ -123,8 +167,8 @@ describe('Auth and alerts', () => {
   })
 
   test('creates and lists wallet alert subscriptions for an authenticated user', async () => {
-    await requestLoginCode('reader@example.com')
-    const verifyResponse = await verifyLoginCode('reader@example.com')
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
     const token = verifyResponse.json().data.session.token as string
 
     const createResponse = await testApp.getApp().inject({
@@ -135,6 +179,7 @@ describe('Auth and alerts', () => {
       payload: {
         minScore: 70,
         minSizeUsd: 1500,
+        triggerMode: 'winning-moves-only',
         type: 'wallet',
         walletAddress: '0xAbC123',
       },
@@ -155,11 +200,63 @@ describe('Auth and alerts', () => {
     assert.equal(listResponse.statusCode, 200)
     assert.equal(listResponse.json().data.items.length, 1)
     assert.equal(listResponse.json().data.items[0].walletAddress, '0xabc123')
+    assert.equal(
+      listResponse.json().data.items[0].triggerMode,
+      'winning-moves-only',
+    )
+    assert.equal(listResponse.json().data.items[0].lastDeliveredAt, null)
+  })
+
+  test('pauses and resumes wallet alert subscriptions for the authenticated user', async () => {
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
+    const token = verifyResponse.json().data.session.token as string
+    const createResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        minScore: 70,
+        minSizeUsd: 1500,
+        triggerMode: 'any-new-position',
+        type: 'wallet',
+        walletAddress: '0xAbC123',
+      },
+      url: '/api/v1/alerts/subscriptions',
+    })
+
+    const subscriptionId = createResponse.json().data.id as string
+    const pauseResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'PATCH',
+      payload: {
+        status: 'paused',
+      },
+      url: `/api/v1/alerts/subscriptions/${subscriptionId}`,
+    })
+    const resumeResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'PATCH',
+      payload: {
+        status: 'active',
+      },
+      url: `/api/v1/alerts/subscriptions/${subscriptionId}`,
+    })
+
+    assert.equal(pauseResponse.statusCode, 200)
+    assert.equal(pauseResponse.json().data.status, 'paused')
+    assert.equal(resumeResponse.statusCode, 200)
+    assert.equal(resumeResponse.json().data.status, 'active')
   })
 
   test('rejects duplicate wallet subscriptions for the same authenticated user', async () => {
-    await requestLoginCode('reader@example.com')
-    const verifyResponse = await verifyLoginCode('reader@example.com')
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
     const token = verifyResponse.json().data.session.token as string
 
     const payload = {
@@ -191,8 +288,8 @@ describe('Auth and alerts', () => {
   })
 
   test('deletes wallet alert subscriptions for the authenticated user', async () => {
-    await requestLoginCode('reader@example.com')
-    const verifyResponse = await verifyLoginCode('reader@example.com')
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
     const token = verifyResponse.json().data.session.token as string
     const createResponse = await testApp.getApp().inject({
       headers: {

@@ -2,6 +2,7 @@ import { fetchBackendJson } from '../../lib/api-client'
 import type {
   PulseAlertSubscription,
   PulseAlertSubscriptionCreateInput,
+  PulseAlertSubscriptionUpdateInput,
 } from './types'
 
 function buildAuthHeaders(token: string) {
@@ -47,4 +48,21 @@ export async function listAlertSubscriptions(token: string) {
   )
 
   return response.data.items
+}
+
+export async function updateAlertSubscription(
+  token: string,
+  subscriptionId: string,
+  input: PulseAlertSubscriptionUpdateInput,
+) {
+  const response = await fetchBackendJson<PulseAlertSubscription>(
+    `/alerts/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    {
+      body: JSON.stringify(input),
+      headers: buildAuthHeaders(token),
+      method: 'PATCH',
+    },
+  )
+
+  return response.data
 }

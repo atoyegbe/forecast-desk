@@ -67,11 +67,11 @@ function mapSession(row: AuthSessionRow): StoredAuthSession {
   }
 }
 
-export async function createAuthCode(input: {
-  codeHash: string
+export async function createAuthChallenge(input: {
   email: string
   expiresAt: string
   resendMessageId?: string | null
+  secretHash: string
   userId: string
 }) {
   const id = randomUUID()
@@ -92,7 +92,7 @@ export async function createAuthCode(input: {
       id,
       input.userId,
       input.email,
-      input.codeHash,
+      input.secretHash,
       input.expiresAt,
       input.resendMessageId ?? null,
     ],
@@ -206,7 +206,7 @@ export async function revokeSession(tokenHash: string) {
   return (result.rowCount ?? 0) > 0
 }
 
-export async function useAuthCode(email: string, codeHash: string) {
+export async function consumeAuthChallenge(email: string, secretHash: string) {
   const result = await getDbPool().query<AuthUserRow>(
     `
       WITH matched AS (
@@ -231,7 +231,7 @@ export async function useAuthCode(email: string, codeHash: string) {
       FROM consumed
       JOIN pulse_users users ON users.id = consumed.user_id
     `,
-    [email, codeHash],
+    [email, secretHash],
   )
 
   return result.rows[0] ? mapUser(result.rows[0]) : null

@@ -15,7 +15,7 @@ import {
 import { registerAppTestLifecycle } from './helpers/test-app.js'
 
 const testApp = registerAppTestLifecycle()
-const AUTH_CODE = '123456'
+const AUTH_MAGIC_TOKEN = 'test-magic-token'
 
 afterEach(() => {
   setTestEmailSender(null)
@@ -42,17 +42,18 @@ async function requestAndVerify(email = 'reader@example.com') {
     method: 'POST',
     payload: {
       email,
+      returnToPath: '/alerts',
     },
-    url: '/api/v1/auth/request-code',
+    url: '/api/v1/auth/request-link',
   })
 
   return testApp.getApp().inject({
     method: 'POST',
     payload: {
-      code: AUTH_CODE,
       email,
+      token: AUTH_MAGIC_TOKEN,
     },
-    url: '/api/v1/auth/verify-code',
+    url: '/api/v1/auth/verify-link',
   })
 }
 
@@ -61,6 +62,7 @@ async function createWalletAlert(
   thresholds: {
     minScore?: number
     minSizeUsd?: number
+    triggerMode?: 'any-new-position' | 'winning-moves-only'
   } = {},
 ) {
   const verifyResponse = await requestAndVerify()
@@ -74,6 +76,7 @@ async function createWalletAlert(
     payload: {
       minScore: thresholds.minScore,
       minSizeUsd: thresholds.minSizeUsd,
+      triggerMode: thresholds.triggerMode,
       type: 'wallet',
       walletAddress,
     },
@@ -83,6 +86,28 @@ async function createWalletAlert(
   assert.equal(response.statusCode, 201)
 
   return response.json().data.id as string
+}
+
+async function updateWalletAlertStatus(input: {
+  email?: string
+  status: 'active' | 'paused'
+  subscriptionId: string
+}) {
+  const verifyResponse = await requestAndVerify(input.email)
+  const token = verifyResponse.json().data.session.token as string
+
+  const response = await testApp.getApp().inject({
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+    method: 'PATCH',
+    payload: {
+      status: input.status,
+    },
+    url: `/api/v1/alerts/subscriptions/${input.subscriptionId}`,
+  })
+
+  assert.equal(response.statusCode, 200)
 }
 
 async function seedSmartMoneySignals() {
@@ -203,6 +228,41 @@ describe('Alert delivery pipeline', () => {
     assert.equal(row?.count, '1')
   })
 
+  test('queues winning-only alerts only when the position is already up five points', async () => {
+    await createWalletAlert('0xAbC123', {
+      triggerMode: 'winning-moves-only',
+    })
+    const [winningSignal, notYetWinningSignal] = await seedSmartMoneySignals()
+
+    await queueAlertDeliveriesForSignals([winningSignal, notYetWinningSignal])
+
+    const row = await queryRow<{ count: string }>(
+      'SELECT COUNT(*)::TEXT AS count FROM pulse_alert_deliveries',
+    )
+
+    assert.equal(row?.count, '1')
+  })
+
+  test('does not queue deliveries for paused wallet alerts', async () => {
+    const subscriptionId = await createWalletAlert('0xAbC123', {
+      minScore: 70,
+      minSizeUsd: 1000,
+    })
+    const [matchingSignal] = await seedSmartMoneySignals()
+
+    await updateWalletAlertStatus({
+      status: 'paused',
+      subscriptionId,
+    })
+    await queueAlertDeliveriesForSignals([matchingSignal])
+
+    const row = await queryRow<{ count: string }>(
+      'SELECT COUNT(*)::TEXT AS count FROM pulse_alert_deliveries',
+    )
+
+    assert.equal(row?.count, '0')
+  })
+
   test('processes pending alert deliveries and marks them sent', async () => {
     await createWalletAlert('0xabc123', {
       minScore: 70,
@@ -243,6 +303,37 @@ describe('Alert delivery pipeline', () => {
     assert.equal(delivery?.status, 'sent')
     assert.equal(delivery?.attempt_count, 1)
     assert.equal(delivery?.provider_message_id, 'email_123')
+  })
+
+  test('surfaces the last delivered time on the wallet subscription', async () => {
+    await createWalletAlert('0xabc123', {
+      minScore: 70,
+      minSizeUsd: 1000,
+    })
+    const [matchingSignal] = await seedSmartMoneySignals()
+
+    setTestEmailSender(async () => ({
+      providerMessageId: 'email_456',
+    }))
+
+    await queueAlertDeliveriesForSignals([matchingSignal])
+    await processPendingAlertDeliveries()
+
+    const verifyResponse = await requestAndVerify()
+    const token = verifyResponse.json().data.session.token as string
+    const listResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'GET',
+      url: '/api/v1/alerts/subscriptions',
+    })
+
+    assert.equal(listResponse.statusCode, 200)
+    assert.equal(
+      typeof listResponse.json().data.items[0].lastDeliveredAt,
+      'string',
+    )
   })
 
   test('backs off failed alert deliveries without dropping the job', async () => {
