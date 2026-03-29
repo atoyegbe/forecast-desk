@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { useToast } from '../components/toast-provider'
 import type { PulseAlertSubscription, PulseAlertTriggerMode } from '../features/alerts/types'
+import { useAuth } from '../features/auth/context'
 import {
   formatSignedPercent,
   formatTimeAgo,
@@ -34,6 +35,9 @@ type DemoDelivery = {
 }
 
 const DEMO_DELIVERY_EMAIL = 'demo@quorum.so'
+const DEMO_TELEGRAM_HANDLE = '@quorumsignals'
+
+type DeliveryPreference = 'both' | 'email' | 'telegram'
 
 const demoSubscriptions: DemoAlertSubscription[] = []
 
@@ -209,6 +213,197 @@ function EmptyState() {
         Go to Smart Money →
       </Link>
     </div>
+  )
+}
+
+function DeliveryPreferenceButton({
+  isActive,
+  label,
+  onClick,
+}: {
+  isActive: boolean
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      className={clsx(
+        'rounded-[20px] border px-[14px] py-[7px] text-[13px] transition-colors duration-150',
+        isActive
+          ? 'border-[#00c58e] bg-[rgba(0,197,142,0.1)] text-[#00c58e]'
+          : 'border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:border-[#00c58e] hover:text-[#00c58e]',
+      )}
+      onClick={onClick}
+      type="button"
+    >
+      {label}
+    </button>
+  )
+}
+
+function ChannelStatusPill({
+  tone,
+  value,
+}: {
+  tone: 'brand' | 'neutral'
+  value: string
+}) {
+  return (
+    <span
+      className={clsx(
+        'inline-flex items-center gap-2 rounded-[20px] border px-[10px] py-[4px] font-mono text-[11px]',
+        tone === 'brand'
+          ? 'border-[rgba(0,197,142,0.2)] bg-[rgba(0,197,142,0.08)] text-[#00c58e]'
+          : 'border-[rgba(85,96,104,0.24)] bg-[rgba(85,96,104,0.08)] text-[var(--color-text-secondary)]',
+      )}
+    >
+      <span
+        className={clsx(
+          'h-[6px] w-[6px] rounded-full',
+          tone === 'brand' ? 'bg-[#00c58e]' : 'bg-[var(--color-text-tertiary)]',
+        )}
+      />
+      <span>{value}</span>
+    </span>
+  )
+}
+
+function DeliverySettingsSection({
+  connectedEmail,
+  deliveryPreference,
+  isAllPaused,
+  isAuthenticated,
+  onChangePreference,
+  onSignOut,
+  onTogglePauseAll,
+}: {
+  connectedEmail: string
+  deliveryPreference: DeliveryPreference
+  isAllPaused: boolean
+  isAuthenticated: boolean
+  onChangePreference: (preference: DeliveryPreference) => void
+  onSignOut: () => void
+  onTogglePauseAll: () => void
+}) {
+  return (
+    <section className="mt-8 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-5 py-5 sm:px-6">
+      <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-text-tertiary)]">
+        Delivery settings
+      </div>
+      <h2 className="mt-2 text-[18px] font-semibold text-[var(--color-text-primary)]">
+        How Quorum should reach you
+      </h2>
+      <p className="mt-2 max-w-[34rem] text-[13px] leading-6 text-[var(--color-text-secondary)]">
+        New alerts inherit this preference by default. Keep per-alert controls
+        focused on trigger and threshold unless you need an override later.
+      </p>
+
+      <div className="mt-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-tertiary)]">
+          Default delivery
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <DeliveryPreferenceButton
+            isActive={deliveryPreference === 'email'}
+            label="Email"
+            onClick={() => onChangePreference('email')}
+          />
+          <DeliveryPreferenceButton
+            isActive={deliveryPreference === 'telegram'}
+            label="Telegram"
+            onClick={() => onChangePreference('telegram')}
+          />
+          <DeliveryPreferenceButton
+            isActive={deliveryPreference === 'both'}
+            label="Email + Telegram"
+            onClick={() => onChangePreference('both')}
+          />
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-tertiary)]">
+          Connected channels
+        </div>
+        <div className="mt-3 space-y-3">
+          <div className="flex flex-col gap-3 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                Email
+              </div>
+              <div className="mt-1 font-mono text-[12px] text-[var(--color-text-tertiary)]">
+                {connectedEmail}
+              </div>
+              <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                Used for magic links and alert delivery.
+              </div>
+            </div>
+            <ChannelStatusPill tone="brand" value={isAuthenticated ? 'Verified' : 'Preview'} />
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                Telegram
+              </div>
+              <div className="mt-1 font-mono text-[12px] text-[var(--color-text-tertiary)]">
+                {DEMO_TELEGRAM_HANDLE}
+              </div>
+              <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                Instant delivery once Telegram shipping is enabled.
+              </div>
+            </div>
+            <ChannelStatusPill tone="brand" value="Connected" />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-4">
+          <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+            Pause all alerts
+          </div>
+          <p className="mt-2 text-[12px] leading-6 text-[var(--color-text-secondary)]">
+            Temporarily stop delivery everywhere without editing each alert.
+          </p>
+          <button
+            className={clsx(
+              'mt-4 inline-flex items-center justify-center rounded-[7px] border px-4 py-[10px] text-[13px] font-medium transition-[border-color,color,background-color] duration-150',
+              isAllPaused
+                ? 'border-[#00c58e] bg-[rgba(0,197,142,0.08)] text-[#00c58e] hover:bg-[rgba(0,197,142,0.12)]'
+                : 'border-[var(--color-border)] bg-transparent text-[var(--color-text-primary)] hover:border-[#00c58e] hover:bg-[rgba(0,197,142,0.06)] hover:text-[#00c58e]',
+            )}
+            onClick={onTogglePauseAll}
+            type="button"
+          >
+            {isAllPaused ? 'Resume all alerts' : 'Pause all alerts'}
+          </button>
+        </div>
+
+        <div className="rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-4">
+          <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+            Session
+          </div>
+          <div className="mt-2 font-mono text-[12px] text-[var(--color-text-tertiary)]">
+            {isAuthenticated ? connectedEmail : 'Preview mode'}
+          </div>
+          <p className="mt-2 text-[12px] leading-6 text-[var(--color-text-secondary)]">
+            {isAuthenticated
+              ? 'Sign out of the current Quorum session on this device.'
+              : 'Sign-out control appears here once the alerts page is gated again.'}
+          </p>
+          {isAuthenticated ? (
+            <button
+              className="mt-4 inline-flex items-center justify-center rounded-[7px] border border-[var(--color-border)] bg-transparent px-4 py-[10px] text-[13px] font-medium text-[var(--color-text-primary)] transition-[border-color,color,background-color] duration-150 hover:border-[#00c58e] hover:bg-[rgba(0,197,142,0.06)] hover:text-[#00c58e]"
+              onClick={onSignOut}
+              type="button"
+            >
+              Sign out
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -467,13 +662,22 @@ function AlertSubscriptionDrawer({
 
 export function AlertsPage() {
   const { pushToast } = useToast()
+  const {
+    isAuthenticated,
+    signOut,
+    user,
+  } = useAuth()
   const [subscriptions, setSubscriptions] =
     useState<DemoAlertSubscription[]>(demoSubscriptions)
   const [deliveries] = useState<DemoDelivery[]>(demoDeliveries)
+  const [deliveryPreference, setDeliveryPreference] =
+    useState<DeliveryPreference>('email')
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [drawerSubscriptionId, setDrawerSubscriptionId] = useState<string | null>(null)
+  const [isAllPaused, setIsAllPaused] = useState(false)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const menuRootRef = useRef<HTMLDivElement | null>(null)
+  const connectedEmail = user?.email ?? DEMO_DELIVERY_EMAIL
 
   const drawerSubscription = useMemo(
     () =>
@@ -539,6 +743,15 @@ export function AlertsPage() {
     setOpenMenuId(null)
   }
 
+  const handleSignOut = () => {
+    void signOut().then(() => {
+      pushToast({
+        label: 'Signed out',
+        message: 'Local alert session cleared on this device.',
+      })
+    })
+  }
+
   return (
     <>
       <div className="mx-auto max-w-[680px] px-6 py-10">
@@ -553,6 +766,33 @@ export function AlertsPage() {
             You&apos;ll get an email when these wallets move.
           </p>
         </header>
+
+        <DeliverySettingsSection
+          connectedEmail={connectedEmail}
+          deliveryPreference={deliveryPreference}
+          isAllPaused={isAllPaused}
+          isAuthenticated={isAuthenticated}
+          onChangePreference={(preference) => {
+            setDeliveryPreference(preference)
+            pushToast({
+              label: 'Delivery preference updated',
+              message:
+                preference === 'both'
+                  ? 'New alerts will use email and Telegram by default.'
+                  : `New alerts will default to ${preference}.`,
+            })
+          }}
+          onSignOut={handleSignOut}
+          onTogglePauseAll={() => {
+            setIsAllPaused((current) => !current)
+            pushToast({
+              label: isAllPaused ? 'Alerts resumed' : 'All alerts paused',
+              message: isAllPaused
+                ? 'New deliveries can go out again.'
+                : 'No new alert deliveries will go out until you resume them.',
+            })
+          }}
+        />
 
         {subscriptions.length ? (
           <section className="mt-8" ref={menuRootRef}>
