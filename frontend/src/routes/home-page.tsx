@@ -14,7 +14,10 @@ import {
 import { MarketRow } from '../components/market-row'
 import { PlatformBadge } from '../components/platform-badge'
 import { ScoreBadge } from '../components/score-badge'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { SignalCard } from '../components/signal-card'
 import { useDisplayCurrency } from '../features/currency/context'
 import { getEventMoneyUnit } from '../features/currency/money'
@@ -250,6 +253,13 @@ export function HomePage() {
   const trendingSidebarEvents = volumeLeaders.slice(0, 3)
   const smartMoneySignals = smartMoneySignalsQuery.data ?? []
   const topWhales = smartMoneyWalletsQuery.data ?? []
+  const isEventsRefreshing = eventsQuery.isFetching && !eventsQuery.isLoading
+  const isDivergenceRefreshing =
+    divergenceQuery.isFetching && !divergenceQuery.isLoading
+  const isSignalsRefreshing =
+    smartMoneySignalsQuery.isFetching && !smartMoneySignalsQuery.isLoading
+  const isWalletsRefreshing =
+    smartMoneyWalletsQuery.isFetching && !smartMoneyWalletsQuery.isLoading
   const smartMoneyFlow = smartMoneySignals.reduce(
     (totalSize, signal) => totalSize + signal.size,
     0,
@@ -273,6 +283,9 @@ export function HomePage() {
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="eyebrow">Signal feed</span>
+              {isSignalsRefreshing ? (
+                <RefreshBadge label="Refreshing" />
+              ) : null}
               <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
                 Polymarket wallets
               </span>
@@ -341,6 +354,7 @@ export function HomePage() {
               <SectionHeader
                 description="Compact reads on the heaviest names in the book."
                 kicker="Trending"
+                status={isEventsRefreshing ? <RefreshBadge /> : null}
                 title="High-volume markets"
               />
               <div className="mt-4 space-y-3">
@@ -358,6 +372,7 @@ export function HomePage() {
               <SectionHeader
                 description="The widest stored cross-platform spreads."
                 kicker="Top divergence"
+                status={isDivergenceRefreshing ? <RefreshBadge /> : null}
                 title="Where venues disagree"
               />
               <div className="mt-4 space-y-3">
@@ -404,6 +419,7 @@ export function HomePage() {
               <SectionHeader
                 description="Highest-ranked wallets plus a one-line read on their most recent qualifying signal."
                 kicker="Top whales"
+                status={isWalletsRefreshing ? <RefreshBadge /> : null}
                 title="Wallets to watch"
               />
               <div className="mt-4 space-y-3">
@@ -436,6 +452,7 @@ export function HomePage() {
             <SectionHeader
               description="Use the shell venue tabs and category desks to tighten the main board without leaving the homepage feed."
               kicker="Discovery"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Scan the board"
             />
 
@@ -470,6 +487,7 @@ export function HomePage() {
             <SectionHeader
               description="The main board ranks the open market tape by traded volume. Start here before moving into divergence or a vertical desk."
               kicker="Main board"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Where order flow is thickest"
             />
 

@@ -1,6 +1,10 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { bayseLiveHub } from '../../realtime/bayse-live-hub.js'
+import { kalshiLiveHub } from '../../realtime/kalshi-live-hub.js'
+import { manifoldLiveHub } from '../../realtime/manifold-live-hub.js'
+import { polymarketLiveHub } from '../../realtime/polymarket-live-hub.js'
 import { smartMoneyLiveHub } from '../../realtime/smart-money-live-hub.js'
+import { parseProviderScopedId } from '../../providers/provider-ids.js'
 
 const RUNTIME_HEARTBEAT_INTERVAL_MS = 20_000
 
@@ -46,7 +50,19 @@ export const v1LiveRoutes: FastifyPluginAsync = async (app) => {
     let unsubscribe: (() => void) | null = null
 
     try {
-      unsubscribe = bayseLiveHub.subscribe(request.params.eventId, socket)
+      const parsed = parseProviderScopedId(request.params.eventId)
+
+      if (parsed.provider === 'bayse') {
+        unsubscribe = bayseLiveHub.subscribe(request.params.eventId, socket)
+      } else if (parsed.provider === 'kalshi') {
+        unsubscribe = kalshiLiveHub.subscribe(request.params.eventId, socket)
+      } else if (parsed.provider === 'manifold') {
+        unsubscribe = manifoldLiveHub.subscribe(request.params.eventId, socket)
+      } else if (parsed.provider === 'polymarket') {
+        unsubscribe = polymarketLiveHub.subscribe(request.params.eventId, socket)
+      } else {
+        throw new Error('Unsupported live event')
+      }
     } catch (error) {
       socket.send(
         JSON.stringify({

@@ -147,10 +147,6 @@ export function useLiveEventPrices(eventId?: string) {
       return
     }
 
-    if (parsedEventId.provider !== 'bayse') {
-      return
-    }
-
     let isActive = true
     let socket: WebSocket | null = null
 
@@ -220,13 +216,9 @@ export function useLiveEventPrices(eventId?: string) {
     state.snapshot?.eventId === eventId ? state.snapshot : null
   const status = !eventId
     ? 'closed'
-    : parsedEventId?.provider !== 'bayse'
-      ? 'closed'
-    : state.status === 'error'
-      ? 'error'
-      : snapshot
-        ? state.status
-        : 'connecting'
+    : state.status === 'closed'
+      ? 'connecting'
+      : state.status
 
   return {
     lastUpdateAt: snapshot ? state.lastUpdateAt : null,

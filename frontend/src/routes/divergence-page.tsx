@@ -1,7 +1,10 @@
 import { Link } from '@tanstack/react-router'
 import { DivergenceBoardLoadingState } from '../components/loading-state'
 import { PlatformBadge } from '../components/platform-badge'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { useDivergenceQuery } from '../features/events/hooks'
 import {
   formatCompactNumber,
@@ -49,6 +52,8 @@ export function DivergencePage() {
     (largest, entry) => Math.max(largest, entry.maxDivergence),
     0,
   )
+  const isRefreshing =
+    divergenceQuery.isFetching && !divergenceQuery.isLoading
 
   return (
     <div className="space-y-6">
@@ -85,6 +90,7 @@ export function DivergencePage() {
             <SectionHeader
               description="The lead row is the sharpest disagreement on the board right now."
               kicker="Lead divergence"
+              status={isRefreshing ? <RefreshBadge /> : null}
               title={leadEntry?.title ?? 'Waiting for linked events'}
             />
 
@@ -137,6 +143,7 @@ export function DivergencePage() {
           <SectionHeader
             description="Click any row to jump into the compare view for that event."
             kicker="Leaderboard"
+            status={isRefreshing ? <RefreshBadge /> : null}
             title="Top divergence names"
           />
 

@@ -1,7 +1,10 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { SmartMoneyLeaderboardLoadingState } from '../components/loading-state'
 import { ScoreBadge } from '../components/score-badge'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { useDisplayCurrency } from '../features/currency/context'
 import {
   useSmartMoneyLiveSignals,
@@ -32,6 +35,7 @@ export function SmartMoneyLeaderboardPage() {
     minVolume,
   })
   const wallets = walletsQuery.data ?? []
+  const isRefreshing = walletsQuery.isFetching && !walletsQuery.isLoading
 
   const updateSearch = (patch: Partial<AppSearch>) => {
     void navigate({
@@ -75,6 +79,7 @@ export function SmartMoneyLeaderboardPage() {
             <SectionHeader
               description="Filter the board by score and volume without leaving the leaderboard."
               kicker="Filters"
+              status={isRefreshing ? <RefreshBadge /> : null}
               title="Tighten the board"
             />
 
@@ -123,6 +128,7 @@ export function SmartMoneyLeaderboardPage() {
         <SectionHeader
           description={`${formatCompactNumber(wallets.length)} wallets met the current score and volume floor.`}
           kicker="Rankings"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title="Leaderboard"
         />
 

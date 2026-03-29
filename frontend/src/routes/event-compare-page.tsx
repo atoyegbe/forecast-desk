@@ -9,7 +9,10 @@ import { DivergenceBar } from '../components/divergence-bar'
 import { EventCompareLoadingState } from '../components/loading-state'
 import { PlatformBadge } from '../components/platform-badge'
 import { PriceDisplay } from '../components/price-display'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { useDisplayCurrency } from '../features/currency/context'
 import { getEventMoneyUnit } from '../features/currency/money'
 import { getProviderLabel } from '../features/events/provider-ids'
@@ -135,11 +138,17 @@ export function EventComparePage() {
     new Date(comparison.comparedAt).getTime(),
   )
   const historyIsLoading = historyQueries.some((query) => query.isLoading)
+  const historyIsFetching = historyQueries.some(
+    (query) => query.isFetching && !query.isLoading,
+  )
   const providers = comparison.events.map((item) => item.event.provider)
   const maxVolume = comparison.events.reduce(
     (volume, item) => Math.max(volume, item.totalVolume),
     0,
   )
+  const isRefreshing =
+    (eventQuery.isFetching && !eventQuery.isLoading) ||
+    (compareQuery.isFetching && !compareQuery.isLoading)
 
   return (
     <div className="space-y-6">
@@ -161,6 +170,7 @@ export function EventComparePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {isRefreshing ? <RefreshBadge label="Refreshing" /> : null}
               {comparison.events.map((item) => (
                 <PlatformBadge
                   key={item.event.id}
@@ -181,6 +191,7 @@ export function EventComparePage() {
             <SectionHeader
               description="The dedicated compare desk isolates the highest-signal cross-venue facts first."
               kicker="Spread summary"
+              status={isRefreshing ? <RefreshBadge /> : null}
               title="Comparison at a glance"
             />
 
@@ -211,6 +222,7 @@ export function EventComparePage() {
         <SectionHeader
           description="Each venue keeps its own crowd, liquidity, and engine. Read them side by side before deciding whether the spread matters."
           kicker="Venue cards"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title="How each platform is pricing it"
         />
 
@@ -298,6 +310,7 @@ export function EventComparePage() {
           <SectionHeader
             description="Stored history lines are overlaid by venue so you can see whether the spread is persistent or just a current snapshot."
             kicker="History overlay"
+            status={historyIsFetching ? <RefreshBadge /> : null}
             title="How the spread evolved"
           />
 

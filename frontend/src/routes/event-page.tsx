@@ -12,7 +12,10 @@ import {
 import { PlatformBadge } from '../components/platform-badge'
 import { PriceDisplay } from '../components/price-display'
 import { PriceHistoryChart } from '../components/price-history-chart'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { useDisplayCurrency } from '../features/currency/context'
 import {
   getEventMoneyUnit,
@@ -277,15 +280,24 @@ export function EventPage() {
   const liveStatusLabel =
     liveFeed.status === 'streaming'
       ? 'Connected'
+      : liveFeed.status === 'connecting'
+        ? 'Connecting'
       : liveFeed.status === 'error'
         ? 'Offline'
-        : 'Reconnecting'
+        : 'Unavailable'
   const liveStatusClass =
     liveFeed.status === 'streaming'
       ? 'live-dot'
+      : liveFeed.status === 'connecting'
+        ? 'live-dot warn'
       : liveFeed.status === 'error'
         ? 'live-dot offline'
         : 'live-dot warn'
+  const isRefreshing = [
+    eventQuery.isFetching && !eventQuery.isLoading,
+    compareQuery.isFetching && !compareQuery.isLoading,
+    historyQuery.isFetching && !historyQuery.isLoading,
+  ].some(Boolean)
 
   return (
     <div className="space-y-6">
@@ -301,6 +313,7 @@ export function EventPage() {
               >
                 {event.category}
               </Link>
+              {isRefreshing ? <RefreshBadge label="Refreshing" /> : null}
               <PlatformBadge platform={event.provider} />
               <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
                 {event.status}
@@ -686,6 +699,7 @@ export function EventPage() {
         <SectionHeader
           description="If an event has more than one sub-market, they live here. Some providers package a single event as multiple binary markets, so this board keeps the internal structure visible."
           kicker="Market board"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title="Markets inside this event"
         />
 

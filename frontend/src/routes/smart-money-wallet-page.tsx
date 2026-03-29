@@ -2,7 +2,10 @@ import { Link, useParams } from '@tanstack/react-router'
 import { SmartMoneyWalletLoadingState } from '../components/loading-state'
 import { PriceDisplay } from '../components/price-display'
 import { ScoreBadge } from '../components/score-badge'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { SignalCard } from '../components/signal-card'
 import { useDisplayCurrency } from '../features/currency/context'
 import {
@@ -99,6 +102,7 @@ export function SmartMoneyWalletPage() {
   }
 
   const { categoryStats, openPositions, recentSignals, wallet } = walletDetail
+  const isRefreshing = walletQuery.isFetching && !walletQuery.isLoading
 
   return (
     <div className="space-y-6">
@@ -119,7 +123,10 @@ export function SmartMoneyWalletPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="eyebrow">Wallet profile</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="eyebrow">Wallet profile</div>
+                  {isRefreshing ? <RefreshBadge label="Refreshing" /> : null}
+                </div>
                 <h1 className="display-title">
                   {wallet.displayName || wallet.shortAddress}
                 </h1>
@@ -155,6 +162,7 @@ export function SmartMoneyWalletPage() {
         <SectionHeader
           description="Category win rate and ROI, ranked by the wallet's strongest historical categories."
           kicker="Performance"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title="Performance by category"
         />
 
@@ -200,6 +208,7 @@ export function SmartMoneyWalletPage() {
         <SectionHeader
           description="Open positions show entry price, current price, current P&L, and where the market is currently trading."
           kicker="Open positions"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title={`Current board (${openPositions.length})`}
         />
 
@@ -266,6 +275,7 @@ export function SmartMoneyWalletPage() {
         <SectionHeader
           description="Recent qualifying buys from this wallet, pulled from the owned smart money signal store."
           kicker="Recent signals"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title="Signal history"
         />
 

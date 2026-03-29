@@ -11,15 +11,16 @@ import { CompactMarketCard } from '../components/compact-market-card'
 import { DeskTabs } from '../components/desk-tabs'
 import {
   CategoryDeskLoadingState,
-  CompactCardsLoadingState,
-  MarketRowsLoadingState,
   TableLoadingState,
 } from '../components/loading-state'
 import { MarketCard } from '../components/market-card'
 import { MarketRow } from '../components/market-row'
 import { MarketRowCard } from '../components/market-row-card'
 import { PlatformBadge } from '../components/platform-badge'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { useEventsQuery } from '../features/events/hooks'
 import {
   EMPTY_EVENTS,
@@ -175,6 +176,11 @@ export function CategoryPage() {
   const visibleSportsMostActive = showAllMostActive
     ? sportsMostActive
     : sportsMostActive.slice(0, INITIAL_VISIBLE_MARKETS)
+  const emptyDeskMessage = `No ${category.toLowerCase()} markets match this desk view yet.`
+  const emptyConvictionMessage = `No ${category.toLowerCase()} markets are showing a strong lean yet.`
+  const isEventsRefreshing = eventsQuery.isFetching && !eventsQuery.isLoading
+  const isResolvedRefreshing =
+    resolvedEventsQuery.isFetching && !resolvedEventsQuery.isLoading
 
   return (
     <div className="space-y-6">
@@ -256,6 +262,7 @@ export function CategoryPage() {
           <section className="space-y-4">
             <SectionHeader
               kicker="Markets"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Most active"
             />
 
@@ -289,6 +296,7 @@ export function CategoryPage() {
           <section className="space-y-4">
             <SectionHeader
               kicker="Markets"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Closing soon"
             />
 
@@ -310,6 +318,7 @@ export function CategoryPage() {
           <section className="space-y-4">
             <SectionHeader
               kicker="Markets"
+              status={isResolvedRefreshing ? <RefreshBadge /> : null}
               title="Recently resolved"
             />
 
@@ -388,6 +397,7 @@ export function CategoryPage() {
             <SectionHeader
               description="Activity-ranked names are the core of the category board. This is where participation is densest, not just where prices happen to be interesting."
               kicker="Most active"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Where order flow is densest"
             />
             <div className="space-y-3">
@@ -396,7 +406,9 @@ export function CategoryPage() {
                   <MarketRow event={event} key={event.id} />
                 ))
               ) : (
-                <MarketRowsLoadingState count={4} />
+                <div className="panel-elevated p-4 text-sm text-[var(--color-text-secondary)]">
+                  {emptyDeskMessage}
+                </div>
               )}
             </div>
           </section>
@@ -436,9 +448,15 @@ export function CategoryPage() {
               {
                 content: (
                   <div className="space-y-4">
-                    {convictionBoard.map((event) => (
-                      <MarketRow event={event} key={event.id} />
-                    ))}
+                    {convictionBoard.length ? (
+                      convictionBoard.map((event) => (
+                        <MarketRow event={event} key={event.id} />
+                      ))
+                    ) : (
+                      <div className="panel-elevated p-4 text-sm text-[var(--color-text-secondary)]">
+                        {emptyConvictionMessage}
+                      </div>
+                    )}
                   </div>
                 ),
                 description: 'High-conviction names give you the opposite read: markets already leaning sharply in one direction.',
@@ -457,6 +475,7 @@ export function CategoryPage() {
             <SectionHeader
               description="These are the names nearest the middle, where conviction is lowest and the next piece of information matters most."
               kicker="Least settled"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Closest calls"
             />
             <div className="mt-4 space-y-3">
@@ -465,7 +484,9 @@ export function CategoryPage() {
                   <CompactMarketCard event={event} key={event.id} />
                 ))
               ) : (
-                <CompactCardsLoadingState count={3} />
+                <div className="panel-elevated p-4 text-sm text-[var(--color-text-secondary)]">
+                  {emptyDeskMessage}
+                </div>
               )}
             </div>
           </section>
@@ -474,6 +495,7 @@ export function CategoryPage() {
             <SectionHeader
               description="Names already leaning hard in one direction."
               kicker="Conviction"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Strongest current lean"
             />
             <div className="mt-4 space-y-3">
@@ -482,7 +504,9 @@ export function CategoryPage() {
                   <CompactMarketCard event={event} key={event.id} />
                 ))
               ) : (
-                <CompactCardsLoadingState count={3} />
+                <div className="panel-elevated p-4 text-sm text-[var(--color-text-secondary)]">
+                  {emptyConvictionMessage}
+                </div>
               )}
             </div>
           </section>

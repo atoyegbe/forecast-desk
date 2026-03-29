@@ -8,6 +8,9 @@ import { isSmartMoneySchedulerEnabled } from '../db/config.js'
 import { closeDbPool } from '../db/pool.js'
 import { ensureDiscoverySchema } from '../db/schema.js'
 import { bayseLiveHub } from '../realtime/bayse-live-hub.js'
+import { kalshiLiveHub } from '../realtime/kalshi-live-hub.js'
+import { manifoldLiveHub } from '../realtime/manifold-live-hub.js'
+import { polymarketLiveHub } from '../realtime/polymarket-live-hub.js'
 import { smartMoneyLiveHub } from '../realtime/smart-money-live-hub.js'
 import { healthRoute } from '../routes/health.js'
 import { v1CurrencyRoutes } from '../routes/v1/currencies.js'
@@ -30,6 +33,9 @@ export async function createApp() {
 
   app.addHook('onClose', async () => {
     bayseLiveHub.closeAll()
+    kalshiLiveHub.closeAll()
+    manifoldLiveHub.closeAll()
+    polymarketLiveHub.closeAll()
     smartMoneyLiveHub.closeAll()
     stopSmartMoneyScheduler()
     await closeDbPool()

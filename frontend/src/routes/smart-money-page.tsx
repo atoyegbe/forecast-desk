@@ -4,6 +4,7 @@ import {
   SignalCardsLoadingState,
   SmartMoneyDeskLoadingState,
 } from '../components/loading-state'
+import { RefreshBadge } from '../components/section-header'
 import { ScoreBadge } from '../components/score-badge'
 import { SmartMoneyFeedCard } from '../components/smart-money-feed-card'
 import { useDisplayCurrency } from '../features/currency/context'
@@ -393,6 +394,13 @@ export function SmartMoneyPage() {
   const latestActivitySignals = signalOverview.slice(0, 3)
   const snapshotJob = smartMoneyStatus?.jobStatus.find((job) => job.job === 'snapshot')
   const signalWatchJob = smartMoneyStatus?.jobStatus.find((job) => job.job === 'signal-watch')
+  const isSignalsRefreshing = signalsQuery.isFetching && !signalsQuery.isLoading
+  const isSignalOverviewRefreshing =
+    signalOverviewQuery.isFetching && !signalOverviewQuery.isLoading
+  const isStatusRefreshing =
+    smartMoneyStatusQuery.isFetching && !smartMoneyStatusQuery.isLoading
+  const isTopWalletsRefreshing =
+    topWalletsQuery.isFetching && !topWalletsQuery.isLoading
 
   const updateSearch = (patch: Partial<AppSearch>) => {
     void navigate({
@@ -430,6 +438,9 @@ export function SmartMoneyPage() {
                 style={{ animation: 'nav-status-pulse 2s ease-in-out infinite' }}
               />
               <span className="mono-data">Smart Money</span>
+              {isSignalsRefreshing ? (
+                <RefreshBadge label="Refreshing" />
+              ) : null}
             </div>
 
             <div className="mt-4 space-y-2">
@@ -443,6 +454,11 @@ export function SmartMoneyPage() {
           </section>
 
           <section className="border-b border-[var(--color-border-subtle)] px-7 py-4">
+            {isStatusRefreshing && smartMoneyStatus ? (
+              <div className="mb-3">
+                <RefreshBadge />
+              </div>
+            ) : null}
             <div className="grid gap-3 md:grid-cols-3">
               {[snapshotJob, signalWatchJob].map((job) =>
                 job ? (
@@ -639,7 +655,10 @@ export function SmartMoneyPage() {
           <section className="border-b border-[var(--color-border-subtle)] px-[18px] py-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="section-kicker">Whale board</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="section-kicker">Whale board</div>
+                  {isTopWalletsRefreshing ? <RefreshBadge /> : null}
+                </div>
                 <h2 className="mt-2 text-lg font-semibold text-[var(--color-text-primary)]">
                   Ranked wallets
                 </h2>
@@ -660,7 +679,10 @@ export function SmartMoneyPage() {
           </section>
 
           <section className="px-[18px] py-4">
-            <div className="section-kicker">Latest activity</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="section-kicker">Latest activity</div>
+              {isSignalOverviewRefreshing ? <RefreshBadge /> : null}
+            </div>
             <h2 className="mt-2 text-lg font-semibold text-[var(--color-text-primary)]">
               What just hit the tape
             </h2>
