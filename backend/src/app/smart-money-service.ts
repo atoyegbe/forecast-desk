@@ -10,6 +10,8 @@ import type {
 } from '../contracts/pulse-smart-money.js'
 import {
   getSmartMoneyActivityLookbackDays,
+  getSmartMoneyDiscoveryLookbackDays,
+  getSmartMoneyDiscoveryWalletLimit,
   getSmartMoneyLeaderboardLimit,
   getSmartMoneyMinSignalSizeUsd,
   getSmartMoneySignalWatchIntervalMs,
@@ -36,6 +38,7 @@ import {
 } from '../db/smart-money-repository.js'
 import type { PulseEvent } from '../contracts/pulse-events.js'
 import {
+  discoverPolymarketTradeWallets,
   listPolymarketLeaderboardWallets,
   listPolymarketWalletActivity,
   listPolymarketWalletClosedPositions,
@@ -330,6 +333,36 @@ function dedupeSignals(signals: StoredSmartMoneySignalInput[]) {
   }
 
   return [...uniqueSignals.values()]
+}
+
+function mergeSeedWallets(seedWalletGroups: SmartMoneySeedWallet[][]) {
+  const mergedWallets = new Map<string, SmartMoneySeedWallet>()
+
+  for (const walletGroup of seedWalletGroups) {
+    for (const wallet of walletGroup) {
+      const currentWallet = mergedWallets.get(wallet.address)
+
+      if (!currentWallet) {
+        mergedWallets.set(wallet.address, wallet)
+        continue
+      }
+
+      mergedWallets.set(wallet.address, {
+        address: wallet.address,
+        displayName: currentWallet.displayName ?? wallet.displayName ?? null,
+        profileImageUrl:
+          currentWallet.profileImageUrl ?? wallet.profileImageUrl ?? null,
+        sourcePnl:
+          currentWallet.sourcePnl !== 0 ? currentWallet.sourcePnl : wallet.sourcePnl,
+        sourceRank: currentWallet.sourceRank ?? wallet.sourceRank ?? null,
+        sourceVolume: Math.max(currentWallet.sourceVolume, wallet.sourceVolume),
+        verifiedBadge: currentWallet.verifiedBadge || wallet.verifiedBadge,
+        xUsername: currentWallet.xUsername ?? wallet.xUsername ?? null,
+      })
+    }
+  }
+
+  return [...mergedWallets.values()]
 }
 
 function buildWalletScore(
@@ -644,11 +677,21 @@ async function buildWalletWatchSignals(
   })
 }
 
+async function buildSmartMoneySeedWallets() {
+  const [leaderboardWallets, discoveredWallets] = await Promise.all([
+    listPolymarketLeaderboardWallets(getSmartMoneyLeaderboardLimit()),
+    discoverPolymarketTradeWallets({
+      daysBack: getSmartMoneyDiscoveryLookbackDays(),
+      limit: getSmartMoneyDiscoveryWalletLimit(),
+    }),
+  ])
+
+  return mergeSeedWallets([leaderboardWallets, discoveredWallets])
+}
+
 async function buildSmartMoneySnapshot() {
   const eventLookup = await buildEventLookup()
-  const seedWallets = await listPolymarketLeaderboardWallets(
-    getSmartMoneyLeaderboardLimit(),
-  )
+  const seedWallets = await buildSmartMoneySeedWallets()
   const snapshots: WalletSnapshot[] = []
 
   for (const seedWallet of seedWallets) {

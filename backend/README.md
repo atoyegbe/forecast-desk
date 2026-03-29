@@ -53,10 +53,11 @@ uses the public market search API plus batched probability reads, while price
 history is synthesized from public bet probability transitions.
 
 Smart money is now started as an owned backend surface as well. The current
-implementation seeds from the public Polymarket leaderboard, enriches those
-wallets with position and recent activity data from the public Data API, scores
-them locally, stores the snapshot in Postgres, and serves a public signal feed,
-leaderboard, and wallet-detail read model from owned routes.
+implementation seeds from the public Polymarket leaderboard plus a bounded
+recent-trade discovery pass, enriches those wallets with position and recent
+activity data from the public Data API, scores them locally, stores the
+snapshot in Postgres, and serves a public signal feed, leaderboard, and
+wallet-detail read model from owned routes.
 
 ## Local Setup
 
