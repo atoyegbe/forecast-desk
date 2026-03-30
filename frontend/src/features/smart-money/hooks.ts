@@ -12,6 +12,7 @@ import {
   listSmartMoneySignals,
   listSmartMoneyWallets,
 } from './api'
+import { getPrerenderedWallet } from './prerender'
 import type {
   PulseSmartMoneyLiveMessage,
   PulseSmartMoneySignal,
@@ -167,6 +168,7 @@ export function useSmartMoneyWalletsQuery(params: PulseSmartMoneyWalletListParam
 export function useSmartMoneyWalletQuery(address?: string) {
   return useQuery({
     enabled: Boolean(address),
+    initialData: address ? getPrerenderedWallet(address) : undefined,
     queryFn: () => getSmartMoneyWallet(address!),
     queryKey: address
       ? smartMoneyKeys.wallet(address)

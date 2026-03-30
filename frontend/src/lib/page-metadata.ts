@@ -4,7 +4,7 @@ const DEFAULT_DESCRIPTION =
   'Quorum is a public dashboard for reading live prediction market sentiment.'
 const SITE_NAME = 'Quorum'
 
-type PageMetadataInput = {
+export type PageMetadataInput = {
   canonicalPath?: string
   description?: string
   imageUrl?: string

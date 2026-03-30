@@ -35,11 +35,15 @@ Compose can still be introduced later for local orchestration if needed, but it 
 
 Environment variables:
 
+- `QUORUM_PUBLIC_SITE_URL=https://<frontend-public-domain>`
 - `QUORUM_PUBLIC_BACKEND_API_BASE=https://<api-public-domain>/api/v1`
 - `QUORUM_PUBLIC_BACKEND_WS_BASE=wss://<api-public-domain>`
 - `QUORUM_PUBLIC_BACKEND_HEALTH_URL=https://<api-public-domain>/health`
+- `QUORUM_PRERENDER_WALLET_LIMIT=50` (optional)
 
 The frontend runs as a compiled static SPA served by `serve`.
+The build now also prerenders the top public wallet pages into `dist/` so
+crawlers receive wallet-specific HTML, metadata, and JSON-LD on direct hits.
 
 ### 2. Backend service
 

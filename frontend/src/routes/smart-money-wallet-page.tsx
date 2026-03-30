@@ -19,6 +19,10 @@ import {
   useSmartMoneyWalletQuery,
 } from '../features/smart-money/hooks'
 import {
+  buildWalletMetadata,
+  buildWalletSummary,
+} from '../features/smart-money/seo'
+import {
   formatCompactNumber,
   formatDate,
   formatSignedPercent,
@@ -26,7 +30,6 @@ import {
 } from '../lib/format'
 import { usePageMetadata } from '../lib/page-metadata'
 import { getEventRoute, getSmartMoneyLeaderboardRoute } from '../lib/routes'
-import type { PulseSmartMoneyWalletDetail } from '../features/smart-money/types'
 
 function ScoreRing({ score }: { score: number }) {
   const radius = 42
@@ -76,74 +79,6 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
-function getWalletLabel(walletDetail: PulseSmartMoneyWalletDetail | null) {
-  if (!walletDetail) {
-    return 'Wallet'
-  }
-
-  return walletDetail.wallet.displayName || walletDetail.wallet.shortAddress
-}
-
-function buildWalletMetadata(
-  walletAddress: string,
-  walletDetail: PulseSmartMoneyWalletDetail | null,
-) {
-  const canonicalPath = `/smart-money/wallets/${walletAddress.toLowerCase()}`
-  const backendOrigin =
-    typeof window === 'undefined'
-      ? ''
-      : (
-          import.meta.env.QUORUM_PUBLIC_BACKEND_API_BASE?.replace(/\/api\/v1$/, '') ||
-          window.location.origin
-        ).replace(/\/$/, '')
-
-  if (!walletDetail) {
-    return {
-      canonicalPath,
-      description:
-        'Track public smart money wallet performance, recent signals, and open positions on Quorum.',
-      imageUrl: backendOrigin ? `${backendOrigin}/og/wallets/${walletAddress.toLowerCase()}.svg` : undefined,
-      title: 'Wallet Profile | Quorum',
-    }
-  }
-
-  const walletLabel = getWalletLabel(walletDetail)
-  const winRate = Math.round(walletDetail.wallet.winRate * 100)
-  const roi = formatSignedPercent(walletDetail.wallet.roi)
-  const title = `${walletLabel} Wallet Profile | Quorum`
-  const description = `Track ${walletLabel}'s score ${walletDetail.wallet.score}, rank #${walletDetail.wallet.rank}, ${winRate}% win rate, ${roi} ROI, and recent public market signals on Quorum.`
-
-  return {
-    canonicalPath,
-    description,
-    imageUrl: backendOrigin ? `${backendOrigin}/og/wallets/${walletAddress.toLowerCase()}.svg` : undefined,
-    jsonLd: {
-      '@context': 'https://schema.org',
-      '@type': 'ProfilePage',
-      description,
-      mainEntity: {
-        '@type': 'Thing',
-        identifier: walletDetail.wallet.address.toLowerCase(),
-        name: walletLabel,
-      },
-      name: title,
-    },
-    title,
-  }
-}
-
-function buildWalletSummary(walletDetail: PulseSmartMoneyWalletDetail) {
-  const walletLabel = getWalletLabel(walletDetail)
-  const leadCategories = walletDetail.categoryStats
-    .slice(0, 2)
-    .map((categoryStat) => categoryStat.category)
-  const categorySummary = leadCategories.length
-    ? `Best historical categories: ${leadCategories.join(' and ')}.`
-    : 'Category performance is still building.'
-
-  return `${walletLabel} is ranked #${walletDetail.wallet.rank} overall with a ${Math.round(walletDetail.wallet.winRate * 100)}% win rate, ${formatSignedPercent(walletDetail.wallet.roi)} ROI, and ${formatCompactNumber(walletDetail.openPositions.length)} open positions. ${categorySummary}`
-}
-
 export function SmartMoneyWalletPage() {
   useSmartMoneyLiveSignals()
   const {
@@ -160,8 +95,19 @@ export function SmartMoneyWalletPage() {
     () => (walletDetail ? buildWalletSummary(walletDetail) : null),
     [walletDetail],
   )
+  const backendOrigin =
+    typeof window === 'undefined'
+      ? ''
+      : (
+          import.meta.env.QUORUM_PUBLIC_BACKEND_API_BASE?.replace(/\/api\/v1$/, '') ||
+          window.location.origin
+        ).replace(/\/$/, '')
 
-  usePageMetadata(buildWalletMetadata(walletAddress, walletDetail))
+  usePageMetadata(
+    buildWalletMetadata(walletAddress, walletDetail, {
+      backendOrigin,
+    }),
+  )
 
   if (walletQuery.isLoading) {
     return <SmartMoneyWalletLoadingState />
@@ -187,9 +133,13 @@ export function SmartMoneyWalletPage() {
   const isRefreshing = walletQuery.isFetching && !walletQuery.isLoading
   const walletUrl =
     typeof window === 'undefined'
-      ? buildWalletMetadata(walletAddress, walletDetail).canonicalPath ?? ''
+      ? buildWalletMetadata(walletAddress, walletDetail, {
+          backendOrigin,
+        }).canonicalPath ?? ''
       : new URL(
-          buildWalletMetadata(walletAddress, walletDetail).canonicalPath ?? '',
+          buildWalletMetadata(walletAddress, walletDetail, {
+            backendOrigin,
+          }).canonicalPath ?? '',
           window.location.origin,
         ).toString()
 
