@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { SmartMoneyWalletLoadingState } from '../components/loading-state'
 import { PriceDisplay } from '../components/price-display'
@@ -7,6 +8,7 @@ import {
   SectionHeader,
 } from '../components/section-header'
 import { SignalCard } from '../components/signal-card'
+import { useToast } from '../components/toast-provider'
 import {
   createWalletAlertPropsFromWallet,
   WalletAlertButton,
@@ -22,7 +24,9 @@ import {
   formatSignedPercent,
   formatTimeAgo,
 } from '../lib/format'
+import { usePageMetadata } from '../lib/page-metadata'
 import { getEventRoute, getSmartMoneyLeaderboardRoute } from '../lib/routes'
+import type { PulseSmartMoneyWalletDetail } from '../features/smart-money/types'
 
 function ScoreRing({ score }: { score: number }) {
   const radius = 42
@@ -72,16 +76,70 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
+function getWalletLabel(walletDetail: PulseSmartMoneyWalletDetail | null) {
+  if (!walletDetail) {
+    return 'Wallet'
+  }
+
+  return walletDetail.wallet.displayName || walletDetail.wallet.shortAddress
+}
+
+function buildWalletMetadata(
+  walletAddress: string,
+  walletDetail: PulseSmartMoneyWalletDetail | null,
+) {
+  const canonicalPath = `/smart-money/wallets/${walletAddress.toLowerCase()}`
+
+  if (!walletDetail) {
+    return {
+      canonicalPath,
+      description:
+        'Track public smart money wallet performance, recent signals, and open positions on Quorum.',
+      title: 'Wallet Profile | Quorum',
+    }
+  }
+
+  const walletLabel = getWalletLabel(walletDetail)
+  const winRate = Math.round(walletDetail.wallet.winRate * 100)
+  const roi = formatSignedPercent(walletDetail.wallet.roi)
+
+  return {
+    canonicalPath,
+    description: `Track ${walletLabel}'s score ${walletDetail.wallet.score}, rank #${walletDetail.wallet.rank}, ${winRate}% win rate, ${roi} ROI, and recent public market signals on Quorum.`,
+    title: `${walletLabel} Wallet Profile | Quorum`,
+  }
+}
+
+function buildWalletSummary(walletDetail: PulseSmartMoneyWalletDetail) {
+  const walletLabel = getWalletLabel(walletDetail)
+  const leadCategories = walletDetail.categoryStats
+    .slice(0, 2)
+    .map((categoryStat) => categoryStat.category)
+  const categorySummary = leadCategories.length
+    ? `Best historical categories: ${leadCategories.join(' and ')}.`
+    : 'Category performance is still building.'
+
+  return `${walletLabel} is ranked #${walletDetail.wallet.rank} overall with a ${Math.round(walletDetail.wallet.winRate * 100)}% win rate, ${formatSignedPercent(walletDetail.wallet.roi)} ROI, and ${formatCompactNumber(walletDetail.openPositions.length)} open positions. ${categorySummary}`
+}
+
 export function SmartMoneyWalletPage() {
   useSmartMoneyLiveSignals()
   const {
     formatMoney,
     formatMoneyChange,
   } = useDisplayCurrency()
+  const { pushToast } = useToast()
   const { walletAddress } = useParams({
     from: '/smart-money/wallets/$walletAddress',
   })
   const walletQuery = useSmartMoneyWalletQuery(walletAddress)
+  const walletDetail = walletQuery.data ?? null
+  const walletSummary = useMemo(
+    () => (walletDetail ? buildWalletSummary(walletDetail) : null),
+    [walletDetail],
+  )
+
+  usePageMetadata(buildWalletMetadata(walletAddress, walletDetail))
 
   if (walletQuery.isLoading) {
     return <SmartMoneyWalletLoadingState />
@@ -95,8 +153,6 @@ export function SmartMoneyWalletPage() {
     )
   }
 
-  const walletDetail = walletQuery.data
-
   if (!walletDetail) {
     return (
       <div className="panel p-8 text-[var(--color-text-secondary)]">
@@ -107,6 +163,13 @@ export function SmartMoneyWalletPage() {
 
   const { categoryStats, openPositions, recentSignals, wallet } = walletDetail
   const isRefreshing = walletQuery.isFetching && !walletQuery.isLoading
+  const walletUrl =
+    typeof window === 'undefined'
+      ? buildWalletMetadata(walletAddress, walletDetail).canonicalPath ?? ''
+      : new URL(
+          buildWalletMetadata(walletAddress, walletDetail).canonicalPath ?? '',
+          window.location.origin,
+        ).toString()
 
   return (
     <div className="space-y-6">
@@ -136,11 +199,36 @@ export function SmartMoneyWalletPage() {
                   <div className="eyebrow">Wallet profile</div>
                   {isRefreshing ? <RefreshBadge label="Refreshing" /> : null}
                 </div>
-                <h1 className="display-title">
-                  {wallet.displayName || wallet.shortAddress}
-                </h1>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <h1 className="display-title">
+                    {wallet.displayName || wallet.shortAddress}
+                  </h1>
+                  <button
+                    className="terminal-button border-[var(--color-border)] bg-transparent text-[var(--color-text-primary)] hover:border-[var(--color-brand)] hover:bg-[var(--color-brand-dim)]"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(walletUrl)
+                        pushToast({
+                          label: 'Wallet Link Copied',
+                          message: `Share ${wallet.displayName || wallet.shortAddress} with a clean public URL.`,
+                        })
+                      } catch {
+                        pushToast({
+                          label: 'Copy Failed',
+                          message: 'Clipboard access was blocked in this browser.',
+                        })
+                      }
+                    }}
+                    type="button"
+                  >
+                    Copy wallet link
+                  </button>
+                </div>
                 <p className="text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
-                  Rank #{wallet.rank} overall · active {formatTimeAgo(wallet.lastActiveAt)} · source rank {wallet.sourceRank ?? '—'} on the Polymarket monthly leaderboard.
+                  {walletSummary}
+                </p>
+                <p className="text-sm leading-7 text-[var(--color-text-tertiary)]">
+                  Active {formatTimeAgo(wallet.lastActiveAt)} · source rank {wallet.sourceRank ?? '—'} on the Polymarket monthly leaderboard · public read-only profile on Quorum.
                 </p>
               </div>
 
