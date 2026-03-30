@@ -1,7 +1,7 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "npm run build"
+buildCommand = "npm run railway:build:backend"
 watchPatterns = ["/backend/**"]
 
 [deploy]
-startCommand = "npm run worker"
+startCommand = "npm run railway:start:worker"

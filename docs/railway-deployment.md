@@ -6,6 +6,11 @@ This repo now deploys cleanly to Railway as a monorepo with three services:
 - `backend` for the Fastify API and websocket routes
 - `worker` for smart money jobs, alert delivery, and Telegram bot polling
 
+Each Railway service can point at the repo root and use its checked-in config
+path. The config files now call root-level monorepo scripts, so deployment no
+longer depends on manually setting the Railway service root directory to
+`/frontend` or `/backend`.
+
 ## Why not Docker Compose
 
 We are **not** using Docker Compose for Railway deployment.
@@ -23,9 +28,9 @@ Compose can still be introduced later for local orchestration if needed, but it 
 
 ### 1. Frontend service
 
-- Root directory: `/frontend`
+- Root directory: repo root
 - Config file: `/frontend/railway.toml`
-- Start command: `npm run start`
+- Start command: `npm run railway:start:frontend`
 - Healthcheck: `/`
 
 Environment variables:
@@ -38,9 +43,9 @@ The frontend runs as a compiled static SPA served by `serve`.
 
 ### 2. Backend service
 
-- Root directory: `/backend`
+- Root directory: repo root
 - Config file: `/backend/railway.toml`
-- Start command: `env SMART_MONEY_SCHEDULER_ENABLED=false npm run start`
+- Start command: `env SMART_MONEY_SCHEDULER_ENABLED=false npm run railway:start:backend`
 - Healthcheck: `/health`
 
 Environment variables:
@@ -72,9 +77,9 @@ The API service explicitly disables the embedded smart-money scheduler because t
 
 ### 3. Worker service
 
-- Root directory: `/backend`
+- Root directory: repo root
 - Config file: `/backend/railway.worker.toml`
-- Start command: `npm run worker`
+- Start command: `npm run railway:start:worker`
 
 Environment variables:
 
@@ -136,11 +141,11 @@ For the worker service, point the Railway service config path to `/backend/railw
 
 1. Create a Railway project.
 2. Add a Postgres service.
-3. Add the API service from this repo with root `/backend`.
+3. Add the API service from this repo.
 4. Set the API config path to `/backend/railway.toml`.
-5. Add the worker service from this repo with root `/backend`.
+5. Add the worker service from this repo.
 6. Set the worker config path to `/backend/railway.worker.toml`.
-7. Add the frontend service from this repo with root `/frontend`.
+7. Add the frontend service from this repo.
 8. Set the frontend config path to `/frontend/railway.toml`.
 9. Attach required environment variables.
 10. Point frontend environment variables at the API public domain.

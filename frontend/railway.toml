@@ -1,8 +1,8 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "npm run build"
+buildCommand = "npm run railway:build:frontend"
 watchPatterns = ["/frontend/**"]
 
 [deploy]
-startCommand = "npm run start"
+startCommand = "npm run railway:start:frontend"
 healthcheckPath = "/"

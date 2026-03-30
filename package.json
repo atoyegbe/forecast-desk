@@ -1,0 +1,12 @@
+{
+  "name": "quorum-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "railway:build:backend": "npm --prefix backend ci && npm --prefix backend run build",
+    "railway:build:frontend": "npm --prefix frontend ci && npm --prefix frontend run build",
+    "railway:start:backend": "npm --prefix backend run start",
+    "railway:start:frontend": "npm --prefix frontend run start",
+    "railway:start:worker": "npm --prefix backend run worker"
+  }
+}

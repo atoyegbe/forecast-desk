@@ -1,8 +1,8 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "npm run build"
+buildCommand = "npm run railway:build:backend"
 watchPatterns = ["/backend/**"]
 
 [deploy]
-startCommand = "env SMART_MONEY_SCHEDULER_ENABLED=false npm run start"
+startCommand = "env SMART_MONEY_SCHEDULER_ENABLED=false npm run railway:start:backend"
 healthcheckPath = "/health"
