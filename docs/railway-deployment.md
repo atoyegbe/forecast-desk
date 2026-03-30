@@ -1,0 +1,145 @@
+# Railway Deployment
+
+This repo now deploys cleanly to Railway as a monorepo with three services:
+
+- `frontend` for the public SPA
+- `backend` for the Fastify API and websocket routes
+- `worker` for smart money jobs, alert delivery, and Telegram bot polling
+
+## Why not Docker Compose
+
+We are **not** using Docker Compose for Railway deployment.
+
+That is intentional:
+
+- Railway already supports monorepo services with per-service config-as-code.
+- The repo already has clean workspace boundaries: `frontend/` and `backend/`.
+- The worker reuses the backend codebase but needs a different start command, which Railway handles cleanly with a second service and a separate config file.
+- Docker Compose would add another layer to maintain without solving a real deployment problem here.
+
+Compose can still be introduced later for local orchestration if needed, but it is not the best production fit for this repo right now.
+
+## Service layout
+
+### 1. Frontend service
+
+- Root directory: `/frontend`
+- Config file: `/frontend/railway.toml`
+- Start command: `npm run start`
+- Healthcheck: `/`
+
+Environment variables:
+
+- `VITE_BACKEND_API_BASE=https://<api-public-domain>/api/v1`
+- `VITE_BACKEND_WS_BASE=wss://<api-public-domain>`
+- `VITE_BACKEND_HEALTH_URL=https://<api-public-domain>/health`
+
+The frontend runs as a compiled static SPA served by `serve`.
+
+### 2. Backend service
+
+- Root directory: `/backend`
+- Config file: `/backend/railway.toml`
+- Start command: `env SMART_MONEY_SCHEDULER_ENABLED=false npm run start`
+- Healthcheck: `/health`
+
+Environment variables:
+
+- `DATABASE_URL=${{Postgres.DATABASE_URL}}`
+- `PULSE_AUTH_FRONTEND_BASE_URL=https://<frontend-public-domain>`
+- `RESEND_API_KEY=...`
+- `PULSE_EMAIL_FROM=alerts@your-domain.com`
+- `PULSE_SESSION_TTL_DAYS=30`
+- `PULSE_AUTH_CODE_TTL_MINUTES=15`
+
+Optional provider/runtime overrides:
+
+- `BAYSE_API_BASE`
+- `BAYSE_WS_URL`
+- `POLYMARKET_GAMMA_BASE`
+- `POLYMARKET_CLOB_BASE`
+- `POLYMARKET_DATA_API_BASE`
+- `MANIFOLD_API_BASE`
+- `KALSHI_API_BASE`
+- `KALSHI_WS_URL`
+- `KALSHI_API_KEY_ID`
+- `KALSHI_API_PRIVATE_KEY`
+- `KALSHI_API_PRIVATE_KEY_PATH`
+- `FX_API_BASE`
+- `FX_CACHE_TTL_MS`
+
+The API service explicitly disables the embedded smart-money scheduler because the dedicated worker owns those loops in production.
+
+### 3. Worker service
+
+- Root directory: `/backend`
+- Config file: `/backend/railway.worker.toml`
+- Start command: `npm run worker`
+
+Environment variables:
+
+- `DATABASE_URL=${{Postgres.DATABASE_URL}}`
+- `RESEND_API_KEY=...`
+- `PULSE_EMAIL_FROM=alerts@your-domain.com`
+- `PULSE_AUTH_FRONTEND_BASE_URL=https://<frontend-public-domain>`
+- `PULSE_TELEGRAM_BOT_TOKEN=...`
+- `PULSE_TELEGRAM_BOT_USERNAME=QuorumAlertsBot`
+
+Optional smart money tuning:
+
+- `SMART_MONEY_REFRESH_INTERVAL_MS`
+- `SMART_MONEY_SNAPSHOT_REFRESH_INTERVAL_MS`
+- `SMART_MONEY_DISCOVERY_LOOKBACK_DAYS`
+- `SMART_MONEY_DISCOVERY_WALLET_LIMIT`
+- `SMART_MONEY_WATCH_WALLET_LIMIT`
+- `SMART_MONEY_MIN_SIGNAL_SIZE_USD`
+
+## Shared infra
+
+### Postgres
+
+Create one Railway Postgres service in the same project and reference its `DATABASE_URL` from both backend and worker.
+
+### Redis
+
+Redis is **not required** for the current production deployment because the shipped code does not depend on it yet.
+
+Only add Redis when we choose to implement the strict Phase 6 realtime architecture with Redis pub/sub fan-out.
+
+## GitOps flow
+
+Use Railway's GitHub integration against the `main` branch.
+
+Recommended settings:
+
+- enable automatic deploys from `main`
+- enable preview environments for pull requests if desired
+- enable Railway check suites so deploys wait for `.github/workflows/ci.yml`
+
+The repo now contains the service config files Railway will read during deploys:
+
+- `/frontend/railway.toml`
+- `/backend/railway.toml`
+- `/backend/railway.worker.toml`
+
+For the worker service, point the Railway service config path to `/backend/railway.worker.toml` because it shares the same source directory as the API.
+
+## First production setup checklist
+
+1. Create a Railway project.
+2. Add a Postgres service.
+3. Add the API service from this repo with root `/backend`.
+4. Set the API config path to `/backend/railway.toml`.
+5. Add the worker service from this repo with root `/backend`.
+6. Set the worker config path to `/backend/railway.worker.toml`.
+7. Add the frontend service from this repo with root `/frontend`.
+8. Set the frontend config path to `/frontend/railway.toml`.
+9. Attach required environment variables.
+10. Point frontend environment variables at the API public domain.
+11. Enable Railway check suites so CI passes before deploy.
+
+## Notes
+
+- Browser clients must reach the API over the API service's **public** Railway domain, not the private network domain.
+- Private networking is still useful between internal services later, but it does not replace the public API origin for the SPA bundle.
+- The frontend no longer assumes Netlify-specific deployment behavior.

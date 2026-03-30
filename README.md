@@ -66,6 +66,17 @@ real email.
 
 - Delivery tracker: `docs/implementation-tracker.md`
 
+## Deployment
+
+Railway is now the intended production target for the full stack:
+
+- `frontend/` as its own Railway service
+- `backend/` API as its own Railway service
+- `backend/` worker as a second Railway service with a different config path
+- Railway Postgres as the shared database
+
+Deployment notes live in [docs/railway-deployment.md](/Users/atoyegbe/dev/quant/projects/naija-pulse/docs/railway-deployment.md).
+
 ## Bayse API Mapping
 
 - `GET /v1/pm/events` for discovery and category pages

@@ -81,6 +81,18 @@ The first Smart Money request can take noticeably longer than normal discovery
 reads because it may need to refresh the wallet snapshot on demand before
 serving the response.
 
+## Deployment
+
+The backend now deploys to Railway as two services:
+
+- API service with [backend/railway.toml](/Users/atoyegbe/dev/quant/projects/naija-pulse/backend/railway.toml)
+- Worker service with [backend/railway.worker.toml](/Users/atoyegbe/dev/quant/projects/naija-pulse/backend/railway.worker.toml)
+
+The API disables the embedded scheduler at start, while the worker owns smart
+money refreshes, alert delivery, and Telegram bot polling in production.
+
+Full deployment notes live in [docs/railway-deployment.md](/Users/atoyegbe/dev/quant/projects/naija-pulse/docs/railway-deployment.md).
+
 ## Expected Source Layout
 
 ```text

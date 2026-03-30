@@ -46,11 +46,16 @@ The current frontend surface includes:
 
 ## Deployment
 
-The app is configured for `Netlify` via
-[netlify.toml](/Users/atoyegbe/dev/quant/projects/naija-pulse/frontend/netlify.toml):
+The frontend is intended to run as its own Railway service.
 
-- `/*` falls back to `index.html` for SPA routing
+- Railway config file: [frontend/railway.toml](/Users/atoyegbe/dev/quant/projects/naija-pulse/frontend/railway.toml)
+- Production start command: `npm run start`
 
-Before deploying the frontend, point `/health`, `/api/v1/*`, and
-`/api/v1/live/*` at the owned backend service. The frontend should not proxy
-directly to provider APIs anymore.
+Before deploying the frontend, set:
+
+- `VITE_BACKEND_API_BASE`
+- `VITE_BACKEND_WS_BASE`
+- `VITE_BACKEND_HEALTH_URL`
+
+These should point at the owned backend service's public Railway domain. Full
+setup notes live in [docs/railway-deployment.md](/Users/atoyegbe/dev/quant/projects/naija-pulse/docs/railway-deployment.md).
