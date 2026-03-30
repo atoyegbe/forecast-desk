@@ -17,7 +17,6 @@ import {
   useUpdateAlertSubscriptionMutation,
 } from '../features/alerts/hooks'
 import type {
-  PulseAlertRecentDelivery,
   PulseAlertSubscription,
   PulseAlertTriggerMode,
 } from '../features/alerts/types'
@@ -28,7 +27,6 @@ import {
 } from '../features/auth/api'
 import { useAuth } from '../features/auth/context'
 import type {
-  PulseAuthUser,
   PulseUserDefaultChannel,
 } from '../features/auth/types'
 import {
@@ -38,125 +36,6 @@ import {
 import {
   getSmartMoneyRoute,
 } from '../lib/routes'
-
-const PREVIEW_CONNECT_CODE = '246810'
-
-const PREVIEW_USER: PulseAuthUser = {
-  createdAt: '2026-03-24T08:00:00.000Z',
-  defaultChannel: 'both',
-  email: 'demo@quorum.so',
-  id: 'preview-user',
-  lastLoginAt: '2026-03-30T20:10:00.000Z',
-  telegramHandle: '@quorumsignals',
-}
-
-const PREVIEW_SUBSCRIPTIONS: PulseAlertSubscription[] = [
-  {
-    channel: 'email',
-    createdAt: '2026-03-27T09:10:00.000Z',
-    id: 'alert-swisstony',
-    lastDeliveryAttemptAt: '2026-03-30T18:42:00.000Z',
-    lastDeliveredAt: '2026-03-30T18:42:00.000Z',
-    lastDeliveryStatus: 'delivered',
-    minScore: 82,
-    minSizeUsd: 2500,
-    status: 'active',
-    triggerMode: 'winning-moves-only',
-    type: 'wallet',
-    updatedAt: '2026-03-30T18:42:00.000Z',
-    walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
-    walletLabel: 'swisstony',
-  },
-  {
-    channel: 'email',
-    createdAt: '2026-03-26T14:32:00.000Z',
-    id: 'alert-baltic',
-    lastDeliveryAttemptAt: '2026-03-29T16:10:00.000Z',
-    lastDeliveredAt: null,
-    lastDeliveryStatus: 'failed',
-    minScore: 74,
-    minSizeUsd: 500,
-    status: 'active',
-    triggerMode: 'any-new-position',
-    type: 'wallet',
-    updatedAt: '2026-03-29T16:10:00.000Z',
-    walletAddress: '0x4b08c9a37d7a1135f0af4996b708efc5f45a66c1',
-    walletLabel: 'BalticSignal',
-  },
-  {
-    channel: 'email',
-    createdAt: '2026-03-25T11:05:00.000Z',
-    lastDeliveryAttemptAt: null,
-    id: 'alert-sigma',
-    lastDeliveredAt: null,
-    lastDeliveryStatus: null,
-    minScore: 70,
-    minSizeUsd: 1200,
-    status: 'paused',
-    triggerMode: 'winning-moves-only',
-    type: 'wallet',
-    updatedAt: '2026-03-25T11:05:00.000Z',
-    walletAddress: '0x9f835bf7ac22555d603f89b0fae8f190c3b112a9',
-    walletLabel: 'Sigma Park',
-  },
-]
-
-const PREVIEW_DELIVERIES: PulseAlertRecentDelivery[] = [
-  {
-    channel: 'email',
-    id: 'delivery-1',
-    marketTitle: 'Will Switzerland win on 2026-03-27?',
-    occurredAt: '2026-03-30T18:42:00.000Z',
-    status: 'delivered',
-    walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
-    walletLabel: 'swisstony',
-  },
-  {
-    channel: 'telegram',
-    id: 'delivery-2',
-    marketTitle: 'Who will win the next Nigerian presidential election?',
-    occurredAt: '2026-03-30T16:24:00.000Z',
-    status: 'delivered',
-    walletAddress: '0x9f835bf7ac22555d603f89b0fae8f190c3b112a9',
-    walletLabel: 'Sigma Park',
-  },
-  {
-    channel: 'email',
-    id: 'delivery-3',
-    marketTitle: 'Will Arsenal finish above Liverpool in 2026 EPL?',
-    occurredAt: '2026-03-29T12:14:00.000Z',
-    status: 'failed',
-    walletAddress: '0x4b08c9a37d7a1135f0af4996b708efc5f45a66c1',
-    walletLabel: 'BalticSignal',
-  },
-  {
-    channel: 'telegram',
-    id: 'delivery-4',
-    marketTitle: 'Will Brent crude settle above $92 before June 2026?',
-    occurredAt: '2026-03-28T21:02:00.000Z',
-    status: 'pending',
-    walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
-    walletLabel: 'swisstony',
-  },
-  {
-    channel: 'email',
-    id: 'delivery-5',
-    marketTitle: 'Will the Central Bank cut rates before Q3 2026?',
-    occurredAt: '2026-03-27T11:40:00.000Z',
-    status: 'delivered',
-    walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
-    walletLabel: 'swisstony',
-  },
-  {
-    channel: 'telegram',
-    id: 'delivery-6',
-    marketTitle: 'Will ETH ETF net inflows stay positive this week?',
-    occurredAt: '2026-03-26T09:18:00.000Z',
-    status: 'delivered',
-    walletAddress: '0x4b08c9a37d7a1135f0af4996b708efc5f45a66c1',
-    walletLabel: 'BalticSignal',
-  },
-]
 
 type TelegramFlowStep = 'enter-code' | 'hidden' | 'open-bot'
 
@@ -285,13 +164,6 @@ function CloseIcon() {
       />
     </svg>
   )
-}
-
-function buildTelegramHandleFromEmail(email: string) {
-  const localPart = email.trim().toLowerCase().split('@')[0] ?? 'quorum'
-  const handle = localPart.replace(/[^a-z0-9_]/g, '')
-
-  return `@${handle || 'quorum'}`
 }
 
 function getWalletTitle(item: {
@@ -624,9 +496,38 @@ function AlertsLoadingState() {
   )
 }
 
+function AlertsAuthRequiredState({
+  onSignIn,
+}: {
+  onSignIn: () => void
+}) {
+  return (
+    <div className="mx-auto flex w-full max-w-[600px] flex-col px-6 py-12 sm:px-8">
+      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">
+        Alerts
+      </div>
+      <h1 className="mt-2 text-[28px] font-semibold text-[var(--color-text-primary)]">
+        Your alerts
+      </h1>
+      <p className="mt-5 max-w-[520px] text-[14px] leading-7 text-[var(--color-text-secondary)]">
+        Sign in to manage delivery channels, review wallet subscriptions, and
+        see recent alert history.
+      </p>
+      <button
+        className="mt-8 inline-flex w-fit items-center justify-center rounded-[7px] border border-[var(--color-border)] px-4 py-[10px] text-[13px] font-medium text-[var(--color-text-primary)] transition-colors duration-150 hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
+        onClick={onSignIn}
+        type="button"
+      >
+        Sign in to continue
+      </button>
+    </div>
+  )
+}
+
 export function AlertsPage() {
   const { pushToast } = useToast()
   const {
+    openAuthDialog,
     isAuthenticated,
     isHydrating,
     replaceUser,
@@ -638,13 +539,9 @@ export function AlertsPage() {
   const deliveriesQuery = useRecentAlertDeliveriesQuery()
   const updateAlertMutation = useUpdateAlertSubscriptionMutation()
   const deleteAlertMutation = useDeleteAlertSubscriptionMutation()
-  const [previewUser, setPreviewUser] = useState(PREVIEW_USER)
-  const [previewSubscriptions, setPreviewSubscriptions] = useState(
-    PREVIEW_SUBSCRIPTIONS,
-  )
-  const [previewDeliveries, setPreviewDeliveries] = useState(PREVIEW_DELIVERIES)
+  const authPromptedRef = useRef(false)
   const [editingEmail, setEditingEmail] = useState(false)
-  const [emailDraft, setEmailDraft] = useState(PREVIEW_USER.email)
+  const [emailDraft, setEmailDraft] = useState('')
   const [isSavingEmail, setIsSavingEmail] = useState(false)
   const [showEmailSaved, setShowEmailSaved] = useState(false)
   const [showAllDeliveries, setShowAllDeliveries] = useState(false)
@@ -665,13 +562,9 @@ export function AlertsPage() {
   const deleteConfirmTimeoutRef = useRef<number | null>(null)
   const telegramErrorTimeoutRef = useRef<number | null>(null)
 
-  const activeUser = isAuthenticated ? user : previewUser
-  const subscriptions = isAuthenticated
-    ? subscriptionsQuery.data ?? []
-    : previewSubscriptions
-  const deliveries = isAuthenticated
-    ? deliveriesQuery.data ?? []
-    : previewDeliveries
+  const activeUser = user
+  const subscriptions = subscriptionsQuery.data ?? []
+  const deliveries = deliveriesQuery.data ?? []
   const telegramHandle = activeUser?.telegramHandle ?? null
   const defaultChannel = activeUser?.defaultChannel ?? 'email'
   const visibleSubscriptions = useMemo(
@@ -691,6 +584,28 @@ export function AlertsPage() {
       setEmailDraft(activeUser?.email ?? '')
     }
   }, [activeUser?.email, editingEmail])
+
+  useEffect(() => {
+    if (isHydrating) {
+      return
+    }
+
+    if (isAuthenticated) {
+      authPromptedRef.current = false
+      return
+    }
+
+    if (authPromptedRef.current) {
+      return
+    }
+
+    authPromptedRef.current = true
+    openAuthDialog({
+      pendingAction: {
+        type: 'alerts-route',
+      },
+    })
+  }, [isAuthenticated, isHydrating, openAuthDialog])
 
   useEffect(() => {
     if (telegramFlowStep === 'enter-code') {
@@ -716,6 +631,20 @@ export function AlertsPage() {
 
   if (isHydrating) {
     return <AlertsLoadingState />
+  }
+
+  if (!isAuthenticated || !activeUser || !sessionToken) {
+    return (
+      <AlertsAuthRequiredState
+        onSignIn={() =>
+          openAuthDialog({
+            pendingAction: {
+              type: 'alerts-route',
+            },
+          })
+        }
+      />
+    )
   }
 
   const clearDeleteConfirmation = () => {
@@ -765,21 +694,11 @@ export function AlertsPage() {
     setIsSavingEmail(true)
 
     try {
-      if (!isAuthenticated) {
-        setPreviewUser((current) => ({
-          ...current,
-          email: normalizedEmail,
-          telegramHandle: current.telegramHandle
-            ? buildTelegramHandleFromEmail(normalizedEmail)
-            : null,
-        }))
-      } else if (sessionToken) {
-        const updatedUser = await updateUserPreferences(sessionToken, {
-          email: normalizedEmail,
-        })
+      const updatedUser = await updateUserPreferences(sessionToken, {
+        email: normalizedEmail,
+      })
 
-        replaceUser(updatedUser)
-      }
+      replaceUser(updatedUser)
 
       setEditingEmail(false)
       flashEmailSavedState()
@@ -806,18 +725,11 @@ export function AlertsPage() {
     }
 
     try {
-      if (!isAuthenticated) {
-        setPreviewUser((current) => ({
-          ...current,
-          defaultChannel: nextPreference,
-        }))
-      } else if (sessionToken) {
-        const updatedUser = await updateUserPreferences(sessionToken, {
-          defaultChannel: nextPreference,
-        })
+      const updatedUser = await updateUserPreferences(sessionToken, {
+        defaultChannel: nextPreference,
+      })
 
-        replaceUser(updatedUser)
-      }
+      replaceUser(updatedUser)
     } catch (error) {
       const message =
         error instanceof BackendRequestError || error instanceof Error
@@ -850,34 +762,12 @@ export function AlertsPage() {
     setIsVerifyingTelegram(true)
 
     try {
-      if (!isAuthenticated) {
-        const normalizedCode = code.trim()
+      const result = await connectTelegramChannel(sessionToken, code)
 
-        if (!/^\d{6}$/.test(normalizedCode) || normalizedCode === '000000') {
-          throw new BackendRequestError({
-            code: 'invalid_code',
-            message: 'Invalid code. Try again.',
-            status: 400,
-          })
-        }
-
-        const nextTelegramHandle = buildTelegramHandleFromEmail(previewUser.email)
-
-        setPreviewUser((current) => ({
-          ...current,
-          telegramHandle:
-            normalizedCode === PREVIEW_CONNECT_CODE
-              ? nextTelegramHandle
-              : nextTelegramHandle,
-        }))
-      } else if (sessionToken && user) {
-        const result = await connectTelegramChannel(sessionToken, code)
-
-        replaceUser({
-          ...user,
-          telegramHandle: result.handle,
-        })
-      }
+      replaceUser({
+        ...activeUser,
+        telegramHandle: result.handle,
+      })
 
       resetTelegramFlow()
       setTelegramDisconnectConfirm(false)
@@ -950,20 +840,12 @@ export function AlertsPage() {
 
   const handleDisconnectTelegram = async () => {
     try {
-      if (!isAuthenticated) {
-        setPreviewUser((current) => ({
-          ...current,
-          defaultChannel: 'email',
-          telegramHandle: null,
-        }))
-      } else if (sessionToken && user) {
-        await disconnectTelegramChannel(sessionToken)
-        replaceUser({
-          ...user,
-          defaultChannel: 'email',
-          telegramHandle: null,
-        })
-      }
+      await disconnectTelegramChannel(sessionToken)
+      replaceUser({
+        ...activeUser,
+        defaultChannel: 'email',
+        telegramHandle: null,
+      })
 
       setTelegramDisconnectConfirm(false)
       resetTelegramFlow()
@@ -984,41 +866,19 @@ export function AlertsPage() {
     }
   }
 
-  const updatePreviewSubscription = (nextSubscription: PulseAlertSubscription) => {
-    setPreviewSubscriptions((current) =>
-      current.map((subscription) =>
-        subscription.id === nextSubscription.id
-          ? {
-              ...subscription,
-              minScore: nextSubscription.minScore,
-              minSizeUsd: nextSubscription.minSizeUsd,
-              triggerMode: nextSubscription.triggerMode,
-              updatedAt: new Date().toISOString(),
-            }
-          : subscription,
-      ),
-    )
-  }
-
   const handleSaveSubscription = async (nextSubscription: PulseAlertSubscription) => {
     try {
-      if (!isAuthenticated) {
-        updatePreviewSubscription(nextSubscription)
-      } else {
-        await updateAlertMutation.mutateAsync({
-          subscriptionId: nextSubscription.id,
-          update: {
-            minScore: nextSubscription.minScore ?? undefined,
-            minSizeUsd: nextSubscription.minSizeUsd ?? undefined,
-            status: nextSubscription.status,
-            triggerMode: nextSubscription.triggerMode,
-          },
-        })
-      }
+      await updateAlertMutation.mutateAsync({
+        subscriptionId: nextSubscription.id,
+        update: {
+          minScore: nextSubscription.minScore ?? undefined,
+          minSizeUsd: nextSubscription.minSizeUsd ?? undefined,
+          status: nextSubscription.status,
+          triggerMode: nextSubscription.triggerMode,
+        },
+      })
 
-      if (isAuthenticated && sessionToken) {
-        await subscriptionsQuery.refetch()
-      }
+      await subscriptionsQuery.refetch()
 
       setActiveDrawerId(null)
       pushToast({
@@ -1048,26 +908,12 @@ export function AlertsPage() {
     const nextStatus = currentSubscription.status === 'paused' ? 'active' : 'paused'
 
     try {
-      if (!isAuthenticated) {
-        setPreviewSubscriptions((current) =>
-          current.map((subscription) =>
-            subscription.id === subscriptionId
-              ? {
-                  ...subscription,
-                  status: nextStatus,
-                  updatedAt: new Date().toISOString(),
-                }
-              : subscription,
-          ),
-        )
-      } else {
-        await updateAlertMutation.mutateAsync({
-          subscriptionId,
-          update: {
-            status: nextStatus,
-          },
-        })
-      }
+      await updateAlertMutation.mutateAsync({
+        subscriptionId,
+        update: {
+          status: nextStatus,
+        },
+      })
 
       pushToast({
         label: nextStatus === 'paused' ? 'Alert paused' : 'Alert resumed',
@@ -1100,16 +946,7 @@ export function AlertsPage() {
 
     window.setTimeout(async () => {
       try {
-        if (!isAuthenticated) {
-          setPreviewSubscriptions((current) =>
-            current.filter((subscription) => subscription.id !== subscriptionId),
-          )
-          setPreviewDeliveries((current) =>
-            current.filter((delivery) => delivery.walletAddress !== currentSubscription.walletAddress),
-          )
-        } else {
-          await deleteAlertMutation.mutateAsync(subscriptionId)
-        }
+        await deleteAlertMutation.mutateAsync(subscriptionId)
 
         setActiveDrawerId((current) => (current === subscriptionId ? null : current))
         pushToast({
@@ -1664,15 +1501,13 @@ export function AlertsPage() {
           </section>
         ) : null}
 
-        {isAuthenticated ? (
-          <button
-            className="mt-10 self-start text-[12px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[var(--color-text-secondary)]"
-            onClick={() => void signOut()}
-            type="button"
-          >
-            Sign out
-          </button>
-        ) : null}
+        <button
+          className="mt-10 self-start text-[12px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[var(--color-text-secondary)]"
+          onClick={() => void signOut()}
+          type="button"
+        >
+          Sign out
+        </button>
       </div>
 
       {activeDrawerSubscription ? (

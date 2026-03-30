@@ -431,7 +431,7 @@ export function SiteShell() {
     ? hasActiveAlerts
       ? 'Manage alerts'
       : 'Set up alerts'
-    : 'Preview alerts'
+    : 'Sign in to get alerts'
 
   useEffect(() => {
     if (!isAuthenticated || pendingAction?.type !== 'alerts-route') {
@@ -526,15 +526,32 @@ export function SiteShell() {
             </Link>
 
             <IconButtonTooltip label={bellTooltip}>
-              <Link
-                aria-label={bellTooltip}
-                className="shell-icon-button relative"
-                data-active={isAlertsRoute ? 'true' : 'false'}
-                {...getAlertsRoute()}
-              >
-                <BellIcon />
-                {isAuthenticated && hasActiveAlerts ? <span className="shell-alert-dot" /> : null}
-              </Link>
+              {isAuthenticated ? (
+                <Link
+                  aria-label={bellTooltip}
+                  className="shell-icon-button relative"
+                  data-active={isAlertsRoute ? 'true' : 'false'}
+                  {...getAlertsRoute()}
+                >
+                  <BellIcon />
+                  {hasActiveAlerts ? <span className="shell-alert-dot" /> : null}
+                </Link>
+              ) : (
+                <button
+                  aria-label={bellTooltip}
+                  className="shell-icon-button relative"
+                  onClick={() =>
+                    openAuthDialog({
+                      pendingAction: {
+                        type: 'alerts-route',
+                      },
+                    })
+                  }
+                  type="button"
+                >
+                  <BellIcon />
+                </button>
+              )}
             </IconButtonTooltip>
 
             <button
