@@ -5,6 +5,8 @@ const DEFAULT_FX_API_BASE = 'https://api.frankfurter.dev/v2'
 const DEFAULT_FX_CACHE_TTL_MS = 30 * 60 * 1000
 const DEFAULT_PULSE_AUTH_CODE_TTL_MINUTES = 15
 const DEFAULT_PULSE_SESSION_TTL_DAYS = 30
+const DEFAULT_PULSE_TELEGRAM_CONNECT_CODE_TTL_MINUTES = 15
+const DEFAULT_PULSE_TELEGRAM_POLL_INTERVAL_MS = 15 * 1000
 const DEFAULT_SMART_MONEY_SCHEDULER_ENABLED = true
 const DEFAULT_SMART_MONEY_DISCOVERY_LOOKBACK_DAYS = 30
 const DEFAULT_SMART_MONEY_DISCOVERY_WALLET_LIMIT = 40
@@ -120,8 +122,26 @@ export function getPulseSessionTtlDays() {
   )
 }
 
-export function getPulseTelegramConnectCode() {
-  return process.env.PULSE_TELEGRAM_CONNECT_CODE?.trim() || null
+export function getPulseTelegramBotToken() {
+  return process.env.PULSE_TELEGRAM_BOT_TOKEN?.trim() || null
+}
+
+export function getPulseTelegramBotUsername() {
+  return process.env.PULSE_TELEGRAM_BOT_USERNAME?.trim() || null
+}
+
+export function getPulseTelegramConnectCodeTtlMinutes() {
+  return parsePositiveInteger(
+    process.env.PULSE_TELEGRAM_CONNECT_CODE_TTL_MINUTES,
+    DEFAULT_PULSE_TELEGRAM_CONNECT_CODE_TTL_MINUTES,
+  )
+}
+
+export function getPulseTelegramPollIntervalMs() {
+  return parsePositiveInteger(
+    process.env.PULSE_TELEGRAM_POLL_INTERVAL_MS,
+    DEFAULT_PULSE_TELEGRAM_POLL_INTERVAL_MS,
+  )
 }
 
 export function getResendApiKey() {
@@ -199,6 +219,8 @@ export {
   DEFAULT_FX_CACHE_TTL_MS,
   DEFAULT_PULSE_AUTH_CODE_TTL_MINUTES,
   DEFAULT_PULSE_SESSION_TTL_DAYS,
+  DEFAULT_PULSE_TELEGRAM_CONNECT_CODE_TTL_MINUTES,
+  DEFAULT_PULSE_TELEGRAM_POLL_INTERVAL_MS,
   DEFAULT_SMART_MONEY_ACTIVITY_LOOKBACK_DAYS,
   DEFAULT_SMART_MONEY_DISCOVERY_LOOKBACK_DAYS,
   DEFAULT_SMART_MONEY_DISCOVERY_WALLET_LIMIT,

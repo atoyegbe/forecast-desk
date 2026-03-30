@@ -134,6 +134,7 @@ CREATE TABLE IF NOT EXISTS pulse_users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   telegram_handle TEXT,
+  telegram_chat_id TEXT,
   default_channel TEXT NOT NULL DEFAULT 'email',
   last_login_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -146,7 +147,32 @@ ALTER TABLE pulse_users
   ADD COLUMN IF NOT EXISTS telegram_handle TEXT;
 
 ALTER TABLE pulse_users
+  ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
+
+ALTER TABLE pulse_users
   ADD COLUMN IF NOT EXISTS default_channel TEXT NOT NULL DEFAULT 'email';
+
+CREATE TABLE IF NOT EXISTS pulse_telegram_updates_state (
+  stream_key TEXT PRIMARY KEY,
+  last_update_id BIGINT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS pulse_telegram_connect_codes (
+  code TEXT PRIMARY KEY,
+  chat_id TEXT NOT NULL,
+  telegram_handle TEXT NOT NULL,
+  claimed_at TIMESTAMPTZ,
+  claimed_by_user_id TEXT REFERENCES pulse_users(id) ON DELETE SET NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_telegram_connect_codes_chat
+  ON pulse_telegram_connect_codes(chat_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_telegram_connect_codes_expires
+  ON pulse_telegram_connect_codes(expires_at DESC);
 
 CREATE TABLE IF NOT EXISTS pulse_auth_codes (
   id TEXT PRIMARY KEY,

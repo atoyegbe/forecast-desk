@@ -4,11 +4,11 @@ import type {
   PulseUserDefaultChannel,
   PulseUserPreferencesUpdateInput,
 } from '../contracts/pulse-auth.js'
-import { getPulseTelegramConnectCode } from '../db/config.js'
 import {
+  claimTelegramConnectCode,
   getUserById,
   updateUserPreferences,
-  updateUserTelegramHandle,
+  updateUserTelegramConnection,
 } from '../db/auth-repository.js'
 import { isValidEmail } from './auth-service.js'
 
@@ -38,25 +38,8 @@ function isDefaultChannel(value: string): value is PulseUserDefaultChannel {
   return value === 'email' || value === 'telegram' || value === 'both'
 }
 
-function buildTelegramHandle(email: string) {
-  const localPart = normalizeEmail(email).split('@')[0] ?? 'quorum'
-  const normalizedHandle = localPart.replace(/[^a-z0-9_]/gi, '').toLowerCase()
-
-  return `@${normalizedHandle || 'quorum'}`
-}
-
 function validateTelegramCode(code: string) {
   if (!TELEGRAM_CODE_PATTERN.test(code.trim())) {
-    throw new InvalidTelegramCodeError()
-  }
-
-  const configuredCode = getPulseTelegramConnectCode()
-
-  if (configuredCode && configuredCode !== code.trim()) {
-    throw new InvalidTelegramCodeError()
-  }
-
-  if (!configuredCode && code.trim() === '000000') {
     throw new InvalidTelegramCodeError()
   }
 }
@@ -118,20 +101,23 @@ export async function connectTelegramChannel(
   code: string,
 ): Promise<PulseTelegramConnectResult> {
   validateTelegramCode(code)
-  const handle = buildTelegramHandle(user.email)
-
-  await updateUserTelegramHandle({
-    telegramHandle: handle,
+  const connectedUser = await claimTelegramConnectCode({
+    code: code.trim(),
     userId: user.id,
   })
 
+  if (!connectedUser?.telegramHandle) {
+    throw new InvalidTelegramCodeError()
+  }
+
   return {
-    handle,
+    handle: connectedUser.telegramHandle,
   }
 }
 
 export async function disconnectTelegramChannel(userId: string) {
-  await updateUserTelegramHandle({
+  await updateUserTelegramConnection({
+    telegramChatId: null,
     telegramHandle: null,
     userId,
   })

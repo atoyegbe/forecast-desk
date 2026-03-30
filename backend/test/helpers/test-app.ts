@@ -32,7 +32,8 @@ export function registerAppTestLifecycle() {
   before(async () => {
     process.env.PULSE_AUTH_TEST_MAGIC_TOKEN = 'test-magic-token'
     process.env.PULSE_AUTH_FRONTEND_BASE_URL = 'http://localhost:5173'
-    process.env.PULSE_TELEGRAM_CONNECT_CODE = '246810'
+    process.env.PULSE_TELEGRAM_BOT_TOKEN = 'test-telegram-token'
+    process.env.PULSE_TELEGRAM_BOT_USERNAME = 'QuorumAlertsBot'
     process.env.SMART_MONEY_SCHEDULER_ENABLED = 'false'
     const database = await createTestDatabase()
 

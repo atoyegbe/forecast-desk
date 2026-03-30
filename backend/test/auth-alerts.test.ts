@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { afterEach, describe, test } from 'node:test'
 import { setTestEmailSender } from '../src/app/email-service.js'
+import {
+  pollTelegramBotUpdatesOnce,
+  setTestTelegramApi,
+} from '../src/app/telegram-service.js'
 import { registerAppTestLifecycle } from './helpers/test-app.js'
 
 const testApp = registerAppTestLifecycle()
@@ -8,6 +12,7 @@ const AUTH_MAGIC_TOKEN = 'test-magic-token'
 
 afterEach(() => {
   setTestEmailSender(null)
+  setTestTelegramApi(null)
 })
 
 async function requestMagicLink(email: string, returnToPath = '/smart-money') {
@@ -30,6 +35,50 @@ async function verifyMagicLink(email: string, token = AUTH_MAGIC_TOKEN) {
     },
     url: '/api/v1/auth/verify-link',
   })
+}
+
+async function issueTelegramConnectCode(input?: {
+  chatId?: string
+  username?: string
+}) {
+  const sentMessages: Array<{
+    chatId: string
+    text: string
+  }> = []
+
+  setTestTelegramApi({
+    async getUpdates() {
+      return [
+        {
+          message: {
+            chat: {
+              id: input?.chatId ?? '1001',
+              type: 'private',
+            },
+            from: {
+              first_name: 'Reader',
+              id: '5001',
+              username: input?.username ?? 'reader_tg',
+            },
+            message_id: '11',
+            text: '/start',
+          },
+          update_id: 1,
+        },
+      ]
+    },
+    async sendMessage(message) {
+      sentMessages.push(message)
+    },
+  })
+
+  await pollTelegramBotUpdatesOnce()
+
+  const codeMatch = sentMessages[0]?.text.match(/\b(\d{6})\b/)
+
+  assert.ok(codeMatch)
+
+  return codeMatch[1]
 }
 
 describe('Auth and alerts', () => {
@@ -186,18 +235,23 @@ describe('Auth and alerts', () => {
     assert.equal(meResponse.json().data.defaultChannel, 'email')
     assert.equal(meResponse.json().data.telegramHandle, null)
 
+    const code = await issueTelegramConnectCode({
+      username: 'alerts_reader',
+    })
+
     const connectResponse = await testApp.getApp().inject({
       headers: {
         authorization: `Bearer ${token}`,
       },
       method: 'POST',
       payload: {
-        code: '246810',
+        code,
       },
       url: '/api/v1/telegram/connect',
     })
 
     assert.equal(connectResponse.statusCode, 200)
+    assert.equal(connectResponse.json().data.handle, '@alerts_reader')
 
     const patchResponse = await testApp.getApp().inject({
       headers: {
@@ -235,19 +289,24 @@ describe('Auth and alerts', () => {
     assert.equal(invalidResponse.statusCode, 400)
     assert.equal(invalidResponse.json().error.code, 'invalid_code')
 
+    const code = await issueTelegramConnectCode({
+      chatId: '2002',
+      username: 'reader_channel',
+    })
+
     const connectResponse = await testApp.getApp().inject({
       headers: {
         authorization: `Bearer ${token}`,
       },
       method: 'POST',
       payload: {
-        code: '246810',
+        code,
       },
       url: '/api/v1/telegram/connect',
     })
 
     assert.equal(connectResponse.statusCode, 200)
-    assert.equal(connectResponse.json().data.handle, '@reader')
+    assert.equal(connectResponse.json().data.handle, '@reader_channel')
 
     const meResponse = await testApp.getApp().inject({
       headers: {
@@ -258,7 +317,7 @@ describe('Auth and alerts', () => {
     })
 
     assert.equal(meResponse.statusCode, 200)
-    assert.equal(meResponse.json().data.telegramHandle, '@reader')
+    assert.equal(meResponse.json().data.telegramHandle, '@reader_channel')
 
     const disconnectResponse = await testApp.getApp().inject({
       headers: {
@@ -280,6 +339,43 @@ describe('Auth and alerts', () => {
 
     assert.equal(refreshedResponse.statusCode, 200)
     assert.equal(refreshedResponse.json().data.telegramHandle, null)
+    assert.equal(refreshedResponse.json().data.defaultChannel, 'email')
+  })
+
+  test('does not allow a Telegram connect code to be claimed twice', async () => {
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
+    const token = verifyResponse.json().data.session.token as string
+    const code = await issueTelegramConnectCode({
+      chatId: '3003',
+      username: 'reader_once',
+    })
+
+    const firstConnectResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        code,
+      },
+      url: '/api/v1/telegram/connect',
+    })
+
+    const secondConnectResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        code,
+      },
+      url: '/api/v1/telegram/connect',
+    })
+
+    assert.equal(firstConnectResponse.statusCode, 200)
+    assert.equal(secondConnectResponse.statusCode, 400)
+    assert.equal(secondConnectResponse.json().error.code, 'invalid_code')
   })
 
   test('creates and lists wallet alert subscriptions for an authenticated user', async () => {
