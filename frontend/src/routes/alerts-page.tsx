@@ -147,6 +147,15 @@ const PREVIEW_DELIVERIES: PulseAlertRecentDelivery[] = [
     walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
     walletLabel: 'swisstony',
   },
+  {
+    channel: 'telegram',
+    id: 'delivery-6',
+    marketTitle: 'Will ETH ETF net inflows stay positive this week?',
+    occurredAt: '2026-03-26T09:18:00.000Z',
+    status: 'delivered',
+    walletAddress: '0x4b08c9a37d7a1135f0af4996b708efc5f45a66c1',
+    walletLabel: 'BalticSignal',
+  },
 ]
 
 type TelegramFlowStep = 'enter-code' | 'hidden' | 'open-bot'
@@ -398,7 +407,7 @@ function DeliveryChannelButton({
   return (
     <button
       className={clsx(
-        'px-[12px] py-[5px] text-[12px]',
+        'px-[12px] py-[5px] text-[13px]',
         isFirst && 'rounded-l-[6px]',
         isLast && 'rounded-r-[6px]',
         isActive
@@ -638,6 +647,7 @@ export function AlertsPage() {
   const [emailDraft, setEmailDraft] = useState(PREVIEW_USER.email)
   const [isSavingEmail, setIsSavingEmail] = useState(false)
   const [showEmailSaved, setShowEmailSaved] = useState(false)
+  const [showAllDeliveries, setShowAllDeliveries] = useState(false)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [collapsingIds, setCollapsingIds] = useState<string[]>([])
@@ -667,6 +677,10 @@ export function AlertsPage() {
   const visibleSubscriptions = useMemo(
     () => subscriptions.filter((subscription) => !collapsingIds.includes(subscription.id)),
     [collapsingIds, subscriptions],
+  )
+  const visibleDeliveries = useMemo(
+    () => (showAllDeliveries ? deliveries : deliveries.slice(0, 5)),
+    [deliveries, showAllDeliveries],
   )
   const activeDrawerSubscription = visibleSubscriptions.find(
     (subscription) => subscription.id === activeDrawerId,
@@ -1136,12 +1150,12 @@ export function AlertsPage() {
         <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">
           Alerts
         </div>
-        <h1 className="mt-2 text-[24px] font-semibold text-[var(--color-text-primary)]">
+        <h1 className="mt-2 text-[28px] font-semibold text-[var(--color-text-primary)]">
           Your alerts
         </h1>
 
         <section className="mt-8">
-          <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+          <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
             Deliver to
           </div>
 
@@ -1152,14 +1166,14 @@ export function AlertsPage() {
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                <div className="text-[15px] font-medium text-[var(--color-text-primary)]">
                   Email
                 </div>
-                <div className="mt-1 flex min-h-[20px] items-center gap-2 font-mono text-[12px] text-[var(--color-text-secondary)]">
+                <div className="mt-1 flex min-h-[20px] items-center gap-2 font-mono text-[13px] text-[var(--color-text-secondary)]">
                   {editingEmail ? (
                     <input
                       autoFocus
-                      className="min-w-0 flex-1 border-0 border-b border-b-[#00c58e] bg-transparent px-0 py-0 text-[12px] text-[var(--color-text-secondary)] outline-none"
+                      className="min-w-0 flex-1 border-0 border-b border-b-[#00c58e] bg-transparent px-0 py-0 text-[13px] text-[var(--color-text-secondary)] outline-none"
                       onBlur={() => void saveEmail()}
                       onChange={(event) => setEmailDraft(event.target.value)}
                       onKeyDown={(event) => {
@@ -1214,7 +1228,7 @@ export function AlertsPage() {
                 <div className="min-w-0 flex-1">
                   <div
                     className={clsx(
-                      'text-[14px] font-medium',
+                      'text-[15px] font-medium',
                       telegramHandle
                         ? 'text-[var(--color-text-primary)]'
                         : 'text-[var(--color-text-secondary)]',
@@ -1222,7 +1236,7 @@ export function AlertsPage() {
                   >
                     Telegram
                   </div>
-                  <div className="mt-1 text-[12px] font-mono text-[var(--color-text-secondary)]">
+                  <div className="mt-1 text-[13px] font-mono text-[var(--color-text-secondary)]">
                     {telegramHandle ?? 'Connect to get instant alerts.'}
                   </div>
                 </div>
@@ -1414,7 +1428,7 @@ export function AlertsPage() {
 
             {telegramHandle ? (
               <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] py-[14px]">
-                <div className="text-[13px] text-[var(--color-text-secondary)]">
+                <div className="text-[14px] text-[var(--color-text-secondary)]">
                   Default channel
                 </div>
 
@@ -1445,7 +1459,7 @@ export function AlertsPage() {
         </section>
 
         <section className="mt-8">
-          <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+          <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
             Watching
           </div>
 
@@ -1499,13 +1513,13 @@ export function AlertsPage() {
                     ) : (
                       <div className="flex items-start gap-4">
                         <div className="min-w-0 flex-1">
-                          <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                          <div className="text-[16px] font-semibold text-[var(--color-text-primary)]">
                             {getWalletTitle(subscription)}
                           </div>
-                          <div className="mt-1 text-[12px] font-mono text-[var(--color-text-tertiary)]">
+                          <div className="mt-1 text-[13px] font-mono text-[var(--color-text-tertiary)]">
                             {getFilterSummary(subscription)}
                           </div>
-                          <div className="mt-2 flex items-start gap-2 text-[12px] font-mono text-[var(--color-text-tertiary)]">
+                          <div className="mt-2 flex items-start gap-2 text-[13px] font-mono text-[var(--color-text-tertiary)]">
                             <DeliveryStatusDot tone={deliveryLine.tone} />
                             <span>{deliveryLine.label}</span>
                           </div>
@@ -1514,7 +1528,7 @@ export function AlertsPage() {
                         <div className="relative flex shrink-0 items-center gap-3">
                           <span
                             className={clsx(
-                              'font-mono text-[12px]',
+                              'font-mono text-[13px] font-medium',
                               subscription.status === 'active'
                                 ? 'text-[#00c58e]'
                                 : 'text-[var(--color-text-tertiary)]',
@@ -1594,29 +1608,29 @@ export function AlertsPage() {
 
         {deliveries.length > 0 ? (
           <section className="mt-8">
-            <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+            <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
               Recent deliveries
             </div>
             <div className="mt-3 border-t border-[var(--color-border-subtle)]">
-              {deliveries.slice(0, 5).map((delivery) => (
+              {visibleDeliveries.map((delivery) => (
                 <div
                   className="flex flex-col gap-2 border-b border-[var(--color-border-subtle)] py-[10px] text-[12px] sm:flex-row sm:items-center"
                   key={delivery.id}
                 >
-                  <div className="w-[110px] truncate font-mono text-[var(--color-text-secondary)]">
+                  <div className="w-[110px] truncate font-mono text-[13px] text-[var(--color-text-secondary)]">
                     {getWalletTitle(delivery)}
                   </div>
-                  <div className="min-w-0 flex-1 truncate text-[var(--color-text-primary)]">
+                  <div className="min-w-0 flex-1 truncate text-[13px] text-[var(--color-text-primary)]">
                     {delivery.marketTitle.length > 45
                       ? `${delivery.marketTitle.slice(0, 45)}…`
                       : delivery.marketTitle}
                   </div>
-                  <div className="w-[80px] shrink-0 text-left font-mono text-[11px] text-[var(--color-text-tertiary)] sm:text-right">
+                  <div className="w-[80px] shrink-0 text-left font-mono text-[12px] text-[var(--color-text-tertiary)] sm:text-right">
                     {formatTimeAgo(delivery.occurredAt)}
                   </div>
                   <div
                     className={clsx(
-                      'flex w-[80px] shrink-0 items-center gap-1 font-mono text-[11px] sm:justify-end',
+                      'flex w-[80px] shrink-0 items-center gap-1 font-mono text-[12px] font-medium sm:justify-end',
                       delivery.status === 'delivered' && 'text-[#00c58e]',
                       delivery.status === 'failed' && 'text-[#ef4444]',
                       delivery.status === 'pending' && 'text-[var(--color-text-tertiary)]',
@@ -1638,6 +1652,15 @@ export function AlertsPage() {
                 </div>
               ))}
             </div>
+            {deliveries.length > 5 ? (
+              <button
+                className="mt-3 text-[13px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[var(--color-text-secondary)]"
+                onClick={() => setShowAllDeliveries((current) => !current)}
+                type="button"
+              >
+                {showAllDeliveries ? 'Show less' : 'View all deliveries'}
+              </button>
+            ) : null}
           </section>
         ) : null}
 
