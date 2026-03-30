@@ -28,14 +28,25 @@ import { LiveTicker } from './live-ticker'
 const THEME_STORAGE_KEY = 'quorum-theme'
 const LEGACY_THEME_STORAGE_KEY = 'naijapulse-theme'
 
-const primaryNav = [
+type NavItem = {
+  icon?: string
+  label: string
+  to: string
+}
+
+const primaryNav: NavItem[] = [
   { label: 'Markets', to: '/markets' },
-  { label: 'Divergence', to: '/divergence' },
-  { label: 'Smart Money', to: '/smart-money' },
   { label: 'Politics', to: '/categories/politics' },
   { label: 'Sports', to: '/categories/sports' },
   { label: 'Finance', to: '/categories/finance' },
 ]
+
+const toolNav: NavItem[] = [
+  { icon: '↔', label: 'Divergence', to: '/divergence' },
+  { icon: '⬡', label: 'Smart Money', to: '/smart-money' },
+]
+
+const mobileNav: NavItem[] = [...primaryNav, ...toolNav]
 
 const footerNav = [
   { label: 'Markets', to: '/markets' },
@@ -78,10 +89,7 @@ function applyProviderSearch(
   return nextSearch
 }
 
-function isNavItemActive(
-  pathname: string,
-  item: (typeof primaryNav)[number],
-) {
+function isNavItemActive(pathname: string, item: NavItem) {
   return pathname === item.to || pathname.startsWith(`${item.to}/`)
 }
 
@@ -252,7 +260,7 @@ function MoonIcon() {
   )
 }
 
-function ShellNavLink({ item }: { item: (typeof primaryNav)[number] }) {
+function ShellNavLink({ item }: { item: NavItem }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
@@ -277,6 +285,14 @@ function ShellNavLink({ item }: { item: (typeof primaryNav)[number] }) {
       }
       to={item.to}
     >
+      {item.icon ? (
+        <span
+          aria-hidden="true"
+          className="nav-link-tool-icon"
+        >
+          {item.icon}
+        </span>
+      ) : null}
       <span>{item.label}</span>
     </Link>
   )
@@ -288,7 +304,7 @@ function MobileNavLink({
   pathname,
 }: {
   currentProvider: VenueFilterId | undefined
-  item: (typeof primaryNav)[number]
+  item: NavItem
   pathname: string
 }) {
   const isActive = isNavItemActive(pathname, item)
@@ -503,6 +519,10 @@ export function SiteShell() {
             {primaryNav.map((item) => (
               <ShellNavLink item={item} key={item.to} />
             ))}
+            <span aria-hidden="true" className="nav-group-divider" />
+            {toolNav.map((item) => (
+              <ShellNavLink item={item} key={item.to} />
+            ))}
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-[6px]">
@@ -633,18 +653,12 @@ export function SiteShell() {
 
         {showVenueFilter ? (
           <div className="border-t border-[var(--color-border-subtle)]">
-            <div className="mx-auto flex max-w-[1380px] items-center gap-3 overflow-x-auto px-6 py-2">
-              <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
-                Venue
-              </span>
-              <div className="flex min-w-max gap-2">
+            <div className="mx-auto flex max-w-[1380px] items-center overflow-x-auto px-6 py-2">
+              <div className="flex min-w-max gap-[6px]">
                 {venueNav.map((item) => (
                   <button
-                    className={`terminal-chip px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] ${
-                      activeVenueFilter === item.id
-                        ? 'terminal-chip-active'
-                        : 'border-[var(--color-border-subtle)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
-                    }`}
+                    className="venue-filter-pill"
+                    data-active={activeVenueFilter === item.id ? 'true' : 'false'}
                     key={item.id}
                     onClick={() => {
                       void navigate({
@@ -701,7 +715,7 @@ export function SiteShell() {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--surface-shell-mobile-bg)] px-3 py-2 backdrop-blur-md md:hidden"
       >
         <div className="mx-auto flex max-w-[1380px] items-center gap-1">
-          {primaryNav.map((item) => (
+          {mobileNav.map((item) => (
             <MobileNavLink
               currentProvider={currentProvider}
               item={item}

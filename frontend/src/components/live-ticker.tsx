@@ -6,10 +6,10 @@ import { useEventsQuery } from '../features/events/hooks'
 import {
   EMPTY_EVENTS,
   getYesPrice,
-  isNigeriaRelevant,
   sortByVolume,
 } from '../features/events/insights'
 import {
+  formatCompactNumber,
   formatProbability,
 } from '../lib/format'
 import { getEventRoute } from '../lib/routes'
@@ -105,15 +105,18 @@ function TickerItem({
   )
 }
 
-function TickerTrack({ variant }: { variant: LiveTickerVariant }) {
-  const eventsQuery = useEventsQuery({ status: 'open' })
-  const events = eventsQuery.data ?? EMPTY_EVENTS
-  const tickerEvents = [...events]
-    .filter(isNigeriaRelevant)
-    .sort(sortByVolume)
-    .slice(0, 8)
+function TickerTrack({
+  events,
+  isLoading,
+  variant,
+}: {
+  events: typeof EMPTY_EVENTS
+  isLoading: boolean
+  variant: LiveTickerVariant
+}) {
+  const tickerEvents = [...events].sort(sortByVolume).slice(0, 8)
 
-  if (eventsQuery.isLoading && !tickerEvents.length) {
+  if (isLoading && !tickerEvents.length) {
     return <TickerLoadingState />
   }
 
@@ -163,6 +166,9 @@ function TickerTrack({ variant }: { variant: LiveTickerVariant }) {
 }
 
 export function LiveTicker({ variant = 'marquee' }: { variant?: LiveTickerVariant }) {
+  const eventsQuery = useEventsQuery({ status: 'open' })
+  const events = eventsQuery.data ?? EMPTY_EVENTS
+
   return (
     <section className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] px-4 py-2.5">
@@ -171,17 +177,17 @@ export function LiveTicker({ variant = 'marquee' }: { variant?: LiveTickerVarian
           <span className="section-kicker">Live tape</span>
         </div>
         <span className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
-          Top Nigeria-linked markets
+          {formatCompactNumber(events.length)} markets live
         </span>
       </div>
 
       {variant === 'rail' ? (
         <div>
-          <TickerTrack variant={variant} />
+          <TickerTrack events={events} isLoading={eventsQuery.isLoading} variant={variant} />
         </div>
       ) : (
         <div className="ticker-mask">
-          <TickerTrack variant={variant} />
+          <TickerTrack events={events} isLoading={eventsQuery.isLoading} variant={variant} />
         </div>
       )}
     </section>

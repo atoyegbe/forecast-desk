@@ -116,6 +116,21 @@ function getHistoryCoverageRatio(
   return clamp01(coveredDuration / durationMs)
 }
 
+function getPriceChangeCountForWindow(
+  points: PulsePricePoint[],
+  durationMs: number,
+) {
+  if (points.length < 2) {
+    return 0
+  }
+
+  const latestTimestamp = points[points.length - 1].timestamp
+  const cutoff = latestTimestamp - durationMs
+  const visiblePoints = points.filter((point) => point.timestamp >= cutoff)
+
+  return Math.max(visiblePoints.length - 1, 0)
+}
+
 function getReferencePointForWindow(
   points: PulsePricePoint[],
   durationMs: number,
@@ -155,6 +170,7 @@ export function getMoverWindowStats(
     absChange: Math.abs(change),
     change,
     coverageRatio: getHistoryCoverageRatio(points, durationMs),
+    priceChanges: getPriceChangeCountForWindow(points, durationMs),
     previousPrice,
   } satisfies PulseMoverWindowStats
 }
@@ -255,4 +271,16 @@ export function getTempoLabel(event: PulseEvent) {
   }
 
   return 'Early signal'
+}
+
+export function getTempoLabelFromPriceChanges(priceChanges: number) {
+  if (priceChanges > 20) {
+    return 'Heavy traffic'
+  }
+
+  if (priceChanges >= 5) {
+    return 'Moderate'
+  }
+
+  return 'Quiet'
 }

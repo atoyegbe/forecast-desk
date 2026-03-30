@@ -154,6 +154,7 @@ export type PulseMoverWindowStats = {
   absChange: number
   change: number
   coverageRatio: number
+  priceChanges: number
   previousPrice: number
 }
 
