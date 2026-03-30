@@ -39,9 +39,91 @@ const DEMO_TELEGRAM_HANDLE = '@quorumsignals'
 
 type DeliveryPreference = 'both' | 'email' | 'telegram'
 
-const demoSubscriptions: DemoAlertSubscription[] = []
+const demoSubscriptions: DemoAlertSubscription[] = [
+  {
+    channel: 'email',
+    createdAt: '2026-03-28T09:10:00.000Z',
+    id: 'alert-swisstony',
+    lastDeliveredAt: '2026-03-30T18:42:00.000Z',
+    minScore: 82,
+    minSizeUsd: 2500,
+    status: 'active',
+    triggerMode: 'winning-moves-only',
+    type: 'wallet',
+    updatedAt: '2026-03-30T18:42:00.000Z',
+    walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
+    walletLabel: 'swisstony',
+    walletRoi: 0.187,
+    walletScore: 92,
+  },
+  {
+    channel: 'email',
+    createdAt: '2026-03-27T14:32:00.000Z',
+    id: 'alert-baltic',
+    lastDeliveredAt: null,
+    minScore: 74,
+    minSizeUsd: 500,
+    status: 'active',
+    triggerMode: 'any-new-position',
+    type: 'wallet',
+    updatedAt: '2026-03-29T07:10:00.000Z',
+    walletAddress: '0x4b08c9a37d7a1135f0af4996b708efc5f45a66c1',
+    walletLabel: 'BalticSignal',
+    walletRoi: 0.094,
+    walletScore: 79,
+  },
+  {
+    channel: 'email',
+    createdAt: '2026-03-26T11:05:00.000Z',
+    id: 'alert-sigma',
+    lastDeliveredAt: '2026-03-29T16:24:00.000Z',
+    minScore: 70,
+    minSizeUsd: 1200,
+    status: 'paused',
+    triggerMode: 'winning-moves-only',
+    type: 'wallet',
+    updatedAt: '2026-03-29T16:24:00.000Z',
+    walletAddress: '0x9f835bf7ac22555d603f89b0fae8f190c3b112a9',
+    walletLabel: 'Sigma Park',
+    walletRoi: 0.061,
+    walletScore: 75,
+  },
+]
 
-const demoDeliveries: DemoDelivery[] = []
+const demoDeliveries: DemoDelivery[] = [
+  {
+    id: 'delivery-1',
+    marketTitle: 'Will Switzerland win on 2026-03-27?',
+    sentAt: '2026-03-30T18:42:00.000Z',
+    status: 'delivered',
+    walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
+    walletLabel: 'swisstony',
+  },
+  {
+    id: 'delivery-2',
+    marketTitle: 'Who will win the next Nigerian presidential election?',
+    sentAt: '2026-03-29T16:24:00.000Z',
+    status: 'delivered',
+    walletAddress: '0x9f835bf7ac22555d603f89b0fae8f190c3b112a9',
+    walletLabel: 'Sigma Park',
+  },
+  {
+    id: 'delivery-3',
+    marketTitle: 'Will Arsenal finish above Liverpool in 2026 EPL?',
+    sentAt: '2026-03-28T12:14:00.000Z',
+    status: 'failed',
+    walletAddress: '0x4b08c9a37d7a1135f0af4996b708efc5f45a66c1',
+    walletLabel: 'BalticSignal',
+  },
+  {
+    id: 'delivery-4',
+    marketTitle: 'Will Brent crude settle above $92 before June 2026?',
+    sentAt: '2026-03-27T21:02:00.000Z',
+    status: 'delivered',
+    walletAddress: '0x71f7ef3fb8a3c4a5d1cc19cf3db6c8a6f3f1a9b7',
+    walletLabel: 'swisstony',
+  },
+]
 
 function BellIcon({ className }: { className?: string }) {
   return (
