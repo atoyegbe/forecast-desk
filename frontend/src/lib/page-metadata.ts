@@ -8,6 +8,7 @@ type PageMetadataInput = {
   canonicalPath?: string
   description?: string
   imageUrl?: string
+  jsonLd?: Record<string, unknown> | null
   title: string
 }
 
@@ -72,6 +73,7 @@ export function usePageMetadata(input: PageMetadataInput) {
     const canonicalUrl =
       buildAbsoluteUrl(input.canonicalPath) ?? window.location.href
     const imageUrl = buildAbsoluteUrl(input.imageUrl)
+    const jsonLdSelector = 'script[data-quorum-jsonld="page"]'
 
     document.title = input.title
 
@@ -124,10 +126,28 @@ export function usePageMetadata(input: PageMetadataInput) {
     }
 
     upsertCanonicalLink(canonicalUrl)
+
+    const existingJsonLd = document.head.querySelector(jsonLdSelector)
+
+    if (input.jsonLd) {
+      let element = existingJsonLd as HTMLScriptElement | null
+
+      if (!element) {
+        element = document.createElement('script')
+        element.type = 'application/ld+json'
+        element.setAttribute('data-quorum-jsonld', 'page')
+        document.head.appendChild(element)
+      }
+
+      element.textContent = JSON.stringify(input.jsonLd)
+    } else if (existingJsonLd) {
+      existingJsonLd.remove()
+    }
   }, [
     input.canonicalPath,
     input.description,
     input.imageUrl,
+    input.jsonLd,
     input.title,
   ])
 }

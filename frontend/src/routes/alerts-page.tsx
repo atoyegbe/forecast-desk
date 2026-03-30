@@ -34,6 +34,7 @@ import {
   formatWalletAddress,
 } from '../lib/format'
 import {
+  getSmartMoneyWalletRoute,
   getSmartMoneyRoute,
 } from '../lib/routes'
 
@@ -1350,9 +1351,12 @@ export function AlertsPage() {
                     ) : (
                       <div className="flex items-start gap-4">
                         <div className="min-w-0 flex-1">
-                          <div className="text-[16px] font-semibold text-[var(--color-text-primary)]">
+                          <Link
+                            className="inline-flex text-[16px] font-semibold text-[var(--color-text-primary)] transition-colors duration-150 hover:text-[var(--color-brand)]"
+                            {...getSmartMoneyWalletRoute(subscription.walletAddress)}
+                          >
                             {getWalletTitle(subscription)}
-                          </div>
+                          </Link>
                           <div className="mt-1 text-[13px] font-mono text-[var(--color-text-tertiary)]">
                             {getFilterSummary(subscription)}
                           </div>
@@ -1454,9 +1458,12 @@ export function AlertsPage() {
                   className="flex flex-col gap-2 border-b border-[var(--color-border-subtle)] py-[10px] text-[12px] sm:flex-row sm:items-center"
                   key={delivery.id}
                 >
-                  <div className="w-[110px] truncate font-mono text-[13px] text-[var(--color-text-secondary)]">
+                  <Link
+                    className="w-[110px] truncate font-mono text-[13px] text-[var(--color-text-secondary)] transition-colors duration-150 hover:text-[var(--color-brand)]"
+                    {...getSmartMoneyWalletRoute(delivery.walletAddress)}
+                  >
                     {getWalletTitle(delivery)}
-                  </div>
+                  </Link>
                   <div className="min-w-0 flex-1 truncate text-[13px] text-[var(--color-text-primary)]">
                     {delivery.marketTitle.length > 45
                       ? `${delivery.marketTitle.slice(0, 45)}…`

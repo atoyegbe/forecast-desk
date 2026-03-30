@@ -89,12 +89,20 @@ function buildWalletMetadata(
   walletDetail: PulseSmartMoneyWalletDetail | null,
 ) {
   const canonicalPath = `/smart-money/wallets/${walletAddress.toLowerCase()}`
+  const backendOrigin =
+    typeof window === 'undefined'
+      ? ''
+      : (
+          import.meta.env.QUORUM_PUBLIC_BACKEND_API_BASE?.replace(/\/api\/v1$/, '') ||
+          window.location.origin
+        ).replace(/\/$/, '')
 
   if (!walletDetail) {
     return {
       canonicalPath,
       description:
         'Track public smart money wallet performance, recent signals, and open positions on Quorum.',
+      imageUrl: backendOrigin ? `${backendOrigin}/og/wallets/${walletAddress.toLowerCase()}.svg` : undefined,
       title: 'Wallet Profile | Quorum',
     }
   }
@@ -102,11 +110,25 @@ function buildWalletMetadata(
   const walletLabel = getWalletLabel(walletDetail)
   const winRate = Math.round(walletDetail.wallet.winRate * 100)
   const roi = formatSignedPercent(walletDetail.wallet.roi)
+  const title = `${walletLabel} Wallet Profile | Quorum`
+  const description = `Track ${walletLabel}'s score ${walletDetail.wallet.score}, rank #${walletDetail.wallet.rank}, ${winRate}% win rate, ${roi} ROI, and recent public market signals on Quorum.`
 
   return {
     canonicalPath,
-    description: `Track ${walletLabel}'s score ${walletDetail.wallet.score}, rank #${walletDetail.wallet.rank}, ${winRate}% win rate, ${roi} ROI, and recent public market signals on Quorum.`,
-    title: `${walletLabel} Wallet Profile | Quorum`,
+    description,
+    imageUrl: backendOrigin ? `${backendOrigin}/og/wallets/${walletAddress.toLowerCase()}.svg` : undefined,
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'ProfilePage',
+      description,
+      mainEntity: {
+        '@type': 'Thing',
+        identifier: walletDetail.wallet.address.toLowerCase(),
+        name: walletLabel,
+      },
+      name: title,
+    },
+    title,
   }
 }
 
