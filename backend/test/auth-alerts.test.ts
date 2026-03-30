@@ -69,6 +69,10 @@ async function issueTelegramConnectCode(input?: {
     },
     async sendMessage(message) {
       sentMessages.push(message)
+
+      return {
+        providerMessageId: 'tg_connect_message_1',
+      }
     },
   })
 

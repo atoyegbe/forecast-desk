@@ -24,6 +24,7 @@ import {
   listStoredSmartMoneyWalletsByAddresses,
 } from '../db/smart-money-repository.js'
 import { sendWalletSignalAlertEmail } from './email-service.js'
+import { sendWalletSignalAlertTelegram } from './telegram-service.js'
 
 type PostgresError = Error & {
   code?: string
@@ -233,8 +234,9 @@ export async function processPendingAlertDeliveries(limit = 25) {
 
   for (const job of jobs) {
     const signal = signalById.get(job.delivery.signalId)
+    const wallet = walletByAddress.get(signal?.walletAddress.toLowerCase() ?? '') ?? null
 
-    if (!signal || !job.subscription.userEmail) {
+    if (!signal) {
       failed += 1
       await markAlertDeliveryFailed({
         backoffUntil: new Date(
@@ -247,13 +249,31 @@ export async function processPendingAlertDeliveries(limit = 25) {
     }
 
     try {
-      const result = await sendWalletSignalAlertEmail({
-        email: job.subscription.userEmail,
-        signal,
-        subscription: job.subscription,
-        unsubscribeToken: job.delivery.id,
-        wallet: walletByAddress.get(signal.walletAddress.toLowerCase()) ?? null,
-      })
+      const result = job.delivery.channel === 'telegram'
+        ? await (() => {
+            if (!job.subscription.userTelegramChatId) {
+              throw new Error('Missing Telegram chat connection.')
+            }
+
+            return sendWalletSignalAlertTelegram({
+              chatId: job.subscription.userTelegramChatId,
+              signal,
+              wallet,
+            })
+          })()
+        : await (() => {
+            if (!job.subscription.userEmail) {
+              throw new Error('Missing user email for alert delivery.')
+            }
+
+            return sendWalletSignalAlertEmail({
+              email: job.subscription.userEmail,
+              signal,
+              subscription: job.subscription,
+              unsubscribeToken: job.delivery.id,
+              wallet,
+            })
+          })()
 
       await markAlertDeliverySent({
         deliveryId: job.delivery.id,

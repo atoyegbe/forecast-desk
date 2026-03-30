@@ -6,6 +6,10 @@ import {
   queueAlertDeliveriesForSignals,
 } from '../src/app/alerts-service.js'
 import { setTestEmailSender } from '../src/app/email-service.js'
+import {
+  pollTelegramBotUpdatesOnce,
+  setTestTelegramApi,
+} from '../src/app/telegram-service.js'
 import type { PulseSmartMoneySignal } from '../src/contracts/pulse-smart-money.js'
 import {
   replaceStoredSmartMoneySnapshot,
@@ -19,6 +23,7 @@ const AUTH_MAGIC_TOKEN = 'test-magic-token'
 
 afterEach(() => {
   setTestEmailSender(null)
+  setTestTelegramApi(null)
 })
 
 async function queryRow<T>(query: string, values: unknown[] = []) {
@@ -86,6 +91,128 @@ async function createWalletAlert(
   assert.equal(response.statusCode, 201)
 
   return response.json().data.id as string
+}
+
+async function createWalletAlertForEmail(
+  email: string,
+  walletAddress: string,
+  thresholds: {
+    minScore?: number
+    minSizeUsd?: number
+    triggerMode?: 'any-new-position' | 'winning-moves-only'
+  } = {},
+) {
+  const verifyResponse = await requestAndVerify(email)
+  const token = verifyResponse.json().data.session.token as string
+
+  const response = await testApp.getApp().inject({
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+    method: 'POST',
+    payload: {
+      minScore: thresholds.minScore,
+      minSizeUsd: thresholds.minSizeUsd,
+      triggerMode: thresholds.triggerMode,
+      type: 'wallet',
+      walletAddress,
+    },
+    url: '/api/v1/alerts/subscriptions',
+  })
+
+  assert.equal(response.statusCode, 201)
+
+  return {
+    subscriptionId: response.json().data.id as string,
+    token,
+  }
+}
+
+async function issueTelegramConnectCode(input?: {
+  chatId?: string
+  username?: string
+}) {
+  const sentMessages: Array<{
+    chatId: string
+    text: string
+  }> = []
+
+  setTestTelegramApi({
+    async getUpdates() {
+      return [
+        {
+          message: {
+            chat: {
+              id: input?.chatId ?? '7001',
+              type: 'private',
+            },
+            from: {
+              first_name: 'Signal',
+              id: '8801',
+              username: input?.username ?? 'signal_reader',
+            },
+            message_id: '11',
+            text: '/start',
+          },
+          update_id: 1,
+        },
+      ]
+    },
+    async sendMessage(message) {
+      sentMessages.push(message)
+
+      return {
+        providerMessageId: 'tg_connect_message_1',
+      }
+    },
+  })
+
+  await pollTelegramBotUpdatesOnce()
+
+  const codeMatch = sentMessages[0]?.text.match(/\b(\d{6})\b/)
+
+  assert.ok(codeMatch)
+
+  return codeMatch[1]
+}
+
+async function connectTelegramAndSetDefaultChannel(input: {
+  defaultChannel: 'both' | 'telegram'
+  email: string
+}) {
+  const verifyResponse = await requestAndVerify(input.email)
+  const token = verifyResponse.json().data.session.token as string
+  const code = await issueTelegramConnectCode({
+    username: 'signal_reader',
+  })
+
+  const connectResponse = await testApp.getApp().inject({
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+    method: 'POST',
+    payload: {
+      code,
+    },
+    url: '/api/v1/telegram/connect',
+  })
+
+  assert.equal(connectResponse.statusCode, 200)
+
+  const preferencesResponse = await testApp.getApp().inject({
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+    method: 'PATCH',
+    payload: {
+      defaultChannel: input.defaultChannel,
+    },
+    url: '/api/v1/user/preferences',
+  })
+
+  assert.equal(preferencesResponse.statusCode, 200)
+
+  return token
 }
 
 async function updateWalletAlertStatus(input: {
@@ -424,5 +551,87 @@ describe('Alert delivery pipeline', () => {
     assert.equal(delivery?.attempt_count, 1)
     assert.match(delivery?.last_error ?? '', /Resend is down/)
     assert.ok(delivery?.next_attempt_at)
+  })
+
+  test('queues both email and Telegram delivery jobs when the user default is both', async () => {
+    await createWalletAlertForEmail('reader@example.com', '0xabc123', {
+      minScore: 70,
+      minSizeUsd: 1000,
+    })
+    await connectTelegramAndSetDefaultChannel({
+      defaultChannel: 'both',
+      email: 'reader@example.com',
+    })
+    const [matchingSignal] = await seedSmartMoneySignals()
+
+    await queueAlertDeliveriesForSignals([matchingSignal])
+
+    const rows = await queryRow<{
+      channels: string
+    }>(
+      `
+        SELECT string_agg(channel, ',' ORDER BY channel) AS channels
+        FROM pulse_alert_deliveries
+      `,
+    )
+
+    assert.equal(rows?.channels, 'email,telegram')
+  })
+
+  test('delivers alerts through Telegram when the user default is telegram', async () => {
+    await createWalletAlertForEmail('reader@example.com', '0xabc123', {
+      minScore: 70,
+      minSizeUsd: 1000,
+    })
+    await connectTelegramAndSetDefaultChannel({
+      defaultChannel: 'telegram',
+      email: 'reader@example.com',
+    })
+    const [matchingSignal] = await seedSmartMoneySignals()
+    const sentMessages: Array<{
+      chatId: string
+      text: string
+    }> = []
+
+    setTestEmailSender(async () => {
+      throw new Error('Email should not be used for telegram-only alerts')
+    })
+    setTestTelegramApi({
+      async getUpdates() {
+        return []
+      },
+      async sendMessage(message) {
+        sentMessages.push(message)
+
+        return {
+          providerMessageId: 'tg_delivery_message_1',
+        }
+      },
+    })
+
+    await queueAlertDeliveriesForSignals([matchingSignal])
+
+    const result = await processPendingAlertDeliveries()
+    const delivery = await queryRow<{
+      channel: string
+      status: string
+    }>(
+      `
+        SELECT channel, status
+        FROM pulse_alert_deliveries
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+    )
+
+    assert.deepEqual(result, {
+      failed: 0,
+      processed: 1,
+      sent: 1,
+    })
+    assert.equal(sentMessages.length, 1)
+    assert.match(sentMessages[0]?.text ?? '', /Signal Whale opened a new position/i)
+    assert.equal(delivery?.channel, 'telegram')
+    assert.equal(delivery?.status, 'sent')
   })
 })

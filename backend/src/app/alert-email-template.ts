@@ -348,7 +348,7 @@ function buildAppUrl(pathname: string) {
   return new URL(pathname, getFrontendBaseUrl()).toString()
 }
 
-function buildMarketUrl(signal: PulseSmartMoneySignal) {
+export function buildMarketUrl(signal: PulseSmartMoneySignal) {
   if (signal.eventId && signal.eventSlug) {
     return buildAppUrl(
       `/events/${encodeURIComponent(signal.eventId)}/${encodeURIComponent(signal.eventSlug)}`,

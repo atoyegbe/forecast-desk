@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type {
   PulseAlertDelivery,
+  PulseAlertDeliveryChannel,
   PulseAlertDeliveryStatus,
   PulseAlertRecentDelivery,
   PulseAlertRecentDeliveryStatus,
@@ -29,7 +30,7 @@ type AlertSubscriptionRow = {
 
 type AlertDeliveryRow = {
   attempt_count: number
-  channel: 'email'
+  channel: PulseAlertDeliveryChannel
   created_at: Date | string
   id: string
   last_attempt_at: Date | string | null
@@ -56,7 +57,10 @@ type RecentAlertDeliveryRow = {
 }
 
 type AlertSubscriptionMatchRow = AlertSubscriptionRow & {
+  default_channel: 'both' | 'email' | 'telegram'
   user_email: string
+  user_telegram_chat_id: string | null
+  user_telegram_handle: string | null
 }
 
 type PendingAlertDeliveryJobRow = AlertDeliveryRow & {
@@ -69,12 +73,18 @@ type PendingAlertDeliveryJobRow = AlertDeliveryRow & {
   trigger_mode: PulseAlertTriggerMode
   subscription_updated_at: Date | string
   type: 'wallet'
+  user_default_channel: 'both' | 'email' | 'telegram'
   user_email: string
+  user_telegram_chat_id: string | null
+  user_telegram_handle: string | null
   wallet_address: string
 }
 
 export type StoredAlertSubscription = PulseAlertSubscription & {
+  userDefaultChannel?: 'both' | 'email' | 'telegram'
   userEmail?: string
+  userTelegramChatId?: string | null
+  userTelegramHandle?: string | null
 }
 
 export type PendingAlertDeliveryJob = {
@@ -244,7 +254,10 @@ export async function getActiveAlertSubscriptionsForSignals(
         NULL::TIMESTAMPTZ AS last_delivered_at,
         subscriptions.created_at,
         subscriptions.updated_at,
-        users.email AS user_email
+        users.email AS user_email,
+        users.default_channel,
+        users.telegram_chat_id AS user_telegram_chat_id,
+        users.telegram_handle AS user_telegram_handle
       FROM pulse_alert_subscriptions subscriptions
       JOIN pulse_users users ON users.id = subscriptions.user_id
       LEFT JOIN pulse_smart_money_wallets wallets
@@ -261,7 +274,10 @@ export async function getActiveAlertSubscriptionsForSignals(
   for (const row of result.rows) {
     const subscription = {
       ...mapSubscription(row),
+      userDefaultChannel: row.default_channel,
       userEmail: row.user_email,
+      userTelegramChatId: row.user_telegram_chat_id,
+      userTelegramHandle: row.user_telegram_handle,
     } satisfies StoredAlertSubscription
     const currentSubscriptions =
       subscriptionsByWallet.get(subscription.walletAddress) ?? []
@@ -504,7 +520,10 @@ export async function listPendingAlertDeliveryJobs(limit = 25) {
           WHERE previous_deliveries.subscription_id = subscriptions.id
             AND previous_deliveries.status = 'sent'
         ) AS last_delivered_at,
-        users.email AS user_email
+        users.email AS user_email,
+        users.default_channel AS user_default_channel,
+        users.telegram_chat_id AS user_telegram_chat_id,
+        users.telegram_handle AS user_telegram_handle
       FROM pulse_alert_deliveries deliveries
       JOIN pulse_alert_subscriptions subscriptions
         ON subscriptions.id = deliveries.subscription_id
@@ -534,6 +553,9 @@ export async function listPendingAlertDeliveryJobs(limit = 25) {
       updatedAt:
         toIsoString(row.subscription_updated_at) ?? new Date(0).toISOString(),
       userEmail: row.user_email,
+      userDefaultChannel: row.user_default_channel,
+      userTelegramChatId: row.user_telegram_chat_id,
+      userTelegramHandle: row.user_telegram_handle,
       walletAddress: row.wallet_address,
     } satisfies StoredAlertSubscription,
   }))
@@ -623,6 +645,30 @@ export async function queueAlertDeliveriesForMatches(
     return [] as PulseAlertDelivery[]
   }
 
+  const queuedDeliveries = matches.flatMap((match) => {
+    const preferredChannels: PulseAlertDeliveryChannel[] =
+      match.subscription.userDefaultChannel === 'telegram'
+        ? match.subscription.userTelegramChatId
+          ? ['telegram']
+          : ['email']
+        : match.subscription.userDefaultChannel === 'both'
+          ? match.subscription.userTelegramChatId
+            ? ['email', 'telegram']
+            : ['email']
+          : ['email']
+
+    return preferredChannels.map((channel) => ({
+      channel,
+      id: randomUUID(),
+      signalId: match.signal.id,
+      subscriptionId: match.subscription.id,
+    }))
+  })
+
+  if (!queuedDeliveries.length) {
+    return [] as PulseAlertDelivery[]
+  }
+
   const result = await getDbPool().query<AlertDeliveryRow>(
     `
       INSERT INTO pulse_alert_deliveries (
@@ -656,10 +702,10 @@ export async function queueAlertDeliveriesForMatches(
         updated_at
     `,
     [
-      matches.map(() => randomUUID()),
-      matches.map((match) => match.subscription.id),
-      matches.map((match) => match.signal.id),
-      matches.map((match) => match.subscription.channel),
+      queuedDeliveries.map((delivery) => delivery.id),
+      queuedDeliveries.map((delivery) => delivery.subscriptionId),
+      queuedDeliveries.map((delivery) => delivery.signalId),
+      queuedDeliveries.map((delivery) => delivery.channel),
     ],
   )
 

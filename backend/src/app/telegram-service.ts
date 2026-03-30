@@ -1,4 +1,6 @@
 import { randomInt } from 'node:crypto'
+import type { PulseSmartMoneySignal, PulseSmartMoneyWallet } from '../contracts/pulse-smart-money.js'
+import { buildMarketUrl } from './alert-email-template.js'
 import {
   createTelegramConnectCode,
   findActiveTelegramConnectCodeByChatId,
@@ -40,7 +42,9 @@ type TelegramApi = {
   sendMessage: (input: {
     chatId: string
     text: string
-  }) => Promise<void>
+  }) => Promise<{
+    providerMessageId: string | null
+  }>
 }
 
 const TELEGRAM_UPDATES_STREAM_KEY = 'telegram-bot-updates'
@@ -107,10 +111,15 @@ function getTelegramApi(): TelegramApi | null {
       })
     },
     async sendMessage(input) {
-      await callTelegramMethod('sendMessage', {
+      const result = await callTelegramMethod<{ message_id?: number | string }>('sendMessage', {
         chat_id: input.chatId,
         text: input.text,
       })
+
+      return {
+        providerMessageId:
+          result.message_id === undefined ? null : String(result.message_id),
+      }
     },
   }
 }
@@ -249,6 +258,60 @@ export async function pollTelegramBotUpdatesOnce(limit = 25) {
     issuedCodes,
     processedUpdates: updates.length,
   }
+}
+
+function formatSignedPoints(value: number) {
+  if (!Number.isFinite(value) || value === 0) {
+    return '0.0'
+  }
+
+  return `${value > 0 ? '+' : ''}${(value * 100).toFixed(1)}`
+}
+
+function buildWalletSignalTelegramText(input: {
+  signal: PulseSmartMoneySignal
+  wallet: Pick<PulseSmartMoneyWallet, 'marketCount' | 'roi' | 'winRate'> | null
+}) {
+  const walletDisplayName =
+    input.signal.walletDisplayName?.trim() || input.signal.walletShortAddress
+
+  return [
+    `${walletDisplayName} opened a new position.`,
+    '',
+    input.signal.marketTitle,
+    `Opened: ${input.signal.outcome} @ ${(input.signal.entryPrice * 100).toFixed(0)}%`,
+    `Position: $${Math.round(input.signal.size).toLocaleString()}`,
+    `Current market: ${(input.signal.currentPrice * 100).toFixed(0)}% · ${formatSignedPoints(input.signal.priceDelta)} pts`,
+    input.wallet
+      ? `Wallet: win rate ${Math.round(input.wallet.winRate * 100)}% · ROI ${(input.wallet.roi * 100).toFixed(0)}% · ${input.wallet.marketCount} markets`
+      : null,
+    '',
+    `View on Quorum: ${buildMarketUrl(input.signal)}`,
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+export async function sendWalletSignalAlertTelegram(input: {
+  chatId: string
+  signal: PulseSmartMoneySignal
+  wallet: Pick<PulseSmartMoneyWallet, 'marketCount' | 'roi' | 'winRate'> | null
+}) {
+  const telegramApi = getTelegramApi()
+
+  if (!telegramApi) {
+    return {
+      providerMessageId: null,
+    }
+  }
+
+  return telegramApi.sendMessage({
+    chatId: input.chatId,
+    text: buildWalletSignalTelegramText({
+      signal: input.signal,
+      wallet: input.wallet,
+    }),
+  })
 }
 
 export function startTelegramBotWorker() {

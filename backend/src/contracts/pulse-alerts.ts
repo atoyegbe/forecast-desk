@@ -47,7 +47,7 @@ export type PulseAlertDeliveryStatus = 'failed' | 'pending' | 'sent'
 
 export type PulseAlertDelivery = {
   attemptCount: number
-  channel: PulseAlertChannel
+  channel: PulseAlertDeliveryChannel
   createdAt: string
   id: string
   lastAttemptAt: string | null
