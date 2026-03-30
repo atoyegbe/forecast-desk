@@ -3,26 +3,32 @@ import { getDbPool } from './pool.js'
 
 type AuthUserRow = {
   created_at: Date | string
+  default_channel: 'both' | 'email' | 'telegram'
   email: string
   id: string
   last_login_at: Date | string | null
+  telegram_handle: string | null
 }
 
 type AuthSessionRow = {
   created_at: Date | string
+  default_channel: 'both' | 'email' | 'telegram'
   email: string
   expires_at: Date | string
   id: string
   last_login_at: Date | string | null
   session_id: string
+  telegram_handle: string | null
   user_id: string
 }
 
 export type StoredAuthUser = {
   createdAt: string
+  defaultChannel: 'both' | 'email' | 'telegram'
   email: string
   id: string
   lastLoginAt: string | null
+  telegramHandle: string | null
 }
 
 export type StoredAuthSession = {
@@ -48,9 +54,11 @@ function toIsoString(value: Date | string | null | undefined) {
 function mapUser(row: AuthUserRow): StoredAuthUser {
   return {
     createdAt: toIsoString(row.created_at) ?? new Date(0).toISOString(),
+    defaultChannel: row.default_channel,
     email: row.email,
     id: row.id,
     lastLoginAt: toIsoString(row.last_login_at),
+    telegramHandle: row.telegram_handle,
   }
 }
 
@@ -60,9 +68,11 @@ function mapSession(row: AuthSessionRow): StoredAuthSession {
     id: row.session_id,
     user: {
       createdAt: toIsoString(row.created_at) ?? new Date(0).toISOString(),
+      defaultChannel: row.default_channel,
       email: row.email,
       id: row.user_id,
       lastLoginAt: toIsoString(row.last_login_at),
+      telegramHandle: row.telegram_handle,
     },
   }
 }
@@ -122,6 +132,8 @@ export async function createSession(input: {
       SELECT
         users.id AS user_id,
         users.email,
+        users.telegram_handle,
+        users.default_channel,
         users.created_at,
         users.last_login_at,
         inserted.id AS session_id,
@@ -142,7 +154,13 @@ export async function createUser(email: string) {
       VALUES ($1, $2)
       ON CONFLICT (email)
       DO UPDATE SET email = EXCLUDED.email
-      RETURNING id, email, created_at, last_login_at
+      RETURNING
+        id,
+        email,
+        telegram_handle,
+        default_channel,
+        created_at,
+        last_login_at
     `,
     [randomUUID(), email],
   )
@@ -164,6 +182,8 @@ export async function getSessionByTokenHash(tokenHash: string) {
       SELECT
         users.id AS user_id,
         users.email,
+        users.telegram_handle,
+        users.default_channel,
         users.created_at,
         users.last_login_at,
         matched.id AS session_id,
@@ -183,7 +203,13 @@ export async function markUserLoggedIn(userId: string) {
       UPDATE pulse_users
       SET last_login_at = NOW()
       WHERE id = $1
-      RETURNING id, email, created_at, last_login_at
+      RETURNING
+        id,
+        email,
+        telegram_handle,
+        default_channel,
+        created_at,
+        last_login_at
     `,
     [userId],
   )
@@ -227,11 +253,89 @@ export async function consumeAuthChallenge(email: string, secretHash: string) {
         WHERE codes.id = matched.id
         RETURNING matched.user_id
       )
-      SELECT users.id, users.email, users.created_at, users.last_login_at
+      SELECT
+        users.id,
+        users.email,
+        users.telegram_handle,
+        users.default_channel,
+        users.created_at,
+        users.last_login_at
       FROM consumed
       JOIN pulse_users users ON users.id = consumed.user_id
     `,
     [email, secretHash],
+  )
+
+  return result.rows[0] ? mapUser(result.rows[0]) : null
+}
+
+export async function getUserById(userId: string) {
+  const result = await getDbPool().query<AuthUserRow>(
+    `
+      SELECT
+        id,
+        email,
+        telegram_handle,
+        default_channel,
+        created_at,
+        last_login_at
+      FROM pulse_users
+      WHERE id = $1
+    `,
+    [userId],
+  )
+
+  return result.rows[0] ? mapUser(result.rows[0]) : null
+}
+
+export async function updateUserPreferences(input: {
+  defaultChannel?: 'both' | 'email' | 'telegram'
+  email?: string
+  userId: string
+}) {
+  const result = await getDbPool().query<AuthUserRow>(
+    `
+      UPDATE pulse_users
+      SET
+        email = COALESCE($2, email),
+        default_channel = COALESCE($3, default_channel)
+      WHERE id = $1
+      RETURNING
+        id,
+        email,
+        telegram_handle,
+        default_channel,
+        created_at,
+        last_login_at
+    `,
+    [
+      input.userId,
+      input.email ?? null,
+      input.defaultChannel ?? null,
+    ],
+  )
+
+  return result.rows[0] ? mapUser(result.rows[0]) : null
+}
+
+export async function updateUserTelegramHandle(input: {
+  telegramHandle: string | null
+  userId: string
+}) {
+  const result = await getDbPool().query<AuthUserRow>(
+    `
+      UPDATE pulse_users
+      SET telegram_handle = $2
+      WHERE id = $1
+      RETURNING
+        id,
+        email,
+        telegram_handle,
+        default_channel,
+        created_at,
+        last_login_at
+    `,
+    [input.userId, input.telegramHandle],
   )
 
   return result.rows[0] ? mapUser(result.rows[0]) : null

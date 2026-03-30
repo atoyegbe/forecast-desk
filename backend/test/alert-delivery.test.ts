@@ -355,6 +355,40 @@ describe('Alert delivery pipeline', () => {
     )
   })
 
+  test('lists recent alert deliveries for the authenticated user', async () => {
+    await createWalletAlert('0xabc123', {
+      minScore: 70,
+      minSizeUsd: 1000,
+    })
+    const [matchingSignal] = await seedSmartMoneySignals()
+
+    setTestEmailSender(async () => ({
+      providerMessageId: 'email_recent_1',
+    }))
+
+    await queueAlertDeliveriesForSignals([matchingSignal])
+    await processPendingAlertDeliveries()
+
+    const verifyResponse = await requestAndVerify()
+    const token = verifyResponse.json().data.session.token as string
+    const response = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'GET',
+      url: '/api/v1/alerts/deliveries/recent',
+    })
+
+    assert.equal(response.statusCode, 200)
+    assert.equal(response.json().data.items.length, 1)
+    assert.equal(response.json().data.items[0].channel, 'email')
+    assert.equal(response.json().data.items[0].walletLabel, 'Signal Whale')
+    assert.match(
+      response.json().data.items[0].marketTitle,
+      /Nigeria election result be contested/,
+    )
+  })
+
   test('backs off failed alert deliveries without dropping the job', async () => {
     await createWalletAlert('0xabc123', {
       minScore: 70,

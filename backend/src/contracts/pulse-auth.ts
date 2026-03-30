@@ -1,8 +1,12 @@
+export type PulseUserDefaultChannel = 'both' | 'email' | 'telegram'
+
 export type PulseAuthUser = {
   createdAt: string
+  defaultChannel: PulseUserDefaultChannel
   email: string
   id: string
   lastLoginAt?: string | null
+  telegramHandle?: string | null
 }
 
 export type PulseAuthSession = {
@@ -39,4 +43,17 @@ export type PulseAuthCurrentSession = {
 
 export type PulseAuthLogoutResult = {
   revoked: true
+}
+
+export type PulseTelegramConnectInput = {
+  code: string
+}
+
+export type PulseTelegramConnectResult = {
+  handle: string
+}
+
+export type PulseUserPreferencesUpdateInput = {
+  defaultChannel?: PulseUserDefaultChannel
+  email?: string
 }

@@ -19,6 +19,7 @@ import { v1CurrencyRoutes } from '../routes/v1/currencies.js'
 import { v1EventsRoutes } from '../routes/v1/events.js'
 import { v1LiveRoutes } from '../routes/v1/live.js'
 import { v1SmartMoneyRoutes } from '../routes/v1/smart-money.js'
+import { v1UserRoutes } from '../routes/v1/user.js'
 
 export async function createApp() {
   await ensureDiscoverySchema()
@@ -50,6 +51,7 @@ export async function createApp() {
   app.register(v1EventsRoutes, { prefix: '/api/v1' })
   app.register(v1LiveRoutes, { prefix: '/api/v1' })
   app.register(v1SmartMoneyRoutes, { prefix: '/api/v1' })
+  app.register(v1UserRoutes, { prefix: '/api/v1' })
 
   return app
 }

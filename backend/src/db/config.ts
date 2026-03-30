@@ -120,6 +120,10 @@ export function getPulseSessionTtlDays() {
   )
 }
 
+export function getPulseTelegramConnectCode() {
+  return process.env.PULSE_TELEGRAM_CONNECT_CODE?.trim() || null
+}
+
 export function getResendApiKey() {
   return process.env.RESEND_API_KEY?.trim() || null
 }

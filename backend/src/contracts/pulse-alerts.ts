@@ -4,12 +4,16 @@ export type PulseAlertSubscriptionType = 'wallet'
 export type PulseAlertTriggerMode =
   | 'any-new-position'
   | 'winning-moves-only'
+export type PulseAlertDeliveryChannel = 'email' | 'telegram'
+export type PulseAlertRecentDeliveryStatus = 'delivered' | 'failed' | 'pending'
 
 export type PulseAlertSubscription = {
   channel: PulseAlertChannel
   createdAt: string
   id: string
+  lastDeliveryAttemptAt?: string | null
   lastDeliveredAt: string | null
+  lastDeliveryStatus?: PulseAlertRecentDeliveryStatus | null
   minScore: number | null
   minSizeUsd: number | null
   status: PulseAlertSubscriptionStatus
@@ -17,6 +21,7 @@ export type PulseAlertSubscription = {
   type: PulseAlertSubscriptionType
   updatedAt: string
   walletAddress: string
+  walletLabel?: string | null
 }
 
 export type PulseAlertSubscriptionListData = {
@@ -32,7 +37,10 @@ export type PulseAlertSubscriptionCreateInput = {
 }
 
 export type PulseAlertSubscriptionUpdateInput = {
-  status: PulseAlertSubscriptionStatus
+  minScore?: number
+  minSizeUsd?: number
+  status?: PulseAlertSubscriptionStatus
+  triggerMode?: PulseAlertTriggerMode
 }
 
 export type PulseAlertDeliveryStatus = 'failed' | 'pending' | 'sent'
@@ -51,4 +59,18 @@ export type PulseAlertDelivery = {
   status: PulseAlertDeliveryStatus
   subscriptionId: string
   updatedAt: string
+}
+
+export type PulseAlertRecentDelivery = {
+  channel: PulseAlertDeliveryChannel
+  id: string
+  marketTitle: string
+  occurredAt: string
+  status: PulseAlertRecentDeliveryStatus
+  walletAddress: string
+  walletLabel?: string | null
+}
+
+export type PulseAlertRecentDeliveryListData = {
+  items: PulseAlertRecentDelivery[]
 }

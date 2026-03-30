@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import type {
   PulseAlertDelivery,
   PulseAlertDeliveryStatus,
+  PulseAlertRecentDelivery,
+  PulseAlertRecentDeliveryStatus,
   PulseAlertSubscription,
   PulseAlertTriggerMode,
 } from '../contracts/pulse-alerts.js'
@@ -12,7 +14,9 @@ type AlertSubscriptionRow = {
   channel: 'email'
   created_at: Date | string
   id: string
+  last_delivery_attempt_at: Date | string | null
   last_delivered_at: Date | string | null
+  last_delivery_status: PulseAlertRecentDeliveryStatus | null
   min_score: number | null
   min_size_usd: number | null
   status: 'active' | 'paused'
@@ -20,6 +24,7 @@ type AlertSubscriptionRow = {
   type: 'wallet'
   updated_at: Date | string
   wallet_address: string
+  wallet_label: string | null
 }
 
 type AlertDeliveryRow = {
@@ -36,6 +41,18 @@ type AlertDeliveryRow = {
   status: PulseAlertDeliveryStatus
   subscription_id: string
   updated_at: Date | string
+}
+
+type RecentAlertDeliveryRow = {
+  channel: 'email' | 'telegram'
+  created_at: Date | string
+  id: string
+  last_attempt_at: Date | string | null
+  market_title: string
+  sent_at: Date | string | null
+  status: PulseAlertDeliveryStatus
+  wallet_address: string
+  wallet_label: string | null
 }
 
 type AlertSubscriptionMatchRow = AlertSubscriptionRow & {
@@ -84,7 +101,9 @@ function mapSubscription(row: AlertSubscriptionRow): PulseAlertSubscription {
     channel: row.channel,
     createdAt: toIsoString(row.created_at) ?? new Date(0).toISOString(),
     id: row.id,
+    lastDeliveryAttemptAt: toIsoString(row.last_delivery_attempt_at),
     lastDeliveredAt: toIsoString(row.last_delivered_at),
+    lastDeliveryStatus: row.last_delivery_status,
     minScore: row.min_score,
     minSizeUsd: row.min_size_usd,
     status: row.status,
@@ -92,6 +111,7 @@ function mapSubscription(row: AlertSubscriptionRow): PulseAlertSubscription {
     type: row.type,
     updatedAt: toIsoString(row.updated_at) ?? new Date(0).toISOString(),
     walletAddress: row.wallet_address,
+    walletLabel: row.wallet_label,
   }
 }
 
@@ -110,6 +130,22 @@ function mapDelivery(row: AlertDeliveryRow): PulseAlertDelivery {
     status: row.status,
     subscriptionId: row.subscription_id,
     updatedAt: toIsoString(row.updated_at) ?? new Date(0).toISOString(),
+  }
+}
+
+function mapRecentDelivery(row: RecentAlertDeliveryRow): PulseAlertRecentDelivery {
+  return {
+    channel: row.channel,
+    id: row.id,
+    marketTitle: row.market_title,
+    occurredAt:
+      toIsoString(row.sent_at) ??
+      toIsoString(row.last_attempt_at) ??
+      toIsoString(row.created_at) ??
+      new Date(0).toISOString(),
+    status: row.status === 'sent' ? 'delivered' : row.status,
+    walletAddress: row.wallet_address,
+    walletLabel: row.wallet_label,
   }
 }
 
@@ -139,9 +175,12 @@ export async function createAlertSubscription(input: {
         channel,
         status,
         wallet_address,
+        NULL::TEXT AS wallet_label,
         min_score,
         min_size_usd,
         trigger_mode,
+        NULL::TIMESTAMPTZ AS last_delivery_attempt_at,
+        NULL::TEXT AS last_delivery_status,
         NULL::TIMESTAMPTZ AS last_delivered_at,
         created_at,
         updated_at
@@ -196,15 +235,20 @@ export async function getActiveAlertSubscriptionsForSignals(
         subscriptions.channel,
         subscriptions.status,
         subscriptions.wallet_address,
+        wallets.display_name AS wallet_label,
         subscriptions.min_score,
         subscriptions.min_size_usd,
         subscriptions.trigger_mode,
+        NULL::TIMESTAMPTZ AS last_delivery_attempt_at,
+        NULL::TEXT AS last_delivery_status,
         NULL::TIMESTAMPTZ AS last_delivered_at,
         subscriptions.created_at,
         subscriptions.updated_at,
         users.email AS user_email
       FROM pulse_alert_subscriptions subscriptions
       JOIN pulse_users users ON users.id = subscriptions.user_id
+      LEFT JOIN pulse_smart_money_wallets wallets
+        ON wallets.address = subscriptions.wallet_address
       WHERE subscriptions.status = 'active'
         AND subscriptions.type = 'wallet'
         AND subscriptions.wallet_address = ANY($1::TEXT[])
@@ -270,28 +314,45 @@ export async function listAlertSubscriptionsByUser(userId: string) {
         subscriptions.channel,
         subscriptions.status,
         subscriptions.wallet_address,
+        wallets.display_name AS wallet_label,
         subscriptions.min_score,
         subscriptions.min_size_usd,
         subscriptions.trigger_mode,
-        subscriptions.created_at,
-        subscriptions.updated_at,
-        MAX(deliveries.sent_at) AS last_delivered_at
-      FROM pulse_alert_subscriptions subscriptions
-      LEFT JOIN pulse_alert_deliveries deliveries
-        ON deliveries.subscription_id = subscriptions.id
-        AND deliveries.status = 'sent'
-      WHERE subscriptions.user_id = $1
-      GROUP BY
-        subscriptions.id,
-        subscriptions.type,
-        subscriptions.channel,
-        subscriptions.status,
-        subscriptions.wallet_address,
-        subscriptions.min_score,
-        subscriptions.min_size_usd,
-        subscriptions.trigger_mode,
+        latest_delivery.delivery_activity_at AS last_delivery_attempt_at,
+        latest_delivery.delivery_status AS last_delivery_status,
+        last_sent_delivery.last_delivered_at,
         subscriptions.created_at,
         subscriptions.updated_at
+      FROM pulse_alert_subscriptions subscriptions
+      LEFT JOIN pulse_smart_money_wallets wallets
+        ON wallets.address = subscriptions.wallet_address
+      LEFT JOIN LATERAL (
+        SELECT
+          CASE
+            WHEN deliveries.status = 'sent' THEN 'delivered'
+            ELSE deliveries.status
+          END AS delivery_status,
+          COALESCE(
+            deliveries.sent_at,
+            deliveries.last_attempt_at,
+            deliveries.created_at
+          ) AS delivery_activity_at
+        FROM pulse_alert_deliveries deliveries
+        WHERE deliveries.subscription_id = subscriptions.id
+        ORDER BY COALESCE(
+          deliveries.sent_at,
+          deliveries.last_attempt_at,
+          deliveries.created_at
+        ) DESC
+        LIMIT 1
+      ) latest_delivery ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT MAX(deliveries.sent_at) AS last_delivered_at
+        FROM pulse_alert_deliveries deliveries
+        WHERE deliveries.subscription_id = subscriptions.id
+          AND deliveries.status = 'sent'
+      ) last_sent_delivery ON TRUE
+      WHERE subscriptions.user_id = $1
       ORDER BY subscriptions.created_at DESC
     `,
     [userId],
@@ -302,14 +363,20 @@ export async function listAlertSubscriptionsByUser(userId: string) {
 
 export async function updateAlertSubscriptionStatus(input: {
   id: string
-  status: 'active' | 'paused'
+  minScore?: number | null
+  minSizeUsd?: number | null
+  status?: 'active' | 'paused'
+  triggerMode?: PulseAlertTriggerMode
   userId: string
 }) {
   const result = await getDbPool().query<AlertSubscriptionRow>(
     `
       UPDATE pulse_alert_subscriptions
       SET
-        status = $3,
+        status = COALESCE($3, status),
+        min_score = COALESCE($4, min_score),
+        min_size_usd = COALESCE($5, min_size_usd),
+        trigger_mode = COALESCE($6, trigger_mode),
         updated_at = NOW()
       WHERE id = $1
         AND user_id = $2
@@ -319,14 +386,24 @@ export async function updateAlertSubscriptionStatus(input: {
         channel,
         status,
         wallet_address,
+        NULL::TEXT AS wallet_label,
         min_score,
         min_size_usd,
         trigger_mode,
+        NULL::TIMESTAMPTZ AS last_delivery_attempt_at,
+        NULL::TEXT AS last_delivery_status,
         NULL::TIMESTAMPTZ AS last_delivered_at,
         created_at,
         updated_at
     `,
-    [input.id, input.userId, input.status],
+    [
+      input.id,
+      input.userId,
+      input.status ?? null,
+      input.minScore ?? null,
+      input.minSizeUsd ?? null,
+      input.triggerMode ?? null,
+    ],
   )
 
   return result.rows[0] ? mapSubscription(result.rows[0]) : null
@@ -359,6 +436,40 @@ export async function listPendingAlertDeliveries(limit = 25) {
   )
 
   return result.rows.map((row) => mapDelivery(row))
+}
+
+export async function listRecentAlertDeliveriesByUser(userId: string, limit = 5) {
+  const result = await getDbPool().query<RecentAlertDeliveryRow>(
+    `
+      SELECT
+        deliveries.id,
+        deliveries.channel,
+        deliveries.status,
+        deliveries.sent_at,
+        deliveries.last_attempt_at,
+        deliveries.created_at,
+        signals.market_title,
+        subscriptions.wallet_address,
+        wallets.display_name AS wallet_label
+      FROM pulse_alert_deliveries deliveries
+      JOIN pulse_alert_subscriptions subscriptions
+        ON subscriptions.id = deliveries.subscription_id
+      JOIN pulse_smart_money_signals signals
+        ON signals.id = deliveries.signal_id
+      LEFT JOIN pulse_smart_money_wallets wallets
+        ON wallets.address = subscriptions.wallet_address
+      WHERE subscriptions.user_id = $1
+      ORDER BY COALESCE(
+        deliveries.sent_at,
+        deliveries.last_attempt_at,
+        deliveries.created_at
+      ) DESC
+      LIMIT $2
+    `,
+    [userId, limit],
+  )
+
+  return result.rows.map((row) => mapRecentDelivery(row))
 }
 
 export async function listPendingAlertDeliveryJobs(limit = 25) {

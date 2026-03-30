@@ -164,6 +164,122 @@ describe('Auth and alerts', () => {
 
     assert.equal(response.statusCode, 200)
     assert.equal(response.json().data.user.email, 'reader@example.com')
+    assert.equal(response.json().data.user.defaultChannel, 'email')
+    assert.equal(response.json().data.user.telegramHandle, null)
+  })
+
+  test('returns and updates the authenticated user profile', async () => {
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
+    const token = verifyResponse.json().data.session.token as string
+
+    const meResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'GET',
+      url: '/api/v1/user/me',
+    })
+
+    assert.equal(meResponse.statusCode, 200)
+    assert.equal(meResponse.json().data.email, 'reader@example.com')
+    assert.equal(meResponse.json().data.defaultChannel, 'email')
+    assert.equal(meResponse.json().data.telegramHandle, null)
+
+    const connectResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        code: '246810',
+      },
+      url: '/api/v1/telegram/connect',
+    })
+
+    assert.equal(connectResponse.statusCode, 200)
+
+    const patchResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'PATCH',
+      payload: {
+        defaultChannel: 'both',
+        email: 'alerts@example.com',
+      },
+      url: '/api/v1/user/preferences',
+    })
+
+    assert.equal(patchResponse.statusCode, 200)
+    assert.equal(patchResponse.json().data.email, 'alerts@example.com')
+    assert.equal(patchResponse.json().data.defaultChannel, 'both')
+  })
+
+  test('connects and disconnects Telegram for the authenticated user', async () => {
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
+    const token = verifyResponse.json().data.session.token as string
+
+    const invalidResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        code: '000000',
+      },
+      url: '/api/v1/telegram/connect',
+    })
+
+    assert.equal(invalidResponse.statusCode, 400)
+    assert.equal(invalidResponse.json().error.code, 'invalid_code')
+
+    const connectResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        code: '246810',
+      },
+      url: '/api/v1/telegram/connect',
+    })
+
+    assert.equal(connectResponse.statusCode, 200)
+    assert.equal(connectResponse.json().data.handle, '@reader')
+
+    const meResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'GET',
+      url: '/api/v1/user/me',
+    })
+
+    assert.equal(meResponse.statusCode, 200)
+    assert.equal(meResponse.json().data.telegramHandle, '@reader')
+
+    const disconnectResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'DELETE',
+      url: '/api/v1/telegram/connect',
+    })
+
+    assert.equal(disconnectResponse.statusCode, 204)
+
+    const refreshedResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'GET',
+      url: '/api/v1/user/me',
+    })
+
+    assert.equal(refreshedResponse.statusCode, 200)
+    assert.equal(refreshedResponse.json().data.telegramHandle, null)
   })
 
   test('creates and lists wallet alert subscriptions for an authenticated user', async () => {
@@ -252,6 +368,48 @@ describe('Auth and alerts', () => {
     assert.equal(pauseResponse.json().data.status, 'paused')
     assert.equal(resumeResponse.statusCode, 200)
     assert.equal(resumeResponse.json().data.status, 'active')
+  })
+
+  test('updates wallet alert trigger and thresholds for the authenticated user', async () => {
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
+    const token = verifyResponse.json().data.session.token as string
+    const createResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        minScore: 65,
+        minSizeUsd: 900,
+        triggerMode: 'any-new-position',
+        type: 'wallet',
+        walletAddress: '0xAbC123',
+      },
+      url: '/api/v1/alerts/subscriptions',
+    })
+
+    const subscriptionId = createResponse.json().data.id as string
+    const updateResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'PATCH',
+      payload: {
+        minScore: 82,
+        minSizeUsd: 2500,
+        triggerMode: 'winning-moves-only',
+      },
+      url: `/api/v1/alerts/subscriptions/${subscriptionId}`,
+    })
+
+    assert.equal(updateResponse.statusCode, 200)
+    assert.equal(updateResponse.json().data.minScore, 82)
+    assert.equal(updateResponse.json().data.minSizeUsd, 2500)
+    assert.equal(
+      updateResponse.json().data.triggerMode,
+      'winning-moves-only',
+    )
   })
 
   test('rejects duplicate wallet subscriptions for the same authenticated user', async () => {

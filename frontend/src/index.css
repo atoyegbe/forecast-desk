@@ -569,6 +569,28 @@ img {
   }
 }
 
+@keyframes telegram-code-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  16%,
+  50%,
+  83% {
+    transform: translateX(-4px);
+  }
+
+  33%,
+  66% {
+    transform: translateX(4px);
+  }
+}
+
+.telegram-code-shake {
+  animation: telegram-code-shake 300ms ease-in-out 1;
+}
+
 .ticker-mask {
   overflow: hidden;
   mask-image: linear-gradient(

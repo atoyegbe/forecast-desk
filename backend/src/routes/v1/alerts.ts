@@ -4,6 +4,7 @@ import {
   createWalletAlertSubscription,
   deleteUserAlertSubscription,
   listUserAlertSubscriptions,
+  listUserRecentAlertDeliveries,
   updateUserAlertSubscription,
 } from '../../app/alerts-service.js'
 import { getBearerToken, getCurrentSession } from '../../app/auth-service.js'
@@ -13,6 +14,7 @@ import {
 } from '../../contracts/api-response.js'
 import type { PulseAuthCurrentSession } from '../../contracts/pulse-auth.js'
 import type {
+  PulseAlertRecentDeliveryListData,
   PulseAlertSubscription,
   PulseAlertSubscriptionCreateInput,
   PulseAlertSubscriptionListData,
@@ -80,6 +82,20 @@ export const v1AlertRoutes: FastifyPluginAsync = async (app) => {
     const items = await listUserAlertSubscriptions(session.user.id)
 
     return createApiResponse<PulseAlertSubscriptionListData>({
+      items,
+    })
+  })
+
+  app.get('/alerts/deliveries/recent', async (request, reply) => {
+    const session = await requireSession(request, reply)
+
+    if (!session) {
+      return
+    }
+
+    const items = await listUserRecentAlertDeliveries(session.user.id, 5)
+
+    return createApiResponse<PulseAlertRecentDeliveryListData>({
       items,
     })
   })

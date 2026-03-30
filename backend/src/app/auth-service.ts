@@ -36,15 +36,19 @@ function normalizeEmail(email: string) {
 
 function toPublicUser(user: {
   createdAt: string
+  defaultChannel: 'both' | 'email' | 'telegram'
   email: string
   id: string
   lastLoginAt: string | null
+  telegramHandle: string | null
 }): PulseAuthUser {
   return {
     createdAt: user.createdAt,
+    defaultChannel: user.defaultChannel,
     email: user.email,
     id: user.id,
     lastLoginAt: user.lastLoginAt,
+    telegramHandle: user.telegramHandle,
   }
 }
 

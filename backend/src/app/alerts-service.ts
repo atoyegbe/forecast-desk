@@ -1,4 +1,5 @@
 import type {
+  PulseAlertRecentDelivery,
   PulseAlertSubscription,
   PulseAlertSubscriptionCreateInput,
   PulseAlertSubscriptionUpdateInput,
@@ -11,6 +12,7 @@ import {
   deleteAlertSubscription,
   getActiveAlertSubscriptionsForSignals,
   listAlertSubscriptionsByUser,
+  listRecentAlertDeliveriesByUser,
   listPendingAlertDeliveryJobs,
   markAlertDeliveryFailed,
   markAlertDeliverySent,
@@ -149,19 +151,52 @@ export async function updateUserAlertSubscription(
   id: string,
   input: PulseAlertSubscriptionUpdateInput,
 ) {
-  if (input.status !== 'active' && input.status !== 'paused') {
+  const minScore = parseOptionalNumber(input.minScore, 100)
+  const minSizeUsd = parseOptionalNumber(input.minSizeUsd)
+
+  if (
+    input.status !== undefined &&
+    input.status !== 'active' &&
+    input.status !== 'paused'
+  ) {
     throw new Error('Alert status is invalid.')
+  }
+
+  if (Number.isNaN(minScore)) {
+    throw new Error('Minimum score must be between 0 and 100.')
+  }
+
+  if (Number.isNaN(minSizeUsd)) {
+    throw new Error('Minimum signal size must be zero or greater.')
+  }
+
+  if (
+    input.triggerMode !== undefined &&
+    input.triggerMode !== 'any-new-position' &&
+    input.triggerMode !== 'winning-moves-only'
+  ) {
+    throw new Error('Trigger mode is invalid.')
   }
 
   return updateAlertSubscriptionStatus({
     id,
+    minScore,
+    minSizeUsd,
     status: input.status,
+    triggerMode: input.triggerMode,
     userId,
   })
 }
 
 export async function listUserAlertSubscriptions(userId: string) {
   return listAlertSubscriptionsByUser(userId)
+}
+
+export async function listUserRecentAlertDeliveries(
+  userId: string,
+  limit = 5,
+): Promise<PulseAlertRecentDelivery[]> {
+  return listRecentAlertDeliveriesByUser(userId, limit)
 }
 
 export async function queueAlertDeliveriesForSignals(

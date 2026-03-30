@@ -1,5 +1,6 @@
 import { fetchBackendJson } from '../../lib/api-client'
 import type {
+  PulseAlertRecentDelivery,
   PulseAlertSubscription,
   PulseAlertSubscriptionCreateInput,
   PulseAlertSubscriptionUpdateInput,
@@ -65,4 +66,17 @@ export async function updateAlertSubscription(
   )
 
   return response.data
+}
+
+export async function listRecentAlertDeliveries(token: string) {
+  const response = await fetchBackendJson<{ items: PulseAlertRecentDelivery[] }>(
+    '/alerts/deliveries/recent',
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  )
+
+  return response.data.items
 }

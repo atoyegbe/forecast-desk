@@ -8,6 +8,7 @@ import {
   createAlertSubscription,
   deleteAlertSubscription,
   listAlertSubscriptions,
+  listRecentAlertDeliveries,
   updateAlertSubscription,
 } from './api'
 import type {
@@ -19,6 +20,7 @@ const ALERTS_QUERY_ROOT = ['alerts'] as const
 
 export const alertKeys = {
   all: ALERTS_QUERY_ROOT,
+  recentDeliveries: [...ALERTS_QUERY_ROOT, 'recent-deliveries'] as const,
   subscriptions: [...ALERTS_QUERY_ROOT, 'subscriptions'] as const,
 }
 
@@ -93,5 +95,16 @@ export function useUpdateAlertSubscriptionMutation() {
         queryKey: alertKeys.all,
       })
     },
+  })
+}
+
+export function useRecentAlertDeliveriesQuery() {
+  const { sessionToken } = useAuth()
+
+  return useQuery({
+    enabled: Boolean(sessionToken),
+    queryFn: () => listRecentAlertDeliveries(sessionToken!),
+    queryKey: alertKeys.recentDeliveries,
+    staleTime: 60_000,
   })
 }

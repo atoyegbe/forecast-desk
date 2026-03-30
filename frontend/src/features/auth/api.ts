@@ -1,6 +1,8 @@
 import { fetchBackendJson } from '../../lib/api-client'
 import type {
   PulseAuthCurrentSession,
+  PulseTelegramConnectResult,
+  PulseUserPreferencesUpdateInput,
   PulseAuthVerifyLinkResult,
 } from './types'
 
@@ -57,4 +59,44 @@ export async function logoutSession(token: string) {
   })
 
   return response.data
+}
+
+export async function updateUserPreferences(
+  token: string,
+  input: PulseUserPreferencesUpdateInput,
+) {
+  const response = await fetchBackendJson<PulseAuthCurrentSession['user']>(
+    '/user/preferences',
+    {
+      body: JSON.stringify(input),
+      headers: buildAuthHeaders(token),
+      method: 'PATCH',
+    },
+  )
+
+  return response.data
+}
+
+export async function connectTelegramChannel(token: string, code: string) {
+  const response = await fetchBackendJson<PulseTelegramConnectResult>(
+    '/telegram/connect',
+    {
+      body: JSON.stringify({
+        code,
+      }),
+      headers: buildAuthHeaders(token),
+      method: 'POST',
+    },
+  )
+
+  return response.data
+}
+
+export async function disconnectTelegramChannel(token: string) {
+  await fetchBackendJson<null>('/telegram/connect', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    method: 'DELETE',
+  })
 }

@@ -133,12 +133,20 @@ CREATE INDEX IF NOT EXISTS idx_pulse_event_link_members_event
 CREATE TABLE IF NOT EXISTS pulse_users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
+  telegram_handle TEXT,
+  default_channel TEXT NOT NULL DEFAULT 'email',
   last_login_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_pulse_users_email
   ON pulse_users(email);
+
+ALTER TABLE pulse_users
+  ADD COLUMN IF NOT EXISTS telegram_handle TEXT;
+
+ALTER TABLE pulse_users
+  ADD COLUMN IF NOT EXISTS default_channel TEXT NOT NULL DEFAULT 'email';
 
 CREATE TABLE IF NOT EXISTS pulse_auth_codes (
   id TEXT PRIMARY KEY,

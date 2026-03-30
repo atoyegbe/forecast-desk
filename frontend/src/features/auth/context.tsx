@@ -72,6 +72,7 @@ type AuthContextValue = {
     pendingAction?: PendingAuthActionInput | null
   }) => void
   pendingAction: PendingAuthAction | null
+  replaceUser: (nextUser: PulseAuthUser | null) => void
   requestMagicLink: (email: string) => Promise<boolean>
   resetAuthDialogToEmailEntry: () => void
   resendMagicLink: () => Promise<boolean>
@@ -544,6 +545,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const replaceUser = (nextUser: PulseAuthUser | null) => {
+    setUser(nextUser)
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -555,6 +560,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isHydrating,
         openAuthDialog,
         pendingAction,
+        replaceUser,
         requestMagicLink: requestMagicLinkForEmail,
         resetAuthDialogToEmailEntry,
         resendMagicLink: resendMagicLinkForEmail,
