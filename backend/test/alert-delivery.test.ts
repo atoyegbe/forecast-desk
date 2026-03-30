@@ -634,4 +634,66 @@ describe('Alert delivery pipeline', () => {
     assert.equal(delivery?.channel, 'telegram')
     assert.equal(delivery?.status, 'sent')
   })
+
+  test('unsubscribes a delivery token by pausing the matching alert', async () => {
+    await createWalletAlert('0xabc123', {
+      minScore: 70,
+      minSizeUsd: 1000,
+    })
+    const [matchingSignal] = await seedSmartMoneySignals()
+
+    setTestEmailSender(async () => ({
+      providerMessageId: 'email_unsub_1',
+    }))
+
+    await queueAlertDeliveriesForSignals([matchingSignal])
+    await processPendingAlertDeliveries()
+
+    const delivery = await queryRow<{
+      id: string
+    }>(
+      `
+        SELECT id
+        FROM pulse_alert_deliveries
+        LIMIT 1
+      `,
+    )
+
+    const unsubscribeResponse = await testApp.getApp().inject({
+      method: 'POST',
+      payload: {
+        token: delivery?.id,
+      },
+      url: '/api/v1/alerts/unsubscribe',
+    })
+
+    assert.equal(unsubscribeResponse.statusCode, 200)
+    assert.equal(unsubscribeResponse.json().data.unsubscribed, true)
+
+    const verifyResponse = await requestAndVerify()
+    const token = verifyResponse.json().data.session.token as string
+    const listResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'GET',
+      url: '/api/v1/alerts/subscriptions',
+    })
+
+    assert.equal(listResponse.statusCode, 200)
+    assert.equal(listResponse.json().data.items[0].status, 'paused')
+  })
+
+  test('rejects unknown unsubscribe tokens', async () => {
+    const response = await testApp.getApp().inject({
+      method: 'POST',
+      payload: {
+        token: 'missing-token',
+      },
+      url: '/api/v1/alerts/unsubscribe',
+    })
+
+    assert.equal(response.statusCode, 404)
+    assert.equal(response.json().error.code, 'INVALID_UNSUBSCRIBE_TOKEN')
+  })
 })

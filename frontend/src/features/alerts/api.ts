@@ -80,3 +80,18 @@ export async function listRecentAlertDeliveries(token: string) {
 
   return response.data.items
 }
+
+export async function unsubscribeAlertByToken(token: string) {
+  const response = await fetchBackendJson<{ unsubscribed: boolean }>(
+    '/alerts/unsubscribe',
+    {
+      body: JSON.stringify({ token }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    },
+  )
+
+  return response.data.unsubscribed
+}

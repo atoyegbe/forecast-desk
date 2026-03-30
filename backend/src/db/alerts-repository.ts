@@ -226,6 +226,24 @@ export async function deleteAlertSubscription(input: {
   return (result.rowCount ?? 0) > 0
 }
 
+export async function unsubscribeAlertByDeliveryToken(token: string) {
+  const result = await getDbPool().query<{ id: string }>(
+    `
+      UPDATE pulse_alert_subscriptions subscriptions
+      SET
+        status = 'paused',
+        updated_at = NOW()
+      FROM pulse_alert_deliveries deliveries
+      WHERE deliveries.id = $1
+        AND deliveries.subscription_id = subscriptions.id
+      RETURNING subscriptions.id
+    `,
+    [token],
+  )
+
+  return (result.rowCount ?? 0) > 0
+}
+
 export async function getActiveAlertSubscriptionsForSignals(
   signals: PulseSmartMoneySignal[],
 ) {

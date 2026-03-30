@@ -17,6 +17,7 @@ import {
   markAlertDeliveryFailed,
   markAlertDeliverySent,
   queueAlertDeliveriesForMatches,
+  unsubscribeAlertByDeliveryToken,
   updateAlertSubscriptionStatus,
 } from '../db/alerts-repository.js'
 import {
@@ -198,6 +199,16 @@ export async function listUserRecentAlertDeliveries(
   limit = 5,
 ): Promise<PulseAlertRecentDelivery[]> {
   return listRecentAlertDeliveriesByUser(userId, limit)
+}
+
+export async function unsubscribeAlert(token: string) {
+  const normalizedToken = token.trim()
+
+  if (!normalizedToken) {
+    throw new Error('Unsubscribe token is required.')
+  }
+
+  return unsubscribeAlertByDeliveryToken(normalizedToken)
 }
 
 export async function queueAlertDeliveriesForSignals(

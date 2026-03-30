@@ -29,6 +29,9 @@ const DivergencePage = lazy(async () => ({
 const AlertsPage = lazy(async () => ({
   default: (await import('./routes/alerts-page')).AlertsPage,
 }))
+const UnsubscribePage = lazy(async () => ({
+  default: (await import('./routes/unsubscribe-page')).UnsubscribePage,
+}))
 const EventComparePage = lazy(async () => ({
   default: (await import('./routes/event-compare-page')).EventComparePage,
 }))
@@ -140,6 +143,12 @@ const alertsRoute = createRoute({
   component: withSuspense(AlertsPage),
 })
 
+const unsubscribeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'unsubscribe',
+  component: withSuspense(UnsubscribePage),
+})
+
 const smartMoneyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'smart-money',
@@ -169,6 +178,7 @@ const routeTree = rootRoute.addChildren([
   divergenceRoute,
   searchRoute,
   alertsRoute,
+  unsubscribeRoute,
   smartMoneyRoute,
   smartMoneyLeaderboardRoute,
   smartMoneyWalletRoute,

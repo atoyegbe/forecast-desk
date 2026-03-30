@@ -5,6 +5,7 @@ import {
   deleteUserAlertSubscription,
   listUserAlertSubscriptions,
   listUserRecentAlertDeliveries,
+  unsubscribeAlert,
   updateUserAlertSubscription,
 } from '../../app/alerts-service.js'
 import { getBearerToken, getCurrentSession } from '../../app/auth-service.js'
@@ -97,6 +98,38 @@ export const v1AlertRoutes: FastifyPluginAsync = async (app) => {
 
     return createApiResponse<PulseAlertRecentDeliveryListData>({
       items,
+    })
+  })
+
+  app.post<{
+    Body: {
+      token?: string
+    }
+  }>('/alerts/unsubscribe', async (request, reply) => {
+    const token = request.body.token?.trim() ?? ''
+
+    if (!token) {
+      return replyWithError(
+        reply,
+        400,
+        'INVALID_UNSUBSCRIBE_TOKEN',
+        'A valid unsubscribe token is required.',
+      )
+    }
+
+    const unsubscribed = await unsubscribeAlert(token)
+
+    if (!unsubscribed) {
+      return replyWithError(
+        reply,
+        404,
+        'INVALID_UNSUBSCRIBE_TOKEN',
+        'This unsubscribe link is no longer valid.',
+      )
+    }
+
+    return createApiResponse({
+      unsubscribed: true,
     })
   })
 
