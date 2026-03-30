@@ -2,9 +2,9 @@
 
 `backend/` is the owned service layer for `naija-pulse`.
 
-The backend now owns the v1 discovery contract for Bayse and Polymarket. It
-persists normalized discovery records in Postgres and serves the public read API
-that `frontend/` consumes.
+The backend now owns the v1 discovery contract for Bayse, Polymarket, Kalshi,
+and Manifold. It persists normalized discovery records in Postgres and serves
+the public read API that `frontend/` consumes.
 
 ## Planned Stack
 
@@ -46,11 +46,20 @@ route instead of Bayse directly. Cross-platform links are also persisted, so the
 backend now serves compare and divergence reads from owned event-link records
 instead of ad hoc frontend joins.
 
+Kalshi and Manifold now join Bayse and Polymarket as first-class read
+providers. Discovery uses Kalshi's public event feed with nested markets, while
+stored history is hydrated from Kalshi event candlesticks. Manifold discovery
+uses the public market search API plus batched probability reads, while price
+history is synthesized from public bet probability transitions.
+
 Smart money is now started as an owned backend surface as well. The current
-implementation seeds from the public Polymarket leaderboard, enriches those
-wallets with position and recent activity data from the public Data API, scores
-them locally, stores the snapshot in Postgres, and serves a public signal feed,
-leaderboard, and wallet-detail read model from owned routes.
+implementation seeds from the public Polymarket leaderboard plus a bounded
+recent-trade discovery pass, enriches those wallets with position and recent
+activity data from the public Data API, scores them locally, stores the
+snapshot in Postgres, and serves a public signal feed, leaderboard, and
+wallet-detail read model from owned routes. The scheduler can now be moved into
+its own worker process, with Postgres advisory locks guarding the smart-money
+jobs so an API process and worker can safely coexist.
 
 ## Local Setup
 
@@ -58,6 +67,12 @@ leaderboard, and wallet-detail read model from owned routes.
 2. Create a local database, for example `createdb naija_pulse`
 3. Run `npm install`
 4. Run `npm run dev`
+
+If you want a dedicated smart-money worker instead of running the scheduler in
+the API process:
+
+1. Start the API with `SMART_MONEY_SCHEDULER_ENABLED=false npm run dev`
+2. Start the worker with `npm run dev:worker`
 
 The backend bootstraps its discovery schema on startup. If `DATABASE_URL` is not
 set, it falls back to `postgresql:///postgres` for local development.

@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:worker": "tsx watch src/worker.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js"
+    "test": "node --test --import tsx ./test/**/*.test.ts",
+    "start": "node dist/server.js",
+    "worker": "node dist/worker.js"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
@@ -20,6 +23,7 @@
     "dotenv": "^17.3.1",
     "fastify": "^5.8.4",
     "pg": "^8.20.0",
+    "resend": "^6.9.4",
     "ws": "^8.20.0"
   }
 }

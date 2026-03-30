@@ -1,5 +1,11 @@
 import type { PulseEvent } from '../features/events/types'
 
+export function getMarketsRoute() {
+  return {
+    to: '/markets' as const,
+  }
+}
+
 export function getCategoryRoute(categorySlug: string) {
   return {
     params: {
@@ -37,6 +43,12 @@ export function getSearchRoute(query?: string) {
         }
       : {},
     to: '/search' as const,
+  }
+}
+
+export function getAlertsRoute() {
+  return {
+    to: '/alerts' as const,
   }
 }
 

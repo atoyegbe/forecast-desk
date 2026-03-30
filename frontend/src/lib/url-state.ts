@@ -38,6 +38,7 @@ export function useUrlSelection<T extends string>({
     const value = values.includes(nextValue) ? nextValue : fallback
 
     void navigate({
+      resetScroll: false,
       replace: true,
       search: (current): AppSearch => {
         const next = {

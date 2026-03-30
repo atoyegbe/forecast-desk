@@ -1,10 +1,14 @@
 import { Link } from '@tanstack/react-router'
+import { useDisplayCurrency } from '../features/currency/context'
 import { PlatformBadge } from './platform-badge'
 import { PriceDisplay } from './price-display'
 import { ScoreBadge } from './score-badge'
+import {
+  createWalletAlertPropsFromSignal,
+  WalletAlertButton,
+} from './wallet-alert-button'
 import type { PulseSmartMoneySignal } from '../features/smart-money/types'
 import {
-  formatCompactCurrency,
   formatSignedProbabilityChange,
   formatTimeAgo,
 } from '../lib/format'
@@ -18,6 +22,7 @@ type SignalCardProps = {
 }
 
 export function SignalCard({ signal }: SignalCardProps) {
+  const { formatMoney } = useDisplayCurrency()
   const walletLabel = signal.walletDisplayName || signal.walletShortAddress
   const deltaClass =
     signal.priceDelta > 0
@@ -48,11 +53,18 @@ export function SignalCard({ signal }: SignalCardProps) {
         </div>
 
         <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <PlatformBadge platform="polymarket" short size="sm" />
-            <span className="terminal-chip border-[var(--color-border)] bg-transparent px-2 py-1 text-[11px] text-[var(--color-text-secondary)]">
-              {signal.category}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <PlatformBadge platform="polymarket" short size="sm" />
+              <span className="terminal-chip border-[var(--color-border)] bg-transparent px-2 py-1 text-[11px] text-[var(--color-text-secondary)]">
+                {signal.category}
+              </span>
+            </div>
+
+            <WalletAlertButton
+              {...createWalletAlertPropsFromSignal(signal)}
+              variant="feed"
+            />
           </div>
 
           <h2 className="text-xl font-semibold leading-tight text-[var(--color-text-primary)]">
@@ -65,7 +77,7 @@ export function SignalCard({ signal }: SignalCardProps) {
               @ <PriceDisplay size="sm" value={signal.entryPrice} />
             </span>
             <span>
-              Position: <span className="mono-data text-[var(--color-text-primary)]">{formatCompactCurrency(signal.size)}</span>
+              Position: <span className="mono-data text-[var(--color-text-primary)]">{formatMoney(signal.size)}</span>
             </span>
           </div>
         </div>

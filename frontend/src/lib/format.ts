@@ -3,12 +3,8 @@ const compactNumberFormatter = new Intl.NumberFormat('en-NG', {
   notation: 'compact',
 })
 
-const currencyFormatter = new Intl.NumberFormat('en-NG', {
-  currency: 'USD',
-  maximumFractionDigits: 0,
-  notation: 'compact',
-  style: 'currency',
-})
+const compactCurrencyFormatterCache = new Map<string, Intl.NumberFormat>()
+const compactTokenFormatterCache = new Map<string, Intl.NumberFormat>()
 
 const dateFormatter = new Intl.DateTimeFormat('en-NG', {
   day: 'numeric',
@@ -48,8 +44,59 @@ export function formatCompactNumber(value: number) {
   return compactNumberFormatter.format(value)
 }
 
-export function formatCompactCurrency(value: number) {
-  return currencyFormatter.format(value)
+function getCompactCurrencyFormatter(
+  currency: string,
+  locale = 'en-NG',
+  maximumFractionDigits = 0,
+) {
+  const cacheKey = `${locale}:${currency}:${maximumFractionDigits}`
+  const cachedFormatter = compactCurrencyFormatterCache.get(cacheKey)
+
+  if (cachedFormatter) {
+    return cachedFormatter
+  }
+
+  const formatter = new Intl.NumberFormat(locale, {
+    currency,
+    maximumFractionDigits,
+    notation: 'compact',
+    style: 'currency',
+  })
+  compactCurrencyFormatterCache.set(cacheKey, formatter)
+
+  return formatter
+}
+
+function getCompactTokenFormatter(locale = 'en-NG') {
+  const cachedFormatter = compactTokenFormatterCache.get(locale)
+
+  if (cachedFormatter) {
+    return cachedFormatter
+  }
+
+  const formatter = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+    notation: 'compact',
+  })
+  compactTokenFormatterCache.set(locale, formatter)
+
+  return formatter
+}
+
+export function formatCompactCurrency(
+  value: number,
+  currency = 'USD',
+  locale = 'en-NG',
+) {
+  return getCompactCurrencyFormatter(currency, locale).format(value)
+}
+
+export function formatCompactToken(
+  value: number,
+  token = 'MANA',
+  locale = 'en-NG',
+) {
+  return `${getCompactTokenFormatter(locale).format(value)} ${token}`
 }
 
 export function formatDate(value?: string | number | null) {

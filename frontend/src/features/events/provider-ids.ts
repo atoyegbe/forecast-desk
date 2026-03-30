@@ -4,6 +4,8 @@ const PROVIDER_SEPARATOR = '__'
 
 const PROVIDER_LABELS: Record<PulseProvider, string> = {
   bayse: 'Bayse',
+  kalshi: 'Kalshi',
+  manifold: 'Manifold',
   polymarket: 'Polymarket',
 }
 
@@ -16,6 +18,20 @@ export function parseProviderScopedId(scopedId: string) {
     return {
       provider: 'polymarket' as const,
       providerId: scopedId.slice(`polymarket${PROVIDER_SEPARATOR}`.length),
+    }
+  }
+
+  if (scopedId.startsWith(`kalshi${PROVIDER_SEPARATOR}`)) {
+    return {
+      provider: 'kalshi' as const,
+      providerId: scopedId.slice(`kalshi${PROVIDER_SEPARATOR}`.length),
+    }
+  }
+
+  if (scopedId.startsWith(`manifold${PROVIDER_SEPARATOR}`)) {
+    return {
+      provider: 'manifold' as const,
+      providerId: scopedId.slice(`manifold${PROVIDER_SEPARATOR}`.length),
     }
   }
 

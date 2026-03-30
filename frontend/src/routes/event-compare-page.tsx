@@ -6,9 +6,15 @@ import {
 } from '@tanstack/react-router'
 import { ComparisonHistoryChart } from '../components/comparison-history-chart'
 import { DivergenceBar } from '../components/divergence-bar'
+import { EventCompareLoadingState } from '../components/loading-state'
 import { PlatformBadge } from '../components/platform-badge'
 import { PriceDisplay } from '../components/price-display'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
+import { useDisplayCurrency } from '../features/currency/context'
+import { getEventMoneyUnit } from '../features/currency/money'
 import { getProviderLabel } from '../features/events/provider-ids'
 import {
   useEventCompareQuery,
@@ -37,6 +43,14 @@ function getComparisonExplainer(providers: PulseProvider[]) {
     return 'Bayse is the only prediction market platform built specifically for African markets. Divergences against global venues can reflect a different regional perspective, different local information, or a crowd with distinct liquidity conditions.'
   }
 
+  if (platformSet.has('kalshi')) {
+    return 'Kalshi is a regulated US exchange with a crowd composition that often differs from crypto-native venues. A spread against Kalshi can reflect different regulation, liquidity, and trader mix rather than a bad match.'
+  }
+
+  if (platformSet.has('manifold')) {
+    return 'Manifold is a play-money forecasting venue. When it diverges from cash or crypto-native venues, that often reflects a different forecaster crowd and weaker capital constraints rather than a simple pricing error.'
+  }
+
   if (platformSet.has('polymarket')) {
     return 'Polymarket is priced by a global crypto-native crowd. Differences across venues can reflect genuinely different trader compositions, information sets, and incentives rather than a simple data mismatch.'
   }
@@ -45,6 +59,7 @@ function getComparisonExplainer(providers: PulseProvider[]) {
 }
 
 export function EventComparePage() {
+  const { formatMoney } = useDisplayCurrency()
   const eventId = useParams({
     strict: false,
     select: (params) => ('eventId' in params ? params.eventId : undefined),
@@ -76,11 +91,7 @@ export function EventComparePage() {
   }, [comparedEvents, historyQueries])
 
   if (eventQuery.isLoading || compareQuery.isLoading) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading comparison desk...
-      </div>
-    )
+    return <EventCompareLoadingState />
   }
 
   if (eventQuery.error || compareQuery.error) {
@@ -127,11 +138,17 @@ export function EventComparePage() {
     new Date(comparison.comparedAt).getTime(),
   )
   const historyIsLoading = historyQueries.some((query) => query.isLoading)
+  const historyIsFetching = historyQueries.some(
+    (query) => query.isFetching && !query.isLoading,
+  )
   const providers = comparison.events.map((item) => item.event.provider)
   const maxVolume = comparison.events.reduce(
     (volume, item) => Math.max(volume, item.totalVolume),
     0,
   )
+  const isRefreshing =
+    (eventQuery.isFetching && !eventQuery.isLoading) ||
+    (compareQuery.isFetching && !compareQuery.isLoading)
 
   return (
     <div className="space-y-6">
@@ -153,6 +170,7 @@ export function EventComparePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {isRefreshing ? <RefreshBadge label="Refreshing" /> : null}
               {comparison.events.map((item) => (
                 <PlatformBadge
                   key={item.event.id}
@@ -173,6 +191,7 @@ export function EventComparePage() {
             <SectionHeader
               description="The dedicated compare desk isolates the highest-signal cross-venue facts first."
               kicker="Spread summary"
+              status={isRefreshing ? <RefreshBadge /> : null}
               title="Comparison at a glance"
             />
 
@@ -203,6 +222,7 @@ export function EventComparePage() {
         <SectionHeader
           description="Each venue keeps its own crowd, liquidity, and engine. Read them side by side before deciding whether the spread matters."
           kicker="Venue cards"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title="How each platform is pricing it"
         />
 
@@ -242,16 +262,16 @@ export function EventComparePage() {
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div>
+                  <div>
                   <div className="stat-label">Volume</div>
                   <div className="mono-data mt-1 text-sm text-[var(--color-text-primary)]">
-                    {formatCompactNumber(item.totalVolume)}
+                    {formatMoney(item.totalVolume, getEventMoneyUnit(item.event))}
                   </div>
                 </div>
                 <div>
                   <div className="stat-label">Liquidity</div>
                   <div className="mono-data mt-1 text-sm text-[var(--color-text-primary)]">
-                    {formatCompactNumber(item.liquidity)}
+                    {formatMoney(item.liquidity, getEventMoneyUnit(item.event))}
                   </div>
                 </div>
                 <div>
@@ -290,6 +310,7 @@ export function EventComparePage() {
           <SectionHeader
             description="Stored history lines are overlaid by venue so you can see whether the spread is persistent or just a current snapshot."
             kicker="History overlay"
+            status={historyIsFetching ? <RefreshBadge /> : null}
             title="How the spread evolved"
           />
 

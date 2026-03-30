@@ -14,6 +14,20 @@ export function parseProviderScopedId(scopedId: string) {
     }
   }
 
+  if (scopedId.startsWith(`kalshi${PROVIDER_SEPARATOR}`)) {
+    return {
+      provider: 'kalshi' as const,
+      providerId: scopedId.slice(`kalshi${PROVIDER_SEPARATOR}`.length),
+    }
+  }
+
+  if (scopedId.startsWith(`manifold${PROVIDER_SEPARATOR}`)) {
+    return {
+      provider: 'manifold' as const,
+      providerId: scopedId.slice(`manifold${PROVIDER_SEPARATOR}`.length),
+    }
+  }
+
   if (scopedId.startsWith(`bayse${PROVIDER_SEPARATOR}`)) {
     return {
       provider: 'bayse' as const,

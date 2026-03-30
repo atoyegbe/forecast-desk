@@ -1,13 +1,27 @@
 import { Link, useParams } from '@tanstack/react-router'
+import { SmartMoneyWalletLoadingState } from '../components/loading-state'
 import { PriceDisplay } from '../components/price-display'
 import { ScoreBadge } from '../components/score-badge'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { SignalCard } from '../components/signal-card'
+import {
+  createWalletAlertPropsFromWallet,
+  WalletAlertButton,
+} from '../components/wallet-alert-button'
+import { useDisplayCurrency } from '../features/currency/context'
 import {
   useSmartMoneyLiveSignals,
   useSmartMoneyWalletQuery,
 } from '../features/smart-money/hooks'
-import { formatCompactCurrency, formatCompactNumber, formatDate, formatSignedPercent, formatTimeAgo } from '../lib/format'
+import {
+  formatCompactNumber,
+  formatDate,
+  formatSignedPercent,
+  formatTimeAgo,
+} from '../lib/format'
 import { getEventRoute, getSmartMoneyLeaderboardRoute } from '../lib/routes'
 
 function ScoreRing({ score }: { score: number }) {
@@ -60,17 +74,17 @@ function ScoreRing({ score }: { score: number }) {
 
 export function SmartMoneyWalletPage() {
   useSmartMoneyLiveSignals()
+  const {
+    formatMoney,
+    formatMoneyChange,
+  } = useDisplayCurrency()
   const { walletAddress } = useParams({
     from: '/smart-money/wallets/$walletAddress',
   })
   const walletQuery = useSmartMoneyWalletQuery(walletAddress)
 
   if (walletQuery.isLoading) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading wallet profile...
-      </div>
-    )
+    return <SmartMoneyWalletLoadingState />
   }
 
   if (walletQuery.error) {
@@ -92,6 +106,7 @@ export function SmartMoneyWalletPage() {
   }
 
   const { categoryStats, openPositions, recentSignals, wallet } = walletDetail
+  const isRefreshing = walletQuery.isFetching && !walletQuery.isLoading
 
   return (
     <div className="space-y-6">
@@ -108,11 +123,19 @@ export function SmartMoneyWalletPage() {
             <div className="panel-elevated flex flex-col items-center justify-center gap-3 p-5">
               <ScoreRing score={wallet.score} />
               <ScoreBadge score={wallet.score} />
+              <WalletAlertButton
+                {...createWalletAlertPropsFromWallet(wallet)}
+                className="w-full"
+                variant="wallet-profile"
+              />
             </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="eyebrow">Wallet profile</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="eyebrow">Wallet profile</div>
+                  {isRefreshing ? <RefreshBadge label="Refreshing" /> : null}
+                </div>
                 <h1 className="display-title">
                   {wallet.displayName || wallet.shortAddress}
                 </h1>
@@ -132,7 +155,7 @@ export function SmartMoneyWalletPage() {
                 </div>
                 <div className="metric-card">
                   <div className="stat-label">Volume</div>
-                  <strong>{formatCompactCurrency(wallet.totalVolume)}</strong>
+                  <strong>{formatMoney(wallet.totalVolume)}</strong>
                 </div>
                 <div className="metric-card">
                   <div className="stat-label">Markets</div>
@@ -148,6 +171,7 @@ export function SmartMoneyWalletPage() {
         <SectionHeader
           description="Category win rate and ROI, ranked by the wallet's strongest historical categories."
           kicker="Performance"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title="Performance by category"
         />
 
@@ -193,6 +217,7 @@ export function SmartMoneyWalletPage() {
         <SectionHeader
           description="Open positions show entry price, current price, current P&L, and where the market is currently trading."
           kicker="Open positions"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title={`Current board (${openPositions.length})`}
         />
 
@@ -243,11 +268,11 @@ export function SmartMoneyWalletPage() {
                 </div>
 
                 <div className={`mono-data text-sm ${position.pnl >= 0 ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}`}>
-                  {formatCompactCurrency(position.pnl)}
+                  {formatMoneyChange(position.pnl)}
                 </div>
 
                 <div className="mono-data text-sm text-[var(--color-text-primary)]">
-                  {formatCompactCurrency(position.entryValue)}
+                  {formatMoney(position.entryValue)}
                 </div>
               </div>
             ))}
@@ -259,6 +284,7 @@ export function SmartMoneyWalletPage() {
         <SectionHeader
           description="Recent qualifying buys from this wallet, pulled from the owned smart money signal store."
           kicker="Recent signals"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title="Signal history"
         />
 

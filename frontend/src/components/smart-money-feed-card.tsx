@@ -1,9 +1,13 @@
 import clsx from 'clsx'
 import { Link } from '@tanstack/react-router'
+import { useDisplayCurrency } from '../features/currency/context'
 import { PlatformBadge } from './platform-badge'
+import {
+  createWalletAlertPropsFromSignal,
+  WalletAlertButton,
+} from './wallet-alert-button'
 import type { PulseSmartMoneySignal } from '../features/smart-money/types'
 import {
-  formatCompactCurrency,
   formatDate,
   formatProbability,
   formatSignedProbabilityChange,
@@ -87,20 +91,6 @@ function getTemperatureStyles(temperature: SignalTemperature) {
   }
 }
 
-function formatSignedCompactCurrency(value: number) {
-  const absolute = formatCompactCurrency(Math.abs(value))
-
-  if (value > 0) {
-    return `+${absolute}`
-  }
-
-  if (value < 0) {
-    return `-${absolute}`
-  }
-
-  return absolute
-}
-
 function getPnlValue(signal: PulseSmartMoneySignal) {
   if (
     !Number.isFinite(signal.currentPrice) ||
@@ -128,38 +118,37 @@ function getDeltaClassName(delta: number) {
 }
 
 export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
+  const {
+    formatMoney,
+    formatMoneyChange,
+  } = useDisplayCurrency()
   const walletLabel = signal.walletDisplayName || signal.walletShortAddress
   const temperature = getSignalTemperature(signal)
   const temperatureStyles = getTemperatureStyles(temperature)
   const scoreTone = getScoreTone(signal.walletScore)
   const pnlValue = getPnlValue(signal)
   const isNoOutcome = signal.outcome === 'NO'
-  const cardProps = signal.eventId
-    ? getEventRoute({
-        id: signal.eventId,
-        slug: signal.eventSlug,
-      })
-    : getSmartMoneyWalletRoute(signal.walletAddress)
 
   return (
-    <Link
-      aria-label={`Open ${signal.marketTitle}`}
+    <article
       className={clsx(
-        'block border-b border-[var(--color-border-subtle)] border-l-2 bg-[var(--color-bg-surface)] px-7 py-5 transition-colors hover:bg-[var(--color-bg-hover)]',
+        'border-b border-[var(--color-border-subtle)] border-l-2 bg-[var(--color-bg-surface)] px-7 py-5 transition-colors hover:bg-[var(--color-bg-hover)]',
         temperatureStyles.borderClassName,
       )}
       style={{ opacity: temperatureStyles.opacity }}
-      {...cardProps}
     >
-      <article className="space-y-4">
+      <div className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <span className="mono-data text-[11px] text-[var(--color-text-tertiary)]">
               Rank #{signal.walletRank}
             </span>
-            <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+            <Link
+              className="truncate text-sm font-medium text-[var(--color-text-primary)] transition hover:text-[var(--color-brand)]"
+              {...getSmartMoneyWalletRoute(signal.walletAddress)}
+            >
               {walletLabel}
-            </span>
+            </Link>
             <span className="mono-data text-[11px] text-[var(--color-text-secondary)]">
               {formatTimeAgo(signal.signalAt)}
             </span>
@@ -179,9 +168,21 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
         </div>
 
         <div>
-          <h2 className="mb-1.5 text-[15px] font-medium leading-6 text-[var(--color-text-primary)]">
-            {signal.marketTitle}
-          </h2>
+          {signal.eventId ? (
+            <Link
+              className="mb-1.5 block text-[15px] font-medium leading-6 text-[var(--color-text-primary)] transition hover:text-[var(--color-brand)]"
+              {...getEventRoute({
+                id: signal.eventId,
+                slug: signal.eventSlug,
+              })}
+            >
+              {signal.marketTitle}
+            </Link>
+          ) : (
+            <h2 className="mb-1.5 text-[15px] font-medium leading-6 text-[var(--color-text-primary)]">
+              {signal.marketTitle}
+            </h2>
+          )}
 
           <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
@@ -199,11 +200,17 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
               </span>
               <span className="text-[var(--color-text-tertiary)]">·</span>
               <span className="mono-data font-medium text-[var(--color-text-primary)]">
-                {formatCompactCurrency(signal.size)}
+                {formatMoney(signal.size)}
               </span>
             </div>
 
-            <PlatformBadge platform={signal.provider} short size="sm" />
+            <div className="flex items-center gap-2">
+              <PlatformBadge platform={signal.provider} short size="sm" />
+              <WalletAlertButton
+                {...createWalletAlertPropsFromSignal(signal)}
+                variant="feed"
+              />
+            </div>
           </div>
         </div>
 
@@ -242,7 +249,7 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
                         : 'text-[var(--color-text-secondary)]',
                 )}
               >
-                {pnlValue === null ? '—' : formatSignedCompactCurrency(pnlValue)}
+                {pnlValue === null ? '—' : formatMoneyChange(pnlValue)}
               </span>
             </div>
           </div>
@@ -256,7 +263,25 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
             </div>
           ) : null}
         </div>
-      </article>
-    </Link>
+
+        <div className="flex flex-wrap gap-3">
+          {signal.eventId ? (
+            <Link
+              className="terminal-button"
+              {...getEventRoute({
+                id: signal.eventId,
+                slug: signal.eventSlug,
+              })}
+            >
+              View market
+            </Link>
+          ) : (
+            <Link className="terminal-button" {...getSmartMoneyWalletRoute(signal.walletAddress)}>
+              View wallet
+            </Link>
+          )}
+        </div>
+      </div>
+    </article>
   )
 }

@@ -10,7 +10,9 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router'
+import { RouteLoadingState } from './components/loading-state'
 import { SiteShell } from './components/site-shell'
+import { LandingPage } from './routes/landing-page'
 import { HomePage } from './routes/home-page'
 
 export type AppSearch = Record<string, string | undefined>
@@ -23,6 +25,12 @@ const CategoryPage = lazy(async () => ({
 }))
 const DivergencePage = lazy(async () => ({
   default: (await import('./routes/divergence-page')).DivergencePage,
+}))
+const AlertsPage = lazy(async () => ({
+  default: (await import('./routes/alerts-page')).AlertsPage,
+}))
+const UnsubscribePage = lazy(async () => ({
+  default: (await import('./routes/unsubscribe-page')).UnsubscribePage,
 }))
 const EventComparePage = lazy(async () => ({
   default: (await import('./routes/event-compare-page')).EventComparePage,
@@ -44,15 +52,7 @@ const NotFoundPage = lazy(async () => ({
 }))
 
 function RouteSkeleton() {
-  return (
-    <div
-      aria-live="polite"
-      className="panel p-8 text-[var(--color-text-secondary)]"
-      role="status"
-    >
-      Loading view...
-    </div>
-  )
+  return <RouteLoadingState />
 }
 
 function withSuspense(Component: LazyExoticComponent<ComponentType>) {
@@ -83,9 +83,15 @@ const rootRoute = createRootRoute({
   },
 })
 
-const homeRoute = createRoute({
+const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
+  component: LandingPage,
+})
+
+const marketsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'markets',
   component: HomePage,
 })
 
@@ -131,6 +137,18 @@ const searchRoute = createRoute({
   component: withSuspense(SearchPage),
 })
 
+const alertsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'alerts',
+  component: withSuspense(AlertsPage),
+})
+
+const unsubscribeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'unsubscribe',
+  component: withSuspense(UnsubscribePage),
+})
+
 const smartMoneyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'smart-money',
@@ -150,7 +168,8 @@ const smartMoneyWalletRoute = createRoute({
 })
 
 const routeTree = rootRoute.addChildren([
-  homeRoute,
+  landingRoute,
+  marketsRoute,
   eventRoute,
   eventSlugRoute,
   eventCompareRoute,
@@ -158,6 +177,8 @@ const routeTree = rootRoute.addChildren([
   categoryRoute,
   divergenceRoute,
   searchRoute,
+  alertsRoute,
+  unsubscribeRoute,
   smartMoneyRoute,
   smartMoneyLeaderboardRoute,
   smartMoneyWalletRoute,

@@ -1,4 +1,6 @@
 import { Link } from '@tanstack/react-router'
+import { useDisplayCurrency } from '../features/currency/context'
+import { getEventMoneyUnit } from '../features/currency/money'
 import type { PulseEvent } from '../features/events/types'
 import {
   formatCompactNumber,
@@ -26,6 +28,7 @@ export function MarketRow({
   change,
   event,
 }: MarketRowProps) {
+  const { formatMoney } = useDisplayCurrency()
   const market = event.markets[0]
   const secondaryMetricLabel =
     event.totalOrders > 0 ? 'Orders' : 'Liquidity'
@@ -126,14 +129,16 @@ export function MarketRow({
           <div className="text-left xl:text-right">
             <div className="stat-label">Total volume</div>
             <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-              {formatCompactNumber(event.totalVolume)}
+              {formatMoney(event.totalVolume, getEventMoneyUnit(event))}
             </div>
           </div>
 
           <div className="text-left xl:text-right">
             <div className="stat-label">{secondaryMetricLabel}</div>
             <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-              {formatCompactNumber(secondaryMetricValue)}
+              {event.totalOrders > 0
+                ? formatCompactNumber(secondaryMetricValue)
+                : formatMoney(secondaryMetricValue, getEventMoneyUnit(event))}
             </div>
           </div>
         </div>

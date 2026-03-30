@@ -5,14 +5,22 @@ import {
 import {
   Link,
   useParams,
+  useSearch,
 } from '@tanstack/react-router'
 import { CompactMarketCard } from '../components/compact-market-card'
 import { DeskTabs } from '../components/desk-tabs'
+import {
+  CategoryDeskLoadingState,
+  TableLoadingState,
+} from '../components/loading-state'
 import { MarketCard } from '../components/market-card'
 import { MarketRow } from '../components/market-row'
 import { MarketRowCard } from '../components/market-row-card'
 import { PlatformBadge } from '../components/platform-badge'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { useEventsQuery } from '../features/events/hooks'
 import {
   EMPTY_EVENTS,
@@ -29,9 +37,15 @@ import {
   formatDate,
   formatProbability,
 } from '../lib/format'
-import { getEventRoute } from '../lib/routes'
+import {
+  getEventRoute,
+  getMarketsRoute,
+} from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
-import type { PulseEvent } from '../features/events/types'
+import type {
+  PulseEvent,
+  PulseProvider,
+} from '../features/events/types'
 
 const CATEGORY_TAB_IDS = ['summary', 'conviction'] as const
 const INITIAL_VISIBLE_MARKETS = 6
@@ -64,21 +78,40 @@ function getResolutionLabel(event: PulseEvent) {
   return yesPrice >= noPrice ? 'YES' : 'NO'
 }
 
+function getProviderFilter(value: unknown): PulseProvider | undefined {
+  if (
+    value === 'bayse' ||
+    value === 'kalshi' ||
+    value === 'manifold' ||
+    value === 'polymarket'
+  ) {
+    return value
+  }
+
+  return undefined
+}
+
 export function CategoryPage() {
   const categorySlug = useParams({
     strict: false,
     select: (params) => ('categorySlug' in params ? params.categorySlug : undefined),
   })
+  const search = useSearch({ strict: false })
   const [showAllMostActive, setShowAllMostActive] = useState(false)
   const [activeTabId, setActiveTabId] = useUrlSelection({
     fallback: 'summary',
     key: 'tab',
     values: CATEGORY_TAB_IDS,
   })
-  const eventsQuery = useEventsQuery({ status: 'open' })
+  const activeProvider = getProviderFilter(search.provider)
+  const eventsQuery = useEventsQuery({
+    provider: activeProvider,
+    status: 'open',
+  })
   const requestedCategory = categorySlug ? formatCategory(categorySlug) : ''
   const resolvedEventsQuery = useEventsQuery({
     category: categorySlug === 'sports' ? requestedCategory : '__none__',
+    provider: activeProvider,
     status: 'closed',
   })
   const events = eventsQuery.data ?? EMPTY_EVENTS
@@ -89,11 +122,7 @@ export function CategoryPage() {
   }, [categorySlug])
 
   if (eventsQuery.isLoading) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading category desk...
-      </div>
-    )
+    return <CategoryDeskLoadingState />
   }
 
   if (!category) {
@@ -102,7 +131,7 @@ export function CategoryPage() {
         <p className="text-lg text-[var(--color-down)]">That category desk does not exist yet.</p>
         <Link
           className="terminal-button mt-4 text-sm font-medium"
-          to="/"
+          {...getMarketsRoute()}
         >
           Back to markets
         </Link>
@@ -150,6 +179,11 @@ export function CategoryPage() {
   const visibleSportsMostActive = showAllMostActive
     ? sportsMostActive
     : sportsMostActive.slice(0, INITIAL_VISIBLE_MARKETS)
+  const emptyDeskMessage = `No ${category.toLowerCase()} markets match this desk view yet.`
+  const emptyConvictionMessage = `No ${category.toLowerCase()} markets are showing a strong lean yet.`
+  const isEventsRefreshing = eventsQuery.isFetching && !eventsQuery.isLoading
+  const isResolvedRefreshing =
+    resolvedEventsQuery.isFetching && !resolvedEventsQuery.isLoading
 
   return (
     <div className="space-y-6">
@@ -158,7 +192,7 @@ export function CategoryPage() {
           <div className="space-y-5">
             <Link
               className="section-kicker hover:text-[var(--color-text-primary)]"
-              to="/"
+              {...getMarketsRoute()}
             >
               Markets
             </Link>
@@ -231,6 +265,7 @@ export function CategoryPage() {
           <section className="space-y-4">
             <SectionHeader
               kicker="Markets"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Most active"
             />
 
@@ -264,6 +299,7 @@ export function CategoryPage() {
           <section className="space-y-4">
             <SectionHeader
               kicker="Markets"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Closing soon"
             />
 
@@ -285,6 +321,7 @@ export function CategoryPage() {
           <section className="space-y-4">
             <SectionHeader
               kicker="Markets"
+              status={isResolvedRefreshing ? <RefreshBadge /> : null}
               title="Recently resolved"
             />
 
@@ -310,11 +347,8 @@ export function CategoryPage() {
                   <tbody>
                     {resolvedEventsQuery.isLoading ? (
                       <tr>
-                        <td
-                          className="px-4 py-4 text-sm text-[var(--color-text-secondary)]"
-                          colSpan={4}
-                        >
-                          Loading recently resolved sports markets...
+                        <td className="p-0" colSpan={4}>
+                          <TableLoadingState columns={4} rows={4} />
                         </td>
                       </tr>
                     ) : sportsResolved.length ? (
@@ -366,12 +400,19 @@ export function CategoryPage() {
             <SectionHeader
               description="Activity-ranked names are the core of the category board. This is where participation is densest, not just where prices happen to be interesting."
               kicker="Most active"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Where order flow is densest"
             />
             <div className="space-y-3">
-              {mostActive.map((event) => (
-                <MarketRow event={event} key={event.id} />
-              ))}
+              {mostActive.length ? (
+                mostActive.map((event) => (
+                  <MarketRow event={event} key={event.id} />
+                ))
+              ) : (
+                <div className="panel-elevated p-4 text-sm text-[var(--color-text-secondary)]">
+                  {emptyDeskMessage}
+                </div>
+              )}
             </div>
           </section>
 
@@ -410,9 +451,15 @@ export function CategoryPage() {
               {
                 content: (
                   <div className="space-y-4">
-                    {convictionBoard.map((event) => (
-                      <MarketRow event={event} key={event.id} />
-                    ))}
+                    {convictionBoard.length ? (
+                      convictionBoard.map((event) => (
+                        <MarketRow event={event} key={event.id} />
+                      ))
+                    ) : (
+                      <div className="panel-elevated p-4 text-sm text-[var(--color-text-secondary)]">
+                        {emptyConvictionMessage}
+                      </div>
+                    )}
                   </div>
                 ),
                 description: 'High-conviction names give you the opposite read: markets already leaning sharply in one direction.',
@@ -431,12 +478,19 @@ export function CategoryPage() {
             <SectionHeader
               description="These are the names nearest the middle, where conviction is lowest and the next piece of information matters most."
               kicker="Least settled"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Closest calls"
             />
             <div className="mt-4 space-y-3">
-              {closestCalls.map((event) => (
-                <CompactMarketCard event={event} key={event.id} />
-              ))}
+              {closestCalls.length ? (
+                closestCalls.map((event) => (
+                  <CompactMarketCard event={event} key={event.id} />
+                ))
+              ) : (
+                <div className="panel-elevated p-4 text-sm text-[var(--color-text-secondary)]">
+                  {emptyDeskMessage}
+                </div>
+              )}
             </div>
           </section>
 
@@ -444,12 +498,19 @@ export function CategoryPage() {
             <SectionHeader
               description="Names already leaning hard in one direction."
               kicker="Conviction"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Strongest current lean"
             />
             <div className="mt-4 space-y-3">
-              {convictionBoard.map((event) => (
-                <CompactMarketCard event={event} key={event.id} />
-              ))}
+              {convictionBoard.length ? (
+                convictionBoard.map((event) => (
+                  <CompactMarketCard event={event} key={event.id} />
+                ))
+              ) : (
+                <div className="panel-elevated p-4 text-sm text-[var(--color-text-secondary)]">
+                  {emptyConvictionMessage}
+                </div>
+              )}
             </div>
           </section>
         </aside>

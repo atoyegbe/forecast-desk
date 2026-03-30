@@ -35,12 +35,16 @@ import {
   type StoredEventLinkRecord,
 } from '../db/link-repository.js'
 import { runEntityMatching } from '../entity-matcher/index.js'
-import { parseProviderScopedId } from '../providers/provider-ids.js'
 import { bayseProvider } from '../providers/bayse.js'
+import { kalshiProvider } from '../providers/kalshi.js'
+import { manifoldProvider } from '../providers/manifold.js'
+import { parseProviderScopedId } from '../providers/provider-ids.js'
 import { polymarketProvider } from '../providers/polymarket.js'
 
 const providers = {
   bayse: bayseProvider,
+  kalshi: kalshiProvider,
+  manifold: manifoldProvider,
   polymarket: polymarketProvider,
 } as const
 

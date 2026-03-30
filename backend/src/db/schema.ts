@@ -130,12 +130,152 @@ CREATE TABLE IF NOT EXISTS pulse_event_link_members (
 CREATE INDEX IF NOT EXISTS idx_pulse_event_link_members_event
   ON pulse_event_link_members(event_id);
 
-CREATE TABLE IF NOT EXISTS pulse_smart_money_sync_state (
-  sync_key TEXT PRIMARY KEY,
-  last_error TEXT,
-  last_run_at TIMESTAMPTZ,
+CREATE TABLE IF NOT EXISTS pulse_users (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  telegram_handle TEXT,
+  telegram_chat_id TEXT,
+  default_channel TEXT NOT NULL DEFAULT 'email',
+  last_login_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_users_email
+  ON pulse_users(email);
+
+ALTER TABLE pulse_users
+  ADD COLUMN IF NOT EXISTS telegram_handle TEXT;
+
+ALTER TABLE pulse_users
+  ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
+
+ALTER TABLE pulse_users
+  ADD COLUMN IF NOT EXISTS default_channel TEXT NOT NULL DEFAULT 'email';
+
+CREATE TABLE IF NOT EXISTS pulse_telegram_updates_state (
+  stream_key TEXT PRIMARY KEY,
+  last_update_id BIGINT NOT NULL DEFAULT 0,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS pulse_telegram_connect_codes (
+  code TEXT PRIMARY KEY,
+  chat_id TEXT NOT NULL,
+  telegram_handle TEXT NOT NULL,
+  claimed_at TIMESTAMPTZ,
+  claimed_by_user_id TEXT REFERENCES pulse_users(id) ON DELETE SET NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_telegram_connect_codes_chat
+  ON pulse_telegram_connect_codes(chat_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_telegram_connect_codes_expires
+  ON pulse_telegram_connect_codes(expires_at DESC);
+
+CREATE TABLE IF NOT EXISTS pulse_auth_codes (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES pulse_users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  resend_message_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_auth_codes_email
+  ON pulse_auth_codes(email, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pulse_auth_codes_user
+  ON pulse_auth_codes(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS pulse_auth_sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES pulse_users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_auth_sessions_user
+  ON pulse_auth_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_pulse_auth_sessions_expires
+  ON pulse_auth_sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS pulse_alert_subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES pulse_users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  channel TEXT NOT NULL DEFAULT 'email',
+  status TEXT NOT NULL DEFAULT 'active',
+  trigger_mode TEXT NOT NULL DEFAULT 'any-new-position',
+  wallet_address TEXT NOT NULL,
+  min_score INTEGER,
+  min_size_usd DOUBLE PRECISION,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, type, channel, wallet_address)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_alert_subscriptions_user
+  ON pulse_alert_subscriptions(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_pulse_alert_subscriptions_wallet
+  ON pulse_alert_subscriptions(wallet_address, status);
+
+ALTER TABLE pulse_alert_subscriptions
+  ADD COLUMN IF NOT EXISTS trigger_mode TEXT NOT NULL DEFAULT 'any-new-position';
+
+CREATE TABLE IF NOT EXISTS pulse_smart_money_sync_state (
+  sync_key TEXT PRIMARY KEY,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  consecutive_failure_count INTEGER NOT NULL DEFAULT 0,
+  failure_count INTEGER NOT NULL DEFAULT 0,
+  last_duration_ms INTEGER,
+  last_error TEXT,
+  last_run_at TIMESTAMPTZ,
+  last_success_at TIMESTAMPTZ,
+  next_allowed_run_at TIMESTAMPTZ,
+  success_count INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMPTZ;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS attempt_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS consecutive_failure_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS failure_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS last_duration_ms INTEGER;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS next_allowed_run_at TIMESTAMPTZ;
+ALTER TABLE pulse_smart_money_sync_state
+  ADD COLUMN IF NOT EXISTS success_count INTEGER NOT NULL DEFAULT 0;
+
+UPDATE pulse_smart_money_sync_state
+SET
+  attempt_count = CASE
+    WHEN attempt_count = 0 AND last_run_at IS NOT NULL THEN 1
+    ELSE attempt_count
+  END,
+  success_count = CASE
+    WHEN success_count = 0 AND last_success_at IS NOT NULL THEN 1
+    ELSE success_count
+  END,
+  failure_count = CASE
+    WHEN failure_count = 0 AND last_error IS NOT NULL AND last_success_at IS NULL THEN 1
+    ELSE failure_count
+  END,
+  consecutive_failure_count = CASE
+    WHEN consecutive_failure_count = 0 AND last_error IS NOT NULL AND last_success_at IS NULL
+      THEN 1
+    ELSE consecutive_failure_count
+  END;
 
 CREATE TABLE IF NOT EXISTS pulse_smart_money_wallets (
   address TEXT PRIMARY KEY,
@@ -225,6 +365,28 @@ CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_signals_wallet
   ON pulse_smart_money_signals(wallet_address);
 CREATE INDEX IF NOT EXISTS idx_pulse_smart_money_signals_category
   ON pulse_smart_money_signals(category);
+
+CREATE TABLE IF NOT EXISTS pulse_alert_deliveries (
+  id TEXT PRIMARY KEY,
+  subscription_id TEXT NOT NULL REFERENCES pulse_alert_subscriptions(id) ON DELETE CASCADE,
+  signal_id TEXT NOT NULL REFERENCES pulse_smart_money_signals(id) ON DELETE CASCADE,
+  channel TEXT NOT NULL DEFAULT 'email',
+  status TEXT NOT NULL DEFAULT 'pending',
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  last_attempt_at TIMESTAMPTZ,
+  next_attempt_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ,
+  last_error TEXT,
+  provider_message_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(subscription_id, signal_id, channel)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pulse_alert_deliveries_status
+  ON pulse_alert_deliveries(status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_pulse_alert_deliveries_subscription
+  ON pulse_alert_deliveries(subscription_id);
 `
 
 let schemaReadyPromise: Promise<void> | null = null
@@ -239,4 +401,8 @@ export function ensureDiscoverySchema() {
   }
 
   return schemaReadyPromise
+}
+
+export function resetDiscoverySchemaState() {
+  schemaReadyPromise = null
 }

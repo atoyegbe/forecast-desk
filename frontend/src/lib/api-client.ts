@@ -15,6 +15,22 @@ export type BackendApiResponse<T> = {
 
 const BACKEND_API_BASE = import.meta.env.VITE_BACKEND_API_BASE ?? '/api/v1'
 
+export class BackendRequestError extends Error {
+  code?: string
+  status: number
+
+  constructor(input: {
+    code?: string
+    message: string
+    status: number
+  }) {
+    super(input.message)
+    this.code = input.code
+    this.name = 'BackendRequestError'
+    this.status = input.status
+  }
+}
+
 export async function fetchBackendJson<T>(
   path: string,
   init?: RequestInit,
@@ -26,13 +42,29 @@ export async function fetchBackendJson<T>(
 
     try {
       const errorBody = (await response.json()) as { error?: BackendApiError }
-      throw new Error(errorBody.error?.message ?? fallback)
+      throw new BackendRequestError({
+        code: errorBody.error?.code,
+        message: errorBody.error?.message ?? fallback,
+        status: response.status,
+      })
     } catch (error) {
       if (error instanceof Error) {
         throw error
       }
 
-      throw new Error(fallback)
+      throw new BackendRequestError({
+        message: fallback,
+        status: response.status,
+      })
+    }
+  }
+
+  if (response.status === 204) {
+    return {
+      data: null as T,
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
     }
   }
 

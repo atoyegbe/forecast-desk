@@ -6,11 +6,21 @@ import {
 import { Link } from '@tanstack/react-router'
 import { CompactMarketCard } from '../components/compact-market-card'
 import { DeskTabs } from '../components/desk-tabs'
+import {
+  CompactCardsLoadingState,
+  MarketRowsLoadingState,
+  SignalCardsLoadingState,
+} from '../components/loading-state'
 import { MarketRow } from '../components/market-row'
 import { PlatformBadge } from '../components/platform-badge'
 import { ScoreBadge } from '../components/score-badge'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { SignalCard } from '../components/signal-card'
+import { useDisplayCurrency } from '../features/currency/context'
+import { getEventMoneyUnit } from '../features/currency/money'
 import { getProviderLabel } from '../features/events/provider-ids'
 import {
   useDivergenceQuery,
@@ -36,7 +46,6 @@ import {
   sortByVolume,
 } from '../features/events/insights'
 import {
-  formatCompactCurrency,
   formatCompactNumber,
   formatProbabilityPoints,
   formatSignedProbabilityChange,
@@ -61,35 +70,10 @@ import type {
 
 const HOME_TAB_IDS = ['briefing', 'repricing', 'closest', 'velocity'] as const
 const MOVER_WINDOW_IDS: readonly PulseMoverWindow[] = ['1h', '6h', '24h']
-const PROVIDER_FILTER_IDS = ['all', 'bayse', 'polymarket'] as const
 const BOARD_CATEGORY_MERGE_MAP: Record<string, string> = {
   Starmer: 'Politics',
   Trump: 'Politics',
 }
-
-type HomeProviderSelection = (typeof PROVIDER_FILTER_IDS)[number]
-
-const providerFilterMeta: Array<{
-  description: string
-  id: HomeProviderSelection
-  label: string
-}> = [
-  {
-    description: 'Merge every tracked venue into one public board.',
-    id: 'all',
-    label: 'All venues',
-  },
-  {
-    description: 'Read only Bayse markets.',
-    id: 'bayse',
-    label: 'Bayse',
-  },
-  {
-    description: 'Read only Polymarket markets.',
-    id: 'polymarket',
-    label: 'Polymarket',
-  },
-]
 
 function TopWhaleHomeRow({
   signal,
@@ -153,6 +137,7 @@ function getBoardCategory(category: string) {
 
 export function HomePage() {
   useSmartMoneyLiveSignals()
+  const { formatMoney } = useDisplayCurrency()
   const [activeCategory, setActiveCategory] = useState('All')
   const [activeTabId, setActiveTabId] = useUrlSelection({
     fallback: 'briefing',
@@ -164,10 +149,10 @@ export function HomePage() {
     key: 'window',
     values: MOVER_WINDOW_IDS,
   })
-  const [activeProviderId, setActiveProviderId] = useUrlSelection({
+  const [activeProviderId] = useUrlSelection({
     fallback: 'all',
     key: 'provider',
-    values: PROVIDER_FILTER_IDS,
+    values: ['all', 'bayse', 'kalshi', 'manifold', 'polymarket'] as const,
   })
   const eventsQuery = useEventsQuery({
     status: 'open',
@@ -268,6 +253,13 @@ export function HomePage() {
   const trendingSidebarEvents = volumeLeaders.slice(0, 3)
   const smartMoneySignals = smartMoneySignalsQuery.data ?? []
   const topWhales = smartMoneyWalletsQuery.data ?? []
+  const isEventsRefreshing = eventsQuery.isFetching && !eventsQuery.isLoading
+  const isDivergenceRefreshing =
+    divergenceQuery.isFetching && !divergenceQuery.isLoading
+  const isSignalsRefreshing =
+    smartMoneySignalsQuery.isFetching && !smartMoneySignalsQuery.isLoading
+  const isWalletsRefreshing =
+    smartMoneyWalletsQuery.isFetching && !smartMoneyWalletsQuery.isLoading
   const smartMoneyFlow = smartMoneySignals.reduce(
     (totalSize, signal) => totalSize + signal.size,
     0,
@@ -291,6 +283,9 @@ export function HomePage() {
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="eyebrow">Signal feed</span>
+              {isSignalsRefreshing ? (
+                <RefreshBadge label="Refreshing" />
+              ) : null}
               <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
                 Polymarket wallets
               </span>
@@ -298,7 +293,7 @@ export function HomePage() {
                 {formatCompactNumber(smartMoneySignals.length)} recent signals
               </span>
               <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
-                {formatCompactCurrency(smartMoneyFlow)} tracked size
+                {formatMoney(smartMoneyFlow)} tracked size
               </span>
             </div>
 
@@ -313,9 +308,7 @@ export function HomePage() {
             </div>
 
             {smartMoneySignalsQuery.isLoading && !smartMoneySignals.length ? (
-              <div className="panel-elevated p-6 text-[var(--color-text-secondary)]">
-                Loading smart money signal flow...
-              </div>
+              <SignalCardsLoadingState count={2} />
             ) : null}
 
             {smartMoneySignalsQuery.error ? (
@@ -361,12 +354,17 @@ export function HomePage() {
               <SectionHeader
                 description="Compact reads on the heaviest names in the book."
                 kicker="Trending"
+                status={isEventsRefreshing ? <RefreshBadge /> : null}
                 title="High-volume markets"
               />
               <div className="mt-4 space-y-3">
-                {trendingSidebarEvents.map((event) => (
-                  <CompactMarketCard event={event} key={event.id} />
-                ))}
+                {eventsQuery.isLoading && !trendingSidebarEvents.length ? (
+                  <CompactCardsLoadingState count={3} />
+                ) : (
+                  trendingSidebarEvents.map((event) => (
+                    <CompactMarketCard event={event} key={event.id} />
+                  ))
+                )}
               </div>
             </section>
 
@@ -374,10 +372,13 @@ export function HomePage() {
               <SectionHeader
                 description="The widest stored cross-platform spreads."
                 kicker="Top divergence"
+                status={isDivergenceRefreshing ? <RefreshBadge /> : null}
                 title="Where venues disagree"
               />
               <div className="mt-4 space-y-3">
-                {topDivergences.length ? topDivergences.map((entry) => (
+                {divergenceQuery.isLoading && !topDivergences.length ? (
+                  <CompactCardsLoadingState count={2} />
+                ) : topDivergences.length ? topDivergences.map((entry) => (
                   <Link
                     className="panel-elevated block p-4 transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
                     key={entry.linkId}
@@ -418,13 +419,12 @@ export function HomePage() {
               <SectionHeader
                 description="Highest-ranked wallets plus a one-line read on their most recent qualifying signal."
                 kicker="Top whales"
+                status={isWalletsRefreshing ? <RefreshBadge /> : null}
                 title="Wallets to watch"
               />
               <div className="mt-4 space-y-3">
                 {smartMoneyWalletsQuery.isLoading && !topWhales.length ? (
-                  <div className="panel-elevated p-4 text-sm leading-6 text-[var(--color-text-secondary)]">
-                    Loading whale board...
-                  </div>
+                  <CompactCardsLoadingState count={3} />
                 ) : null}
 
                 {smartMoneyWalletsQuery.error ? (
@@ -450,60 +450,34 @@ export function HomePage() {
         <div className="space-y-6">
           <section className="panel p-4 sm:p-5">
             <SectionHeader
-              description="Use venue filters and category desks to tighten the main board without leaving the homepage feed."
+              description="Use the shell venue tabs and category desks to tighten the main board without leaving the homepage feed."
               kicker="Discovery"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Scan the board"
             />
 
             <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start">
-              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start xl:min-w-[28rem]">
-                <div className="space-y-2 lg:min-w-[11rem]">
-                  <div className="section-kicker">Venue</div>
-                  <div className="flex flex-wrap gap-2">
-                    {providerFilterMeta.map((provider) => (
-                      <button
-                        className={`terminal-chip px-3 py-2 text-[11px] uppercase tracking-[0.18em] ${
-                          activeProviderId === provider.id
-                            ? 'terminal-chip-active'
-                            : 'border-[var(--color-border-subtle)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'
-                        }`}
-                        key={provider.id}
-                        onClick={() => {
-                          startTransition(() => {
-                            setActiveProviderId(provider.id)
-                          })
-                        }}
-                        title={provider.description}
-                        type="button"
-                      >
-                        {provider.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2 lg:min-w-[18rem] lg:flex-1">
-                  <div className="section-kicker">Category</div>
-                  <div className="flex flex-wrap gap-2">
-                    {boardCategories.map((category) => (
-                      <button
-                        className={`rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
-                          effectiveCategory === category
-                            ? 'border-[var(--color-brand)] bg-[rgba(0,197,142,0.15)] text-[var(--color-brand)]'
-                            : 'border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]'
-                        }`}
-                        key={category}
-                        onClick={() => {
-                          startTransition(() => {
-                            setActiveCategory(category)
-                          })
-                        }}
-                        type="button"
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
+              <div className="space-y-2 lg:min-w-[18rem] lg:flex-1">
+                <div className="section-kicker">Category</div>
+                <div className="flex flex-wrap gap-2">
+                  {boardCategories.map((category) => (
+                    <button
+                      className={`rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
+                        effectiveCategory === category
+                          ? 'border-[var(--color-brand)] bg-[rgba(0,197,142,0.15)] text-[var(--color-brand)]'
+                          : 'border-[var(--color-border)] bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]'
+                      }`}
+                      key={category}
+                      onClick={() => {
+                        startTransition(() => {
+                          setActiveCategory(category)
+                        })
+                      }}
+                      type="button"
+                    >
+                      {category}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -513,13 +487,12 @@ export function HomePage() {
             <SectionHeader
               description="The main board ranks the open market tape by traded volume. Start here before moving into divergence or a vertical desk."
               kicker="Main board"
+              status={isEventsRefreshing ? <RefreshBadge /> : null}
               title="Where order flow is thickest"
             />
 
             {eventsQuery.isLoading ? (
-              <div className="panel p-6 text-[var(--color-text-secondary)]">
-                Loading the live market board...
-              </div>
+              <MarketRowsLoadingState count={4} />
             ) : null}
 
             {eventsQuery.error ? (
@@ -698,7 +671,9 @@ export function HomePage() {
                   <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-[var(--color-text-secondary)]">
                     <span>{desk.venueLabel}</span>
                     <span className="mono-data">
-                      {formatCompactNumber(desk.lead?.totalVolume ?? 0)}
+                      {desk.lead
+                        ? formatMoney(desk.lead.totalVolume, getEventMoneyUnit(desk.lead))
+                        : '—'}
                     </span>
                   </div>
                 </Link>

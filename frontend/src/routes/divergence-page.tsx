@@ -1,6 +1,10 @@
 import { Link } from '@tanstack/react-router'
+import { DivergenceBoardLoadingState } from '../components/loading-state'
 import { PlatformBadge } from '../components/platform-badge'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import { useDivergenceQuery } from '../features/events/hooks'
 import {
   formatCompactNumber,
@@ -25,11 +29,7 @@ export function DivergencePage() {
   })
 
   if (divergenceQuery.isLoading) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading divergence board...
-      </div>
-    )
+    return <DivergenceBoardLoadingState />
   }
 
   if (divergenceQuery.error) {
@@ -52,6 +52,8 @@ export function DivergencePage() {
     (largest, entry) => Math.max(largest, entry.maxDivergence),
     0,
   )
+  const isRefreshing =
+    divergenceQuery.isFetching && !divergenceQuery.isLoading
 
   return (
     <div className="space-y-6">
@@ -61,10 +63,10 @@ export function DivergencePage() {
             <div className="eyebrow">Cross-platform spread</div>
             <div>
               <h1 className="display-title">
-                Where Bayse and Polymarket are furthest apart.
+                Where venues are furthest apart.
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
-                This board ranks the linked events with the widest current price gaps. It is the fastest read on where local and global crowds may be processing the same story differently.
+                This board ranks the linked events with the widest current price gaps. It is the fastest read on where different venue crowds may be processing the same story differently.
               </p>
             </div>
 
@@ -88,6 +90,7 @@ export function DivergencePage() {
             <SectionHeader
               description="The lead row is the sharpest disagreement on the board right now."
               kicker="Lead divergence"
+              status={isRefreshing ? <RefreshBadge /> : null}
               title={leadEntry?.title ?? 'Waiting for linked events'}
             />
 
@@ -140,6 +143,7 @@ export function DivergencePage() {
           <SectionHeader
             description="Click any row to jump into the compare view for that event."
             kicker="Leaderboard"
+            status={isRefreshing ? <RefreshBadge /> : null}
             title="Top divergence names"
           />
 

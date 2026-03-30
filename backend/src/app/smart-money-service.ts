@@ -1,35 +1,45 @@
-import { randomUUID } from 'node:crypto'
 import type {
   PulseSmartMoneyCategoryStat,
+  PulseSmartMoneyJobStatus,
   PulseSmartMoneySignal,
   PulseSmartMoneySignalListParams,
+  PulseSmartMoneyStatus,
   PulseSmartMoneyWallet,
   PulseSmartMoneyWalletDetail,
   PulseSmartMoneyWalletListParams,
 } from '../contracts/pulse-smart-money.js'
 import {
   getSmartMoneyActivityLookbackDays,
+  getSmartMoneyDiscoveryLookbackDays,
+  getSmartMoneyDiscoveryWalletLimit,
   getSmartMoneyLeaderboardLimit,
   getSmartMoneyMinSignalSizeUsd,
-  getSmartMoneyRefreshIntervalMs,
+  getSmartMoneySignalWatchIntervalMs,
+  getSmartMoneySnapshotRefreshIntervalMs,
+  getSmartMoneyWatchWalletLimit,
 } from '../db/config.js'
 import {
+  appendStoredSmartMoneySignals,
+  countStoredSmartMoneySignals,
   countStoredSmartMoneyWallets,
   getSmartMoneySyncState,
   getStoredSmartMoneyWallet,
-  listStoredSmartMoneySignalIds,
   listStoredSmartMoneySignalsByIds,
   listStoredSmartMoneySignals,
+  listStoredSmartMoneyWalletAddresses,
   listStoredSmartMoneyWallets,
   recordSmartMoneySyncAttempt,
   recordSmartMoneySyncFailure,
+  recordSmartMoneySyncSuccess,
   replaceStoredSmartMoneySnapshot,
   type StoredSmartMoneyPositionInput,
   type StoredSmartMoneySignalInput,
   type StoredSmartMoneyWalletInput,
 } from '../db/smart-money-repository.js'
 import type { PulseEvent } from '../contracts/pulse-events.js'
+import { withSmartMoneyJobLock } from '../db/job-locks.js'
 import {
+  discoverPolymarketTradeWallets,
   listPolymarketLeaderboardWallets,
   listPolymarketWalletActivity,
   listPolymarketWalletClosedPositions,
@@ -40,11 +50,23 @@ import {
   type SmartMoneySeedWallet,
 } from '../providers/polymarket-smart-money.js'
 import { formatCategory, normalizeText, toNumber } from '../providers/shared.js'
+import { queueAlertDeliveriesForSignals } from './alerts-service.js'
 import { listEvents } from './events-service.js'
 import { invalidateCachedResponses } from './response-cache.js'
 
-const SMART_MONEY_SYNC_KEY = 'smart-money'
-let smartMoneyRefreshPromise: Promise<PulseSmartMoneySignal[]> | null = null
+const SMART_MONEY_SIGNAL_WATCH_SYNC_KEY = 'smart-money-signal-watch'
+const SMART_MONEY_SNAPSHOT_SYNC_KEY = 'smart-money-snapshot'
+const MAX_SMART_MONEY_BACKOFF_MS = 60 * 60 * 1000
+let smartMoneySignalWatchPromise: Promise<PulseSmartMoneySignal[]> | null = null
+let smartMoneySnapshotRefreshPromise: Promise<PulseSmartMoneySignal[]> | null = null
+let signalWatchJobRunning = false
+let snapshotJobRunning = false
+let signalWatchInterval: NodeJS.Timeout | null = null
+let snapshotRefreshInterval: NodeJS.Timeout | null = null
+let schedulerStarted = false
+const smartMoneySignalListeners = new Set<
+  (signals: PulseSmartMoneySignal[]) => void
+>()
 
 type EventLookup = {
   byProviderEventId: Map<string, PulseEvent>
@@ -90,18 +112,77 @@ function normalizeOutcome(value?: string | null) {
   return value?.toUpperCase() === 'NO' ? 'NO' : 'YES'
 }
 
-function isSmartMoneySyncStale(lastRunAt?: string | null) {
-  if (!lastRunAt) {
+function isSmartMoneySyncStale(
+  lastSuccessAt: string | null | undefined,
+  intervalMs: number,
+) {
+  if (!lastSuccessAt) {
     return true
   }
 
-  const parsedTimestamp = new Date(lastRunAt).getTime()
+  const parsedTimestamp = new Date(lastSuccessAt).getTime()
 
   if (Number.isNaN(parsedTimestamp)) {
     return true
   }
 
-  return Date.now() - parsedTimestamp >= getSmartMoneyRefreshIntervalMs()
+  return Date.now() - parsedTimestamp >= intervalMs
+}
+
+function isFutureTimestamp(value: string | null | undefined) {
+  if (!value) {
+    return false
+  }
+
+  const parsedTimestamp = new Date(value).getTime()
+
+  if (Number.isNaN(parsedTimestamp)) {
+    return false
+  }
+
+  return parsedTimestamp > Date.now()
+}
+
+function calculateBackoffDelayMs(
+  consecutiveFailureCount: number,
+  intervalMs: number,
+) {
+  if (consecutiveFailureCount <= 0) {
+    return 0
+  }
+
+  return Math.min(
+    intervalMs * 2 ** Math.max(0, consecutiveFailureCount - 1),
+    MAX_SMART_MONEY_BACKOFF_MS,
+  )
+}
+
+async function recordSmartMoneyJobFailure(
+  input: {
+    attemptedAt: Date
+    error: unknown
+    intervalMs: number
+    syncKey: string
+  },
+) {
+  const finishedAt = new Date()
+  const currentState = await getSmartMoneySyncState(input.syncKey)
+  const consecutiveFailureCount =
+    (currentState?.consecutiveFailureCount ?? 0) + 1
+  const backoffDelayMs = calculateBackoffDelayMs(
+    consecutiveFailureCount,
+    input.intervalMs,
+  )
+
+  await recordSmartMoneySyncFailure(
+    input.syncKey,
+    getErrorMessage(input.error),
+    input.attemptedAt,
+    Math.max(0, finishedAt.getTime() - input.attemptedAt.getTime()),
+    backoffDelayMs > 0
+      ? new Date(finishedAt.getTime() + backoffDelayMs)
+      : null,
+  )
 }
 
 function inferCategoryFromLabel(label: string) {
@@ -171,6 +252,15 @@ function buildPositionKey(
   status: 'closed' | 'open',
 ) {
   return `${walletAddress}:${conditionId}:${outcome}:${status}`
+}
+
+function buildSignalId(
+  walletAddress: string,
+  conditionId: string,
+  outcome: 'NO' | 'YES',
+  signalAt: string,
+) {
+  return `${walletAddress}:${conditionId}:${outcome}:${signalAt}`
 }
 
 function buildPositionRecord(
@@ -304,8 +394,37 @@ function dedupeSignals(signals: StoredSmartMoneySignalInput[]) {
   return [...uniqueSignals.values()]
 }
 
+function mergeSeedWallets(seedWalletGroups: SmartMoneySeedWallet[][]) {
+  const mergedWallets = new Map<string, SmartMoneySeedWallet>()
+
+  for (const walletGroup of seedWalletGroups) {
+    for (const wallet of walletGroup) {
+      const currentWallet = mergedWallets.get(wallet.address)
+
+      if (!currentWallet) {
+        mergedWallets.set(wallet.address, wallet)
+        continue
+      }
+
+      mergedWallets.set(wallet.address, {
+        address: wallet.address,
+        displayName: currentWallet.displayName ?? wallet.displayName ?? null,
+        profileImageUrl:
+          currentWallet.profileImageUrl ?? wallet.profileImageUrl ?? null,
+        sourcePnl:
+          currentWallet.sourcePnl !== 0 ? currentWallet.sourcePnl : wallet.sourcePnl,
+        sourceRank: currentWallet.sourceRank ?? wallet.sourceRank ?? null,
+        sourceVolume: Math.max(currentWallet.sourceVolume, wallet.sourceVolume),
+        verifiedBadge: currentWallet.verifiedBadge || wallet.verifiedBadge,
+        xUsername: currentWallet.xUsername ?? wallet.xUsername ?? null,
+      })
+    }
+  }
+
+  return [...mergedWallets.values()]
+}
+
 function buildWalletScore(
-  seedWallet: SmartMoneySeedWallet,
   closedPositions: StoredSmartMoneyPositionInput[],
   openPositions: StoredSmartMoneyPositionInput[],
   lastActiveAt: string | null,
@@ -418,7 +537,12 @@ function buildSignalCandidates(
       eventId: eventContext.eventId,
       eventSlug: eventContext.eventSlug,
       iconUrl: normalizeText(activity.icon) || matchingPosition?.iconUrl || null,
-      id: randomUUID(),
+      id: buildSignalId(
+        input.walletAddress,
+        activity.conditionId,
+        outcome,
+        signalAt,
+      ),
       marketTitle: normalizeText(activity.title) || matchingPosition?.marketTitle || 'Market',
       outcome,
       priceDelta: currentPrice - entryPrice,
@@ -431,16 +555,12 @@ function buildSignalCandidates(
   })
 }
 
-async function buildWalletSnapshot(
-  seedWallet: SmartMoneySeedWallet,
+function buildOpenPositionRecords(
+  positions: PolymarketWalletPosition[],
   eventLookup: EventLookup,
+  walletAddress: string,
 ) {
-  const [openPositionsRaw, closedPositionsRaw, activity] = await Promise.all([
-    listPolymarketWalletPositions(seedWallet.address),
-    listPolymarketWalletClosedPositions(seedWallet.address),
-    listPolymarketWalletActivity(seedWallet.address),
-  ])
-  const openPositions = openPositionsRaw.map((position) => {
+  return positions.map((position) => {
     const eventContext = resolveEventContext(
       {
         providerEventId: normalizeText(position.eventId ? String(position.eventId) : ''),
@@ -467,10 +587,17 @@ async function buildWalletSnapshot(
       realizedPnl: toNumber(position.realizedPnl),
       shareCount: toNumber(position.size),
       status: 'open',
-      walletAddress: seedWallet.address,
+      walletAddress,
     })
   })
-  const closedPositions = closedPositionsRaw.map((position) => {
+}
+
+function buildClosedPositionRecords(
+  positions: PolymarketWalletClosedPosition[],
+  eventLookup: EventLookup,
+  walletAddress: string,
+) {
+  return positions.map((position) => {
     const eventContext = resolveEventContext(
       {
         providerEventId: normalizeText(position.eventId ? String(position.eventId) : ''),
@@ -498,9 +625,30 @@ async function buildWalletSnapshot(
       shareCount: toNumber(position.totalBought),
       status: 'closed',
       timestamp: getPositionTimestamp(position),
-      walletAddress: seedWallet.address,
+      walletAddress,
     })
   })
+}
+
+async function buildWalletSnapshot(
+  seedWallet: SmartMoneySeedWallet,
+  eventLookup: EventLookup,
+) {
+  const [openPositionsRaw, closedPositionsRaw, activity] = await Promise.all([
+    listPolymarketWalletPositions(seedWallet.address),
+    listPolymarketWalletClosedPositions(seedWallet.address),
+    listPolymarketWalletActivity(seedWallet.address),
+  ])
+  const openPositions = buildOpenPositionRecords(
+    openPositionsRaw,
+    eventLookup,
+    seedWallet.address,
+  )
+  const closedPositions = buildClosedPositionRecords(
+    closedPositionsRaw,
+    eventLookup,
+    seedWallet.address,
+  )
   const lastActivityTimestamp = activity
     .map((entry) => toNumber(entry.timestamp))
     .sort((leftValue, rightValue) => rightValue - leftValue)[0]
@@ -519,7 +667,6 @@ async function buildWalletSnapshot(
       ? new Date(lastActivityTimestamp * 1000).toISOString()
       : null
   const score = buildWalletScore(
-    seedWallet,
     closedPositions,
     openPositions,
     lastActiveAt,
@@ -567,11 +714,43 @@ async function buildWalletSnapshot(
   } satisfies WalletSnapshot
 }
 
+async function buildWalletWatchSignals(
+  walletAddress: string,
+  eventLookup: EventLookup,
+) {
+  const [openPositionsRaw, activity] = await Promise.all([
+    listPolymarketWalletPositions(walletAddress),
+    listPolymarketWalletActivity(walletAddress),
+  ])
+  const openPositions = buildOpenPositionRecords(
+    openPositionsRaw,
+    eventLookup,
+    walletAddress,
+  )
+
+  return buildSignalCandidates({
+    activities: activity,
+    currentPositions: openPositions,
+    eventLookup,
+    walletAddress,
+  })
+}
+
+async function buildSmartMoneySeedWallets() {
+  const [leaderboardWallets, discoveredWallets] = await Promise.all([
+    listPolymarketLeaderboardWallets(getSmartMoneyLeaderboardLimit()),
+    discoverPolymarketTradeWallets({
+      daysBack: getSmartMoneyDiscoveryLookbackDays(),
+      limit: getSmartMoneyDiscoveryWalletLimit(),
+    }),
+  ])
+
+  return mergeSeedWallets([leaderboardWallets, discoveredWallets])
+}
+
 async function buildSmartMoneySnapshot() {
   const eventLookup = await buildEventLookup()
-  const seedWallets = await listPolymarketLeaderboardWallets(
-    getSmartMoneyLeaderboardLimit(),
-  )
+  const seedWallets = await buildSmartMoneySeedWallets()
   const snapshots: WalletSnapshot[] = []
 
   for (const seedWallet of seedWallets) {
@@ -601,11 +780,7 @@ async function buildSmartMoneySnapshot() {
   const signals = dedupeSignals(
     snapshots
     .flatMap((snapshot) => snapshot.signals)
-    .filter((signal) => walletByAddress.has(signal.walletAddress))
-    .map((signal) => ({
-      ...signal,
-      id: `${signal.walletAddress}:${signal.conditionId}:${signal.outcome}:${signal.signalAt}`,
-    })),
+    .filter((signal) => walletByAddress.has(signal.walletAddress)),
   )
 
   return {
@@ -615,77 +790,318 @@ async function buildSmartMoneySnapshot() {
   }
 }
 
+function emitSmartMoneySignals(signals: PulseSmartMoneySignal[]) {
+  if (!signals.length) {
+    return
+  }
+
+  for (const listener of smartMoneySignalListeners) {
+    listener(signals)
+  }
+}
+
 async function refreshSmartMoneySnapshot() {
   const attemptedAt = new Date()
-  const existingSignalIds = new Set(await listStoredSmartMoneySignalIds())
 
-  await recordSmartMoneySyncAttempt(SMART_MONEY_SYNC_KEY, attemptedAt)
+  await recordSmartMoneySyncAttempt(SMART_MONEY_SNAPSHOT_SYNC_KEY, attemptedAt)
 
   try {
     const snapshot = await buildSmartMoneySnapshot()
-    await replaceStoredSmartMoneySnapshot(snapshot, attemptedAt, SMART_MONEY_SYNC_KEY)
-    invalidateCachedResponses('/api/v1/smart-money')
-
-    if (!existingSignalIds.size) {
-      return [] as PulseSmartMoneySignal[]
-    }
-
-    const nextSignalIds = snapshot.signals
-      .map((signal) => signal.id)
-      .filter((signalId) => !existingSignalIds.has(signalId))
-
-    return listStoredSmartMoneySignalsByIds(nextSignalIds)
-  } catch (error) {
-    await recordSmartMoneySyncFailure(
-      SMART_MONEY_SYNC_KEY,
-      getErrorMessage(error),
+    await replaceStoredSmartMoneySnapshot(
+      snapshot,
       attemptedAt,
+      SMART_MONEY_SNAPSHOT_SYNC_KEY,
     )
+    invalidateCachedResponses('/api/v1/smart-money')
+    await recordSmartMoneySyncSuccess(
+      SMART_MONEY_SNAPSHOT_SYNC_KEY,
+      attemptedAt,
+      Math.max(0, Date.now() - attemptedAt.getTime()),
+    )
+
+    return [] as PulseSmartMoneySignal[]
+  } catch (error) {
+    await recordSmartMoneyJobFailure({
+      attemptedAt,
+      error,
+      intervalMs: getSmartMoneySnapshotRefreshIntervalMs(),
+      syncKey: SMART_MONEY_SNAPSHOT_SYNC_KEY,
+    })
     throw error
   }
 }
 
-async function runSmartMoneyRefresh(force = false) {
-  if (smartMoneyRefreshPromise) {
-    return smartMoneyRefreshPromise
+async function watchSmartMoneySignals() {
+  const attemptedAt = new Date()
+
+  await recordSmartMoneySyncAttempt(SMART_MONEY_SIGNAL_WATCH_SYNC_KEY, attemptedAt)
+
+  try {
+    const walletCount = await countStoredSmartMoneyWallets()
+
+    if (walletCount <= 0) {
+      await runSmartMoneySnapshotRefresh(true)
+      await recordSmartMoneySyncSuccess(
+        SMART_MONEY_SIGNAL_WATCH_SYNC_KEY,
+        attemptedAt,
+        Math.max(0, Date.now() - attemptedAt.getTime()),
+      )
+
+      return [] as PulseSmartMoneySignal[]
+    }
+
+    const eventLookup = await buildEventLookup()
+    const watchedWalletAddresses = await listStoredSmartMoneyWalletAddresses(
+      getSmartMoneyWatchWalletLimit(),
+    )
+    const candidateSignals = dedupeSignals(
+      (
+        await Promise.all(
+          watchedWalletAddresses.map((walletAddress) =>
+            buildWalletWatchSignals(walletAddress, eventLookup),
+          ),
+        )
+      ).flat(),
+    )
+    const insertedSignalIds = await appendStoredSmartMoneySignals(
+      candidateSignals,
+      attemptedAt,
+    )
+
+    await recordSmartMoneySyncSuccess(
+      SMART_MONEY_SIGNAL_WATCH_SYNC_KEY,
+      attemptedAt,
+      Math.max(0, Date.now() - attemptedAt.getTime()),
+    )
+
+    if (!insertedSignalIds.length) {
+      return [] as PulseSmartMoneySignal[]
+    }
+
+    invalidateCachedResponses('/api/v1/smart-money')
+
+    const nextSignals = await listStoredSmartMoneySignalsByIds(insertedSignalIds)
+    await queueAlertDeliveriesForSignals(nextSignals)
+    emitSmartMoneySignals(nextSignals)
+
+    return nextSignals
+  } catch (error) {
+    await recordSmartMoneyJobFailure({
+      attemptedAt,
+      error,
+      intervalMs: getSmartMoneySignalWatchIntervalMs(),
+      syncKey: SMART_MONEY_SIGNAL_WATCH_SYNC_KEY,
+    })
+    throw error
+  }
+}
+
+async function runSmartMoneySnapshotRefresh(force = false) {
+  if (smartMoneySnapshotRefreshPromise) {
+    return smartMoneySnapshotRefreshPromise
   }
 
   const [walletCount, state] = await Promise.all([
     countStoredSmartMoneyWallets(),
-    getSmartMoneySyncState(SMART_MONEY_SYNC_KEY),
+    getSmartMoneySyncState(SMART_MONEY_SNAPSHOT_SYNC_KEY),
   ])
 
-  if (!force && walletCount > 0 && !isSmartMoneySyncStale(state?.lastRunAt)) {
+  if (
+    !force &&
+    isFutureTimestamp(state?.nextAllowedRunAt)
+  ) {
     return [] as PulseSmartMoneySignal[]
   }
 
-  smartMoneyRefreshPromise = refreshSmartMoneySnapshot().finally(() => {
-    smartMoneyRefreshPromise = null
-  })
+  if (
+    !force &&
+    walletCount > 0 &&
+    !isSmartMoneySyncStale(
+      state?.lastSuccessAt,
+      getSmartMoneySnapshotRefreshIntervalMs(),
+    )
+  ) {
+    return [] as PulseSmartMoneySignal[]
+  }
 
-  return smartMoneyRefreshPromise
+  snapshotJobRunning = true
+  smartMoneySnapshotRefreshPromise = withSmartMoneyJobLock(
+    SMART_MONEY_SNAPSHOT_SYNC_KEY,
+    () => refreshSmartMoneySnapshot(),
+  )
+    .then((signals) => signals ?? [])
+    .finally(() => {
+      smartMoneySnapshotRefreshPromise = null
+      snapshotJobRunning = false
+    })
+
+  return smartMoneySnapshotRefreshPromise
+}
+
+async function runSmartMoneySignalWatch(force = false) {
+  if (smartMoneySignalWatchPromise) {
+    return smartMoneySignalWatchPromise
+  }
+
+  const state = await getSmartMoneySyncState(SMART_MONEY_SIGNAL_WATCH_SYNC_KEY)
+
+  if (
+    !force &&
+    isFutureTimestamp(state?.nextAllowedRunAt)
+  ) {
+    return [] as PulseSmartMoneySignal[]
+  }
+
+  if (
+    !force &&
+    !isSmartMoneySyncStale(
+      state?.lastSuccessAt,
+      getSmartMoneySignalWatchIntervalMs(),
+    )
+  ) {
+    return [] as PulseSmartMoneySignal[]
+  }
+
+  signalWatchJobRunning = true
+  smartMoneySignalWatchPromise = withSmartMoneyJobLock(
+    SMART_MONEY_SIGNAL_WATCH_SYNC_KEY,
+    () => watchSmartMoneySignals(),
+  )
+    .then((signals) => signals ?? [])
+    .finally(() => {
+      smartMoneySignalWatchPromise = null
+      signalWatchJobRunning = false
+    })
+
+  return smartMoneySignalWatchPromise
 }
 
 async function ensureSmartMoneySnapshot() {
   const [walletCount, state] = await Promise.all([
     countStoredSmartMoneyWallets(),
-    getSmartMoneySyncState(SMART_MONEY_SYNC_KEY),
+    getSmartMoneySyncState(SMART_MONEY_SNAPSHOT_SYNC_KEY),
   ])
 
   if (walletCount <= 0) {
-    await runSmartMoneyRefresh(true)
+    await runSmartMoneySnapshotRefresh(true)
     return
   }
 
-  if (isSmartMoneySyncStale(state?.lastRunAt)) {
-    void runSmartMoneyRefresh().catch(() => {
+  if (
+    isSmartMoneySyncStale(
+      state?.lastSuccessAt,
+      getSmartMoneySnapshotRefreshIntervalMs(),
+    )
+  ) {
+    void runSmartMoneySnapshotRefresh().catch(() => {
       // Keep serving the stored snapshot when upstream refreshes fail.
     })
   }
 }
 
 export async function pollSmartMoneySignals() {
-  return runSmartMoneyRefresh(true)
+  return runSmartMoneySignalWatch(true)
+}
+
+export function subscribeToSmartMoneySignals(
+  listener: (signals: PulseSmartMoneySignal[]) => void,
+) {
+  smartMoneySignalListeners.add(listener)
+
+  return () => {
+    smartMoneySignalListeners.delete(listener)
+  }
+}
+
+export function startSmartMoneyScheduler() {
+  if (schedulerStarted) {
+    return
+  }
+
+  schedulerStarted = true
+  void runSmartMoneySnapshotRefresh().catch(() => {
+    // The status endpoint carries job failures; startup should not crash on upstream errors.
+  })
+  void runSmartMoneySignalWatch().catch(() => {
+    // The status endpoint carries job failures; startup should not crash on upstream errors.
+  })
+  snapshotRefreshInterval = setInterval(() => {
+    void runSmartMoneySnapshotRefresh().catch(() => {
+      // Keep background jobs alive on transient failures.
+    })
+  }, getSmartMoneySnapshotRefreshIntervalMs())
+  signalWatchInterval = setInterval(() => {
+    void runSmartMoneySignalWatch().catch(() => {
+      // Keep background jobs alive on transient failures.
+    })
+  }, getSmartMoneySignalWatchIntervalMs())
+}
+
+export function stopSmartMoneyScheduler() {
+  schedulerStarted = false
+
+  if (snapshotRefreshInterval) {
+    clearInterval(snapshotRefreshInterval)
+    snapshotRefreshInterval = null
+  }
+
+  if (signalWatchInterval) {
+    clearInterval(signalWatchInterval)
+    signalWatchInterval = null
+  }
+}
+
+function toJobStatus(
+  job: 'signal-watch' | 'snapshot',
+  state: Awaited<ReturnType<typeof getSmartMoneySyncState>>,
+  isRunning: boolean,
+  intervalMs: number,
+) {
+  return {
+    attemptCount: state?.attemptCount ?? 0,
+    consecutiveFailureCount: state?.consecutiveFailureCount ?? 0,
+    failureCount: state?.failureCount ?? 0,
+    intervalMs,
+    isBackoffActive: isFutureTimestamp(state?.nextAllowedRunAt),
+    isRunning,
+    isStale: isSmartMoneySyncStale(state?.lastSuccessAt, intervalMs),
+    lastDurationMs: state?.lastDurationMs ?? null,
+    job,
+    lastError: state?.lastError ?? null,
+    lastRunAt: state?.lastRunAt ?? null,
+    lastSuccessAt: state?.lastSuccessAt ?? null,
+    nextAllowedRunAt: state?.nextAllowedRunAt ?? null,
+    successCount: state?.successCount ?? 0,
+  } satisfies PulseSmartMoneyJobStatus
+}
+
+export async function getSmartMoneyStatus() {
+  const [walletCount, signalCount, snapshotState, signalWatchState] = await Promise.all([
+    countStoredSmartMoneyWallets(),
+    countStoredSmartMoneySignals(),
+    getSmartMoneySyncState(SMART_MONEY_SNAPSHOT_SYNC_KEY),
+    getSmartMoneySyncState(SMART_MONEY_SIGNAL_WATCH_SYNC_KEY),
+  ])
+
+  return {
+    jobStatus: [
+      toJobStatus(
+        'snapshot',
+        snapshotState,
+        snapshotJobRunning,
+        getSmartMoneySnapshotRefreshIntervalMs(),
+      ),
+      toJobStatus(
+        'signal-watch',
+        signalWatchState,
+        signalWatchJobRunning,
+        getSmartMoneySignalWatchIntervalMs(),
+      ),
+    ],
+    signalCount,
+    walletCount,
+    watchWalletLimit: getSmartMoneyWatchWalletLimit(),
+  } satisfies PulseSmartMoneyStatus
 }
 
 export async function listSmartMoneySignals(params: PulseSmartMoneySignalListParams) {

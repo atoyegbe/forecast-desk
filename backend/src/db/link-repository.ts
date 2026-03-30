@@ -1,4 +1,5 @@
 import type { PulseMatchMethod, PulseProvider } from '../contracts/pulse-events.js'
+import { parseProviderScopedId } from '../providers/provider-ids.js'
 import { getDbPool } from './pool.js'
 
 export type StoredEventLinkRecord = {
@@ -165,9 +166,7 @@ export async function replaceStoredEventLinks(
       )
 
       for (const eventId of link.eventIds) {
-        const provider = eventId.startsWith('polymarket__')
-          ? 'polymarket'
-          : 'bayse'
+        const { provider } = parseProviderScopedId(eventId)
 
         await client.query(
           `

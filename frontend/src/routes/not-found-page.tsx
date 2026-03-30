@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { getMarketsRoute } from '../lib/routes'
 
 export function NotFoundPage() {
   return (
@@ -12,7 +13,7 @@ export function NotFoundPage() {
       </p>
       <Link
         className="terminal-button terminal-button-primary mt-6 text-sm font-medium"
-        to="/"
+        {...getMarketsRoute()}
       >
         Return to markets
       </Link>

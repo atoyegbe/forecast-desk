@@ -1,11 +1,24 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { SmartMoneyLeaderboardLoadingState } from '../components/loading-state'
 import { ScoreBadge } from '../components/score-badge'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
+import {
+  createWalletAlertPropsFromWallet,
+  WalletAlertButton,
+} from '../components/wallet-alert-button'
+import { useDisplayCurrency } from '../features/currency/context'
 import {
   useSmartMoneyLiveSignals,
   useSmartMoneyWalletsQuery,
 } from '../features/smart-money/hooks'
-import { formatCompactCurrency, formatCompactNumber, formatSignedPercent, formatTimeAgo } from '../lib/format'
+import {
+  formatCompactNumber,
+  formatSignedPercent,
+  formatTimeAgo,
+} from '../lib/format'
 import { getSmartMoneyWalletRoute } from '../lib/routes'
 import type { AppSearch } from '../router'
 
@@ -15,6 +28,7 @@ function getSearchValue(value: unknown) {
 
 export function SmartMoneyLeaderboardPage() {
   useSmartMoneyLiveSignals()
+  const { formatMoney } = useDisplayCurrency()
   const navigate = useNavigate()
   const search = useSearch({ strict: false })
   const minScore = Number.parseInt(getSearchValue(search.minScore) || '50', 10)
@@ -25,9 +39,11 @@ export function SmartMoneyLeaderboardPage() {
     minVolume,
   })
   const wallets = walletsQuery.data ?? []
+  const isRefreshing = walletsQuery.isFetching && !walletsQuery.isLoading
 
   const updateSearch = (patch: Partial<AppSearch>) => {
     void navigate({
+      resetScroll: false,
       replace: true,
       search: (current): AppSearch => ({
         ...current,
@@ -38,11 +54,7 @@ export function SmartMoneyLeaderboardPage() {
   }
 
   if (walletsQuery.isLoading && !wallets.length) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading whale leaderboard...
-      </div>
-    )
+    return <SmartMoneyLeaderboardLoadingState />
   }
 
   if (walletsQuery.error) {
@@ -71,6 +83,7 @@ export function SmartMoneyLeaderboardPage() {
             <SectionHeader
               description="Filter the board by score and volume without leaving the leaderboard."
               kicker="Filters"
+              status={isRefreshing ? <RefreshBadge /> : null}
               title="Tighten the board"
             />
 
@@ -97,7 +110,7 @@ export function SmartMoneyLeaderboardPage() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="section-kicker">Minimum volume</span>
                   <span className="mono-data text-xs text-[var(--color-text-primary)]">
-                    {formatCompactCurrency(minVolume)}
+                    {formatMoney(minVolume)}
                   </span>
                 </div>
                 <input
@@ -119,6 +132,7 @@ export function SmartMoneyLeaderboardPage() {
         <SectionHeader
           description={`${formatCompactNumber(wallets.length)} wallets met the current score and volume floor.`}
           kicker="Rankings"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title="Leaderboard"
         />
 
@@ -136,48 +150,59 @@ export function SmartMoneyLeaderboardPage() {
 
           <div className="divide-y divide-[var(--color-border-subtle)]">
             {wallets.map((wallet) => (
-              <Link
-                className="block transition hover:bg-[var(--color-bg-hover)]"
+              <div
+                className="group relative transition hover:bg-[var(--color-bg-hover)]"
                 key={wallet.address}
-                {...getSmartMoneyWalletRoute(wallet.address)}
               >
-                <div className="grid gap-4 px-4 py-4 lg:grid-cols-[84px_minmax(0,1.4fr)_110px_120px_120px_140px_100px_120px] lg:items-center">
-                  <div className="mono-data text-sm text-[var(--color-text-primary)]">
-                    #{wallet.rank}
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-                      {wallet.displayName || wallet.shortAddress}
+                <Link
+                  className="block pr-12"
+                  {...getSmartMoneyWalletRoute(wallet.address)}
+                >
+                  <div className="grid gap-4 px-4 py-4 lg:grid-cols-[84px_minmax(0,1.4fr)_110px_120px_120px_140px_100px_120px] lg:items-center">
+                    <div className="mono-data text-sm text-[var(--color-text-primary)]">
+                      #{wallet.rank}
                     </div>
-                    <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
-                      {wallet.shortAddress}
+
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                        {wallet.displayName || wallet.shortAddress}
+                      </div>
+                      <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                        {wallet.shortAddress}
+                      </div>
+                    </div>
+
+                    <ScoreBadge score={wallet.score} />
+
+                    <div className={`mono-data text-sm ${wallet.winRate >= 0.75 ? 'text-[var(--color-up)]' : wallet.winRate < 0.6 ? 'text-[var(--color-down)]' : 'text-[var(--color-text-primary)]'}`}>
+                      {Math.round(wallet.winRate * 100)}%
+                    </div>
+
+                    <div className={`mono-data text-sm ${wallet.roi >= 0 ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}`}>
+                      {formatSignedPercent(wallet.roi)}
+                    </div>
+
+                    <div className="mono-data text-sm text-[var(--color-text-primary)]">
+                      {formatMoney(wallet.totalVolume)}
+                    </div>
+
+                    <div className="mono-data text-sm text-[var(--color-text-primary)]">
+                      {formatCompactNumber(wallet.marketCount)}
+                    </div>
+
+                    <div className="text-sm text-[var(--color-text-secondary)]">
+                      {formatTimeAgo(wallet.lastActiveAt)}
                     </div>
                   </div>
+                </Link>
 
-                  <ScoreBadge score={wallet.score} />
-
-                  <div className={`mono-data text-sm ${wallet.winRate >= 0.75 ? 'text-[var(--color-up)]' : wallet.winRate < 0.6 ? 'text-[var(--color-down)]' : 'text-[var(--color-text-primary)]'}`}>
-                    {Math.round(wallet.winRate * 100)}%
-                  </div>
-
-                  <div className={`mono-data text-sm ${wallet.roi >= 0 ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}`}>
-                    {formatSignedPercent(wallet.roi)}
-                  </div>
-
-                  <div className="mono-data text-sm text-[var(--color-text-primary)]">
-                    {formatCompactCurrency(wallet.totalVolume)}
-                  </div>
-
-                  <div className="mono-data text-sm text-[var(--color-text-primary)]">
-                    {formatCompactNumber(wallet.marketCount)}
-                  </div>
-
-                  <div className="text-sm text-[var(--color-text-secondary)]">
-                    {formatTimeAgo(wallet.lastActiveAt)}
-                  </div>
+                <div className="absolute top-1/2 right-4 -translate-y-1/2">
+                  <WalletAlertButton
+                    {...createWalletAlertPropsFromWallet(wallet)}
+                    variant="leaderboard"
+                  />
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </div>

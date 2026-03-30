@@ -1,20 +1,27 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useMemo } from 'react'
+import {
+  SignalCardsLoadingState,
+  SmartMoneyDeskLoadingState,
+} from '../components/loading-state'
+import { RefreshBadge } from '../components/section-header'
 import { ScoreBadge } from '../components/score-badge'
 import { SmartMoneyFeedCard } from '../components/smart-money-feed-card'
+import { useDisplayCurrency } from '../features/currency/context'
 import {
   useSmartMoneyLiveSignals,
   useSmartMoneySignalsQuery,
+  useSmartMoneyStatusQuery,
   useSmartMoneyWalletsQuery,
 } from '../features/smart-money/hooks'
 import type {
+  PulseSmartMoneyJobStatus,
   PulseSmartMoneySignal,
   PulseSmartMoneySignalSort,
   PulseSmartMoneyWallet,
 } from '../features/smart-money/types'
 import {
   formatCategory,
-  formatCompactCurrency,
   formatSignedPercent,
   formatSignedProbabilityChange,
   formatTimeAgo,
@@ -90,6 +97,95 @@ function getValueToneClass(value: number, threshold = 80) {
   }
 
   return value >= threshold ? 'text-[var(--color-up)]' : 'text-[#f59e0b]'
+}
+
+function getJobLabel(job: PulseSmartMoneyJobStatus['job']) {
+  return job === 'snapshot' ? 'Snapshot' : 'Signal watch'
+}
+
+function getJobToneClass(job: PulseSmartMoneyJobStatus) {
+  if (job.isBackoffActive) {
+    return 'text-[#f59e0b]'
+  }
+
+  if (job.lastError || job.isStale) {
+    return 'text-[var(--color-down)]'
+  }
+
+  if (job.isRunning) {
+    return 'text-[var(--color-signal)]'
+  }
+
+  return 'text-[var(--color-up)]'
+}
+
+function getJobStateLabel(job: PulseSmartMoneyJobStatus) {
+  if (job.isBackoffActive) {
+    return 'Backing off'
+  }
+
+  if (job.lastError) {
+    return 'Degraded'
+  }
+
+  if (job.isStale) {
+    return 'Delayed'
+  }
+
+  if (job.isRunning) {
+    return 'Running'
+  }
+
+  return 'Healthy'
+}
+
+function formatRuntimeDuration(durationMs: number | null | undefined) {
+  if (!durationMs || durationMs <= 0) {
+    return '—'
+  }
+
+  if (durationMs < 1000) {
+    return `${durationMs}ms`
+  }
+
+  const seconds = durationMs / 1000
+
+  if (seconds < 60) {
+    return `${seconds.toFixed(seconds >= 10 ? 0 : 1)}s`
+  }
+
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = Math.round(seconds % 60)
+
+  return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`
+}
+
+function formatFutureRunLabel(value: string | null | undefined) {
+  if (!value) {
+    return null
+  }
+
+  const diffMs = new Date(value).getTime() - Date.now()
+
+  if (!Number.isFinite(diffMs) || diffMs <= 0) {
+    return null
+  }
+
+  const diffSeconds = Math.ceil(diffMs / 1000)
+
+  if (diffSeconds < 60) {
+    return `Retry in ${diffSeconds}s`
+  }
+
+  const diffMinutes = Math.ceil(diffSeconds / 60)
+
+  if (diffMinutes < 60) {
+    return `Retry in ${diffMinutes}m`
+  }
+
+  const diffHours = Math.ceil(diffMinutes / 60)
+
+  return `Retry in ${diffHours}h`
 }
 
 function RangeFilter({
@@ -227,6 +323,7 @@ function LatestActivityRow({ signal }: { signal: PulseSmartMoneySignal }) {
 
 export function SmartMoneyPage() {
   useSmartMoneyLiveSignals()
+  const { formatMoney } = useDisplayCurrency()
   const navigate = useNavigate()
   const search = useSearch({ strict: false })
   const activeCategory = getSearchValue(search.category) || 'All'
@@ -244,9 +341,11 @@ export function SmartMoneyPage() {
     limit: 24,
     sort: 'newest',
   })
+  const smartMoneyStatusQuery = useSmartMoneyStatusQuery()
   const topWalletsQuery = useSmartMoneyWalletsQuery({ limit: 5, minScore: 60 })
   const signals = signalsQuery.data ?? []
   const signalOverview = signalOverviewQuery.data ?? []
+  const smartMoneyStatus = smartMoneyStatusQuery.data
   const topWallets = topWalletsQuery.data ?? []
   const categoryOptions = useMemo(() => {
     const discoveredCategories = new Set<string>(DEFAULT_CATEGORY_OPTIONS)
@@ -293,9 +392,19 @@ export function SmartMoneyPage() {
         )
       : 0
   const latestActivitySignals = signalOverview.slice(0, 3)
+  const snapshotJob = smartMoneyStatus?.jobStatus.find((job) => job.job === 'snapshot')
+  const signalWatchJob = smartMoneyStatus?.jobStatus.find((job) => job.job === 'signal-watch')
+  const isSignalsRefreshing = signalsQuery.isFetching && !signalsQuery.isLoading
+  const isSignalOverviewRefreshing =
+    signalOverviewQuery.isFetching && !signalOverviewQuery.isLoading
+  const isStatusRefreshing =
+    smartMoneyStatusQuery.isFetching && !smartMoneyStatusQuery.isLoading
+  const isTopWalletsRefreshing =
+    topWalletsQuery.isFetching && !topWalletsQuery.isLoading
 
   const updateSearch = (patch: Partial<AppSearch>) => {
     void navigate({
+      resetScroll: false,
       replace: true,
       search: (current): AppSearch => ({
         ...current,
@@ -306,11 +415,7 @@ export function SmartMoneyPage() {
   }
 
   if (signalsQuery.isLoading && !signals.length) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading smart money feed...
-      </div>
-    )
+    return <SmartMoneyDeskLoadingState />
   }
 
   if (signalsQuery.error) {
@@ -333,6 +438,9 @@ export function SmartMoneyPage() {
                 style={{ animation: 'nav-status-pulse 2s ease-in-out infinite' }}
               />
               <span className="mono-data">Smart Money</span>
+              {isSignalsRefreshing ? (
+                <RefreshBadge label="Refreshing" />
+              ) : null}
             </div>
 
             <div className="mt-4 space-y-2">
@@ -342,6 +450,69 @@ export function SmartMoneyPage() {
               <p className="max-w-2xl text-[13px] text-[var(--color-text-secondary)]">
                 Ranked Polymarket wallets. Every new position surfaces here within 5 minutes.
               </p>
+            </div>
+          </section>
+
+          <section className="border-b border-[var(--color-border-subtle)] px-7 py-4">
+            {isStatusRefreshing && smartMoneyStatus ? (
+              <div className="mb-3">
+                <RefreshBadge />
+              </div>
+            ) : null}
+            <div className="grid gap-3 md:grid-cols-3">
+              {[snapshotJob, signalWatchJob].map((job) =>
+                job ? (
+                  <div
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3"
+                    key={job.job}
+                  >
+                    <div className="mono-data text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-tertiary)]">
+                      {getJobLabel(job.job)}
+                    </div>
+                    <div className={`mono-data mt-2 text-sm font-medium ${getJobToneClass(job)}`}>
+                      {getJobStateLabel(job)}
+                    </div>
+                    <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                      {job.lastSuccessAt
+                        ? `Last success ${formatTimeAgo(job.lastSuccessAt)}`
+                        : 'No successful run yet'}
+                    </div>
+                    <div className="mt-2 text-[11px] leading-5 text-[var(--color-text-tertiary)]">
+                      {job.attemptCount} runs · {job.successCount} ok · {job.failureCount} failed
+                    </div>
+                    <div className="mt-1 text-[11px] leading-5 text-[var(--color-text-tertiary)]">
+                      Last run {formatRuntimeDuration(job.lastDurationMs)}
+                      {job.consecutiveFailureCount > 0
+                        ? ` · ${job.consecutiveFailureCount} consecutive fail`
+                        : ''}
+                    </div>
+                    {job.isBackoffActive ? (
+                      <div className="mt-1 text-[11px] leading-5 text-[#f59e0b]">
+                        {formatFutureRunLabel(job.nextAllowedRunAt) ?? 'Retry scheduled'}
+                      </div>
+                    ) : null}
+                    {job.lastError ? (
+                      <div className="mt-2 line-clamp-2 text-[12px] leading-5 text-[var(--color-down)]">
+                        {job.lastError}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null,
+              )}
+
+              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3">
+                <div className="mono-data text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-tertiary)]">
+                  Stored coverage
+                </div>
+                <div className="mono-data mt-2 text-sm font-medium text-[var(--color-text-primary)]">
+                  {smartMoneyStatus
+                    ? `${smartMoneyStatus.walletCount} wallets · ${smartMoneyStatus.signalCount} signals`
+                    : 'Refreshing status'}
+                </div>
+                <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                  Watching top {smartMoneyStatus?.watchWalletLimit ?? '—'} wallets for new positions.
+                </div>
+              </div>
             </div>
           </section>
 
@@ -364,7 +535,7 @@ export function SmartMoneyPage() {
                   Capital tracked
                 </div>
                 <div className="mono-data mt-2 text-[22px] font-medium text-[var(--color-text-primary)]">
-                  {formatCompactCurrency(totalSignalSize)}
+                  {formatMoney(totalSignalSize)}
                 </div>
                 <div className="mono-data mt-1 text-[11px] text-[var(--color-text-tertiary)]">
                   Across visible signals
@@ -394,7 +565,7 @@ export function SmartMoneyPage() {
                 </div>
                 <div className="mono-data mt-1 text-[11px] text-[var(--color-text-tertiary)]">
                   {topSignal
-                    ? `${formatCompactCurrency(topSignal.size)} · score ${topSignal.walletScore}`
+                    ? `${formatMoney(topSignal.size)} · score ${topSignal.walletScore}`
                     : 'No active signal yet'}
                 </div>
               </div>
@@ -425,7 +596,7 @@ export function SmartMoneyPage() {
 
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
                 <RangeFilter
-                  formatValue={(value) => formatCompactCurrency(value)}
+                  formatValue={(value) => formatMoney(value)}
                   label="Min position size"
                   max={5000}
                   onChange={(value) => updateSearch({ minSize: String(value) })}
@@ -469,6 +640,10 @@ export function SmartMoneyPage() {
                 <SmartMoneyFeedCard key={signal.id} signal={signal} />
               ))}
             </section>
+          ) : signalsQuery.isFetching ? (
+            <section className="px-7 py-6">
+              <SignalCardsLoadingState count={3} />
+            </section>
           ) : (
             <section className="px-7 py-6 text-sm leading-7 text-[var(--color-text-secondary)]">
               No signals match the current board filters. Lower the wallet score or position-size threshold to widen the feed.
@@ -480,7 +655,10 @@ export function SmartMoneyPage() {
           <section className="border-b border-[var(--color-border-subtle)] px-[18px] py-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="section-kicker">Whale board</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="section-kicker">Whale board</div>
+                  {isTopWalletsRefreshing ? <RefreshBadge /> : null}
+                </div>
                 <h2 className="mt-2 text-lg font-semibold text-[var(--color-text-primary)]">
                   Ranked wallets
                 </h2>
@@ -501,7 +679,10 @@ export function SmartMoneyPage() {
           </section>
 
           <section className="px-[18px] py-4">
-            <div className="section-kicker">Latest activity</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="section-kicker">Latest activity</div>
+              {isSignalOverviewRefreshing ? <RefreshBadge /> : null}
+            </div>
             <h2 className="mt-2 text-lg font-semibold text-[var(--color-text-primary)]">
               What just hit the tape
             </h2>

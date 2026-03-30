@@ -8,8 +8,12 @@ import {
   useNavigate,
   useSearch,
 } from '@tanstack/react-router'
+import { SearchResultsLoadingState } from '../components/loading-state'
 import { MarketRow } from '../components/market-row'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
 import {
   useEventsQuery,
   useSearchEventsQuery,
@@ -22,6 +26,7 @@ import {
 import { formatCompactNumber } from '../lib/format'
 import {
   getCategoryRoute,
+  getMarketsRoute,
 } from '../lib/routes'
 import type { AppSearch } from '../router'
 import type { PulseProvider } from '../features/events/types'
@@ -38,6 +43,8 @@ const PROVIDER_FILTERS: Array<{
 }> = [
   { label: 'All venues', value: 'all' },
   { label: 'Bayse', value: 'bayse' },
+  { label: 'Kalshi', value: 'kalshi' },
+  { label: 'Manifold', value: 'manifold' },
   { label: 'Polymarket', value: 'polymarket' },
 ]
 
@@ -98,6 +105,7 @@ export function SearchPage() {
 
     const timeoutId = window.setTimeout(() => {
       void navigate({
+        resetScroll: false,
         replace: true,
         search: (current): AppSearch => {
           const nextSearch: AppSearch = { ...current }
@@ -142,6 +150,10 @@ export function SearchPage() {
 
   const hasQuery = query.length >= 2
   const results = searchResultsQuery.data ?? EMPTY_EVENTS
+  const isResultsRefreshing =
+    searchResultsQuery.isFetching && !searchResultsQuery.isLoading
+  const isSuggestionsRefreshing =
+    categoriesQuery.isFetching && !categoriesQuery.isLoading
   const activeFilterCount = [
     activeCategory !== 'All',
     activeProvider !== 'all',
@@ -150,6 +162,7 @@ export function SearchPage() {
 
   const updateFilter = (key: 'category' | 'provider' | 'status', value: string) => {
     void navigate({
+      resetScroll: false,
       replace: true,
       search: (current): AppSearch => {
         const nextSearch: AppSearch = { ...current }
@@ -188,6 +201,7 @@ export function SearchPage() {
             <SectionHeader
               description="The query always lives in the URL so searches can be shared and reopened later."
               kicker="Query state"
+              status={hasQuery && isResultsRefreshing ? <RefreshBadge /> : null}
               title={query ? `“${query}”` : 'Waiting for a search'}
             />
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -276,6 +290,7 @@ export function SearchPage() {
               onClick={() => {
                 setDraftQuery('')
                 void navigate({
+                  resetScroll: false,
                   replace: true,
                   search: {},
                   to: '/search',
@@ -296,6 +311,7 @@ export function SearchPage() {
                 : 'Start with at least two characters to search the stored event archive.'
             }
             kicker="Results"
+            status={hasQuery && isResultsRefreshing ? <RefreshBadge /> : null}
             title={hasQuery ? 'Market matches' : 'Search results'}
           />
 
@@ -317,9 +333,7 @@ export function SearchPage() {
           ) : null}
 
           {hasQuery && searchResultsQuery.isLoading ? (
-            <div className="panel p-6 text-[var(--color-text-secondary)]">
-              Searching the stored market archive...
-            </div>
+            <SearchResultsLoadingState />
           ) : null}
 
           {hasQuery && searchResultsQuery.error ? (
@@ -348,11 +362,12 @@ export function SearchPage() {
                     <SectionHeader
                       description="The public board stays useful even when the current query misses."
                       kicker="Suggested markets"
+                      status={isSuggestionsRefreshing ? <RefreshBadge /> : null}
                       title="Popular names to open instead"
                     />
                     <Link
                       className="terminal-button text-sm font-medium"
-                      to="/"
+                      {...getMarketsRoute()}
                     >
                       Back to markets
                     </Link>

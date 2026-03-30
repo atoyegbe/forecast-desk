@@ -13,6 +13,7 @@ import type {
   PulseProvider,
 } from '../features/events/types'
 import { formatProbability } from '../lib/format'
+import { ChartLoadingState } from './loading-state'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -49,6 +50,8 @@ type ComparisonTooltipProps = {
 
 const PLATFORM_STROKES: Record<PulseProvider, string> = {
   bayse: 'var(--color-bayse)',
+  kalshi: 'var(--color-kalshi)',
+  manifold: 'var(--color-manifold)',
   polymarket: 'var(--color-polymarket)',
 }
 
@@ -180,11 +183,7 @@ export function ComparisonHistoryChart({
   }, 0)
 
   if (isLoading && !normalizedHistories.length) {
-    return (
-      <div className="panel-elevated flex h-[260px] items-center justify-center p-6 text-center text-[var(--color-text-secondary)]">
-        Loading cross-platform history...
-      </div>
-    )
+    return <ChartLoadingState heightClass="h-[260px]" />
   }
 
   if (!normalizedHistories.length) {

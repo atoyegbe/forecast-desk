@@ -9,7 +9,7 @@ import type {
   PulseSmartMoneyWalletListParams,
 } from '../contracts/pulse-smart-money.js'
 import type { PulseFreshness } from '../contracts/pulse-events.js'
-import { getSmartMoneyRefreshIntervalMs } from './config.js'
+import { getSmartMoneySnapshotRefreshIntervalMs } from './config.js'
 import { getDbPool } from './pool.js'
 
 type Queryable = {
@@ -86,8 +86,15 @@ type SignalRow = {
 }
 
 export type SmartMoneySyncState = {
+  attemptCount: number
+  consecutiveFailureCount: number
+  failureCount: number
+  lastDurationMs?: number | null
   lastError?: string | null
   lastRunAt?: string | null
+  lastSuccessAt?: string | null
+  nextAllowedRunAt?: string | null
+  successCount: number
   syncKey: string
 }
 
@@ -198,12 +205,32 @@ function toIsoString(value: Date | string | null | undefined) {
   return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString()
 }
 
+function toNullableTimestampInput(value: Date | string | null | undefined) {
+  const normalizedValue = typeof value === 'string' ? value.trim() : value
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  if (normalizedValue instanceof Date) {
+    return normalizedValue.toISOString()
+  }
+
+  const parsed = new Date(normalizedValue)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+
+  return parsed.toISOString()
+}
+
 function toFreshness(value: Date | string | null | undefined): PulseFreshness {
   const syncedAt = toIsoString(value) ?? new Date(0).toISOString()
   const parsedTimestamp = new Date(syncedAt).getTime()
   const isStale =
     Number.isNaN(parsedTimestamp) ||
-    Date.now() - parsedTimestamp >= getSmartMoneyRefreshIntervalMs()
+    Date.now() - parsedTimestamp >= getSmartMoneySnapshotRefreshIntervalMs()
 
   return {
     isStale,
@@ -385,7 +412,7 @@ async function insertWallet(
       wallet.closedPositionCount,
       wallet.marketCount,
       wallet.recencyScore,
-      wallet.lastActiveAt ?? null,
+      toNullableTimestampInput(wallet.lastActiveAt),
       JSON.stringify(wallet.categoryStats),
       syncedAt.toISOString(),
     ],
@@ -447,8 +474,8 @@ async function insertPosition(
       position.currentValue,
       position.pnl,
       position.realizedPnl,
-      position.closingDate ?? null,
-      position.timestamp ?? null,
+      toNullableTimestampInput(position.closingDate),
+      toNullableTimestampInput(position.timestamp),
       syncedAt.toISOString(),
     ],
   )
@@ -502,8 +529,8 @@ async function insertSignal(
       signal.currentPrice,
       signal.priceDelta,
       signal.size,
-      signal.signalAt,
-      signal.closingDate ?? null,
+      toNullableTimestampInput(signal.signalAt) ?? syncedAt.toISOString(),
+      toNullableTimestampInput(signal.closingDate),
       signal.transactionHash ?? null,
       syncedAt.toISOString(),
     ],
@@ -529,16 +556,96 @@ export async function listStoredSmartMoneySignalIds() {
   return result.rows.map((row) => row.id)
 }
 
+export async function countStoredSmartMoneySignals() {
+  const result = await getDbPool().query<{ count: string }>(
+    'SELECT COUNT(*)::TEXT AS count FROM pulse_smart_money_signals',
+  )
+
+  return Number.parseInt(result.rows[0]?.count ?? '0', 10)
+}
+
+export async function listStoredSmartMoneyWalletAddresses(limit: number) {
+  const parsedLimit = parsePositiveInteger(limit, 100)
+  const result = await getDbPool().query<{ address: string }>(
+    `
+      SELECT address
+      FROM pulse_smart_money_wallets
+      ORDER BY rank ASC, score DESC, total_volume DESC
+      LIMIT $1
+    `,
+    [parsedLimit],
+  )
+
+  return result.rows.map((row) => row.address)
+}
+
+export async function listStoredSmartMoneyWalletsByAddresses(addresses: string[]) {
+  const normalizedAddresses = [...new Set(
+    addresses
+      .map((address) => address.trim().toLowerCase())
+      .filter(Boolean),
+  )]
+
+  if (!normalizedAddresses.length) {
+    return [] as PulseSmartMoneyWallet[]
+  }
+
+  const result = await getDbPool().query<WalletRow>(
+    `
+      SELECT
+        address,
+        category_stats_json,
+        closed_position_count,
+        display_name,
+        last_active_at,
+        market_count,
+        open_position_count,
+        profile_image_url,
+        rank,
+        recency_score,
+        roi,
+        score,
+        source_pnl,
+        source_rank,
+        source_volume,
+        synced_at,
+        total_volume,
+        verified_badge,
+        win_rate,
+        x_username
+      FROM pulse_smart_money_wallets
+      WHERE address = ANY($1::TEXT[])
+    `,
+    [normalizedAddresses],
+  )
+
+  return result.rows.map(mapWalletRow)
+}
+
 export async function getSmartMoneySyncState(syncKey = 'smart-money') {
   const result = await getDbPool().query<{
+    attempt_count: number | string
+    consecutive_failure_count: number | string
+    failure_count: number | string
+    last_duration_ms: number | string | null
     last_error: string | null
     last_run_at: Date | string | null
+    last_success_at: Date | string | null
+    next_allowed_run_at: Date | string | null
+    success_count: number | string
     sync_key: string
   }>(
     `
       SELECT
+        attempt_count,
+        consecutive_failure_count,
+        failure_count,
+        last_duration_ms,
         last_error,
         last_run_at,
+        last_success_at,
+        next_allowed_run_at,
+        success_count,
         sync_key
       FROM pulse_smart_money_sync_state
       WHERE sync_key = $1
@@ -552,8 +659,20 @@ export async function getSmartMoneySyncState(syncKey = 'smart-money') {
   }
 
   return {
+    attemptCount: parsePositiveInteger(row.attempt_count, 0),
+    consecutiveFailureCount: parsePositiveInteger(
+      row.consecutive_failure_count,
+      0,
+    ),
+    failureCount: parsePositiveInteger(row.failure_count, 0),
+    lastDurationMs: row.last_duration_ms == null
+      ? null
+      : parsePositiveInteger(row.last_duration_ms, 0),
     lastError: row.last_error,
     lastRunAt: toIsoString(row.last_run_at),
+    lastSuccessAt: toIsoString(row.last_success_at),
+    nextAllowedRunAt: toIsoString(row.next_allowed_run_at),
+    successCount: parsePositiveInteger(row.success_count, 0),
     syncKey: row.sync_key,
   } satisfies SmartMoneySyncState
 }
@@ -561,14 +680,52 @@ export async function getSmartMoneySyncState(syncKey = 'smart-money') {
 export async function recordSmartMoneySyncAttempt(syncKey: string, timestamp: Date) {
   await getDbPool().query(
     `
-      INSERT INTO pulse_smart_money_sync_state (sync_key, last_run_at, last_error, updated_at)
-      VALUES ($1, $2, NULL, NOW())
+      INSERT INTO pulse_smart_money_sync_state (
+        sync_key,
+        attempt_count,
+        last_run_at,
+        updated_at
+      )
+      VALUES ($1, 1, $2, NOW())
       ON CONFLICT (sync_key) DO UPDATE SET
+        attempt_count = pulse_smart_money_sync_state.attempt_count + 1,
         last_run_at = EXCLUDED.last_run_at,
-        last_error = NULL,
         updated_at = NOW()
     `,
     [syncKey, timestamp.toISOString()],
+  )
+}
+
+export async function recordSmartMoneySyncSuccess(
+  syncKey: string,
+  timestamp: Date,
+  durationMs: number,
+) {
+  await getDbPool().query(
+    `
+      INSERT INTO pulse_smart_money_sync_state (
+        sync_key,
+        last_run_at,
+        last_duration_ms,
+        last_success_at,
+        last_error,
+        next_allowed_run_at,
+        success_count,
+        consecutive_failure_count,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $2, NULL, NULL, 1, 0, NOW())
+      ON CONFLICT (sync_key) DO UPDATE SET
+        last_run_at = EXCLUDED.last_run_at,
+        last_duration_ms = EXCLUDED.last_duration_ms,
+        last_success_at = EXCLUDED.last_success_at,
+        last_error = NULL,
+        next_allowed_run_at = NULL,
+        success_count = pulse_smart_money_sync_state.success_count + 1,
+        consecutive_failure_count = 0,
+        updated_at = NOW()
+    `,
+    [syncKey, timestamp.toISOString(), durationMs],
   )
 }
 
@@ -576,17 +733,38 @@ export async function recordSmartMoneySyncFailure(
   syncKey: string,
   message: string,
   timestamp: Date,
+  durationMs: number,
+  nextAllowedRunAt: Date | null,
 ) {
   await getDbPool().query(
     `
-      INSERT INTO pulse_smart_money_sync_state (sync_key, last_run_at, last_error, updated_at)
-      VALUES ($1, $2, $3, NOW())
+      INSERT INTO pulse_smart_money_sync_state (
+        sync_key,
+        consecutive_failure_count,
+        failure_count,
+        last_duration_ms,
+        last_run_at,
+        last_error,
+        next_allowed_run_at,
+        updated_at
+      )
+      VALUES ($1, 1, 1, $3, $2, $4, $5, NOW())
       ON CONFLICT (sync_key) DO UPDATE SET
+        consecutive_failure_count = pulse_smart_money_sync_state.consecutive_failure_count + 1,
+        failure_count = pulse_smart_money_sync_state.failure_count + 1,
+        last_duration_ms = EXCLUDED.last_duration_ms,
         last_run_at = EXCLUDED.last_run_at,
         last_error = EXCLUDED.last_error,
+        next_allowed_run_at = EXCLUDED.next_allowed_run_at,
         updated_at = NOW()
     `,
-    [syncKey, timestamp.toISOString(), message],
+    [
+      syncKey,
+      timestamp.toISOString(),
+      durationMs,
+      message,
+      nextAllowedRunAt?.toISOString() ?? null,
+    ],
   )
 }
 
@@ -621,10 +799,17 @@ export async function replaceStoredSmartMoneySnapshot(
 
     await client.query(
       `
-        INSERT INTO pulse_smart_money_sync_state (sync_key, last_run_at, last_error, updated_at)
-        VALUES ($1, $2, NULL, NOW())
+        INSERT INTO pulse_smart_money_sync_state (
+          sync_key,
+          last_run_at,
+          last_success_at,
+          last_error,
+          updated_at
+        )
+        VALUES ($1, $2, $2, NULL, NOW())
         ON CONFLICT (sync_key) DO UPDATE SET
           last_run_at = EXCLUDED.last_run_at,
+          last_success_at = EXCLUDED.last_success_at,
           last_error = NULL,
           updated_at = NOW()
       `,
@@ -638,6 +823,89 @@ export async function replaceStoredSmartMoneySnapshot(
   } finally {
     client.release()
   }
+}
+
+export async function appendStoredSmartMoneySignals(
+  signals: StoredSmartMoneySignalInput[],
+  syncedAt: Date,
+) {
+  if (!signals.length) {
+    return [] as string[]
+  }
+
+  const client = await getDbPool().connect()
+  const insertedIds: string[] = []
+
+  try {
+    await client.query('BEGIN')
+
+    for (const signal of signals) {
+      const result = await client.query<{ id: string }>(
+        `
+          INSERT INTO pulse_smart_money_signals (
+            id,
+            wallet_address,
+            event_id,
+            provider_event_id,
+            provider,
+            condition_id,
+            event_slug,
+            market_title,
+            category,
+            icon_url,
+            outcome,
+            entry_price,
+            current_price,
+            price_delta,
+            size_usd,
+            signal_timestamp,
+            closing_date,
+            transaction_hash,
+            synced_at
+          )
+          VALUES (
+            $1, $2, $3, $4, 'polymarket', $5, $6, $7, $8, $9, $10,
+            $11, $12, $13, $14, $15, $16, $17, $18
+          )
+          ON CONFLICT (id) DO NOTHING
+          RETURNING id
+        `,
+        [
+          signal.id,
+          signal.walletAddress,
+          signal.eventId ?? null,
+          signal.providerEventId ?? null,
+          signal.conditionId,
+          signal.eventSlug,
+          signal.marketTitle,
+          signal.category,
+          signal.iconUrl ?? null,
+          signal.outcome,
+          signal.entryPrice,
+          signal.currentPrice,
+          signal.priceDelta,
+          signal.size,
+          signal.signalAt,
+          signal.closingDate ?? null,
+          signal.transactionHash ?? null,
+          syncedAt.toISOString(),
+        ],
+      )
+
+      if (result.rows[0]?.id) {
+        insertedIds.push(result.rows[0].id)
+      }
+    }
+
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+
+  return insertedIds
 }
 
 export async function listStoredSmartMoneySignals(

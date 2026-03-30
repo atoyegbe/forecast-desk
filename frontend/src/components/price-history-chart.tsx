@@ -12,6 +12,7 @@ import {
   formatProbability,
 } from '../lib/format'
 import type { PulsePricePoint } from '../features/events/types'
+import { ChartLoadingState } from './loading-state'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -126,11 +127,7 @@ export function PriceHistoryChart({
   const [showDataTable, setShowDataTable] = useState(false)
 
   if (isLoading && !points.length) {
-    return (
-      <div className="panel-elevated flex h-[200px] items-center justify-center p-6 text-center text-[var(--color-text-secondary)]">
-        Loading stored history...
-      </div>
-    )
+    return <ChartLoadingState />
   }
 
   if (!points.length) {

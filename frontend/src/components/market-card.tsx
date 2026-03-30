@@ -1,8 +1,9 @@
 import { Link } from '@tanstack/react-router'
+import { useDisplayCurrency } from '../features/currency/context'
+import { getEventMoneyUnit } from '../features/currency/money'
 import type { PulseEvent } from '../features/events/types'
 import {
   formatClosingCountdown,
-  formatCompactNumber,
   formatProbability,
 } from '../lib/format'
 import { getEventRoute } from '../lib/routes'
@@ -27,6 +28,7 @@ function getPriceTone(price: number) {
 }
 
 export function MarketCard({ event }: MarketCardProps) {
+  const { formatMoney } = useDisplayCurrency()
   const primaryMarket = event.markets[0]
   const yesPrice = primaryMarket?.yesOutcome.price ?? 0
   const noPrice = primaryMarket?.noOutcome.price ?? 0
@@ -64,7 +66,7 @@ export function MarketCard({ event }: MarketCardProps) {
           <div>
             <div className="stat-label">Volume</div>
             <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-              {formatCompactNumber(event.totalVolume)}
+              {formatMoney(event.totalVolume, getEventMoneyUnit(event))}
             </div>
           </div>
           <div>

@@ -4,10 +4,23 @@ import {
 } from '@tanstack/react-router'
 import { DeskTabs } from '../components/desk-tabs'
 import { DivergenceBar } from '../components/divergence-bar'
+import {
+  EventDetailLoadingState,
+  MarketRowsLoadingState,
+  SkeletonText,
+} from '../components/loading-state'
 import { PlatformBadge } from '../components/platform-badge'
 import { PriceDisplay } from '../components/price-display'
 import { PriceHistoryChart } from '../components/price-history-chart'
-import { SectionHeader } from '../components/section-header'
+import {
+  RefreshBadge,
+  SectionHeader,
+} from '../components/section-header'
+import { useDisplayCurrency } from '../features/currency/context'
+import {
+  getEventMoneyUnit,
+  getProviderMoneyUnit,
+} from '../features/currency/money'
 import { getProviderLabel } from '../features/events/provider-ids'
 import { useLiveEventPrices } from '../features/events/live'
 import {
@@ -19,7 +32,10 @@ import {
   getMarketStance,
   getTempoLabel,
 } from '../features/events/insights'
-import type { PulseMarket } from '../features/events/types'
+import type {
+  PulseMarket,
+  PulseProvider,
+} from '../features/events/types'
 import {
   formatCompactNumber,
   formatDate,
@@ -32,6 +48,7 @@ import {
   getCategoryRoute,
   getEventCompareRoute,
   getEventRoute,
+  getMarketsRoute,
 } from '../lib/routes'
 import { useUrlSelection } from '../lib/url-state'
 
@@ -107,8 +124,9 @@ function MarketBoardRow({
   provider,
 }: {
   market: PulseMarket
-  provider: 'bayse' | 'polymarket'
+  provider: PulseProvider
 }) {
+  const { formatMoney } = useDisplayCurrency()
   const secondaryMetricLabel =
     market.totalOrders > 0 ? 'Orders' : 'Liquidity'
   const secondaryMetricValue =
@@ -180,7 +198,9 @@ function MarketBoardRow({
         <div className="text-left xl:text-right">
           <div className="stat-label">{secondaryMetricLabel}</div>
           <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-            {formatCompactNumber(secondaryMetricValue)}
+            {market.totalOrders > 0
+              ? formatCompactNumber(secondaryMetricValue)
+              : formatMoney(secondaryMetricValue, getProviderMoneyUnit(provider))}
           </div>
         </div>
 
@@ -191,7 +211,7 @@ function MarketBoardRow({
           <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
             {market.totalOrders > 0
               ? `${market.feePercentage}%`
-              : formatCompactNumber(market.totalVolume)}
+              : formatMoney(market.totalVolume, getProviderMoneyUnit(provider))}
           </div>
         </div>
       </div>
@@ -200,6 +220,7 @@ function MarketBoardRow({
 }
 
 export function EventPage() {
+  const { formatMoney } = useDisplayCurrency()
   const eventId = useParams({
     strict: false,
     select: (params) => ('eventId' in params ? params.eventId : undefined),
@@ -220,11 +241,7 @@ export function EventPage() {
   const liveFeed = useLiveEventPrices(eventId)
 
   if (eventQuery.isLoading) {
-    return (
-      <div className="panel p-8 text-[var(--color-text-secondary)]">
-        Loading event detail...
-      </div>
-    )
+    return <EventDetailLoadingState />
   }
 
   if (eventQuery.error || !eventQuery.data) {
@@ -235,7 +252,7 @@ export function EventPage() {
         </p>
         <Link
           className="terminal-button mt-4 text-sm font-medium"
-          to="/"
+          {...getMarketsRoute()}
         >
           Back to markets
         </Link>
@@ -248,7 +265,8 @@ export function EventPage() {
   const liveMarket = liveFeed.snapshot?.markets.find(
     (market) => market.marketId === primaryMarket?.id,
   )
-  const liveSourceUrl = event.sourceUrl ?? event.resolutionSource
+  const providerSourceUrl = event.sourceUrl
+  const liveSourceUrl = providerSourceUrl ?? event.resolutionSource
   const yesPrice = liveMarket?.yesPrice ?? primaryMarket?.yesOutcome.price ?? 0
   const noPrice = liveMarket?.noPrice ?? primaryMarket?.noOutcome.price ?? 0
   const eventFreshnessLabel = event.freshness?.syncedAt
@@ -263,15 +281,24 @@ export function EventPage() {
   const liveStatusLabel =
     liveFeed.status === 'streaming'
       ? 'Connected'
+      : liveFeed.status === 'connecting'
+        ? 'Connecting'
       : liveFeed.status === 'error'
         ? 'Offline'
-        : 'Reconnecting'
+        : 'Unavailable'
   const liveStatusClass =
     liveFeed.status === 'streaming'
       ? 'live-dot'
+      : liveFeed.status === 'connecting'
+        ? 'live-dot warn'
       : liveFeed.status === 'error'
         ? 'live-dot offline'
         : 'live-dot warn'
+  const isRefreshing = [
+    eventQuery.isFetching && !eventQuery.isLoading,
+    compareQuery.isFetching && !compareQuery.isLoading,
+    historyQuery.isFetching && !historyQuery.isLoading,
+  ].some(Boolean)
 
   return (
     <div className="space-y-6">
@@ -287,6 +314,7 @@ export function EventPage() {
               >
                 {event.category}
               </Link>
+              {isRefreshing ? <RefreshBadge label="Refreshing" /> : null}
               <PlatformBadge platform={event.provider} />
               <span className="terminal-chip text-[11px] uppercase tracking-[0.18em]">
                 {event.status}
@@ -350,11 +378,11 @@ export function EventPage() {
               </div>
               <div className="metric-card">
                 <div className="stat-label">Total volume</div>
-                <strong>{formatCompactNumber(event.totalVolume)}</strong>
+                <strong>{formatMoney(event.totalVolume, getEventMoneyUnit(event))}</strong>
               </div>
               <div className="metric-card">
                 <div className="stat-label">Liquidity</div>
-                <strong>{formatCompactNumber(event.liquidity)}</strong>
+                <strong>{formatMoney(event.liquidity, getEventMoneyUnit(event))}</strong>
               </div>
               <div className="metric-card">
                 <div className="stat-label">Resolves</div>
@@ -414,8 +442,8 @@ export function EventPage() {
                   rel="noreferrer"
                   target="_blank"
                 >
-                  {event.provider === 'polymarket'
-                    ? 'Open on Polymarket'
+                  {providerSourceUrl
+                    ? `Open on ${getProviderLabel(event.provider)}`
                     : 'View resolution source'}
                 </a>
               </div>
@@ -521,8 +549,8 @@ export function EventPage() {
           },
           {
             content: compareQuery.isLoading ? (
-              <div className="panel-elevated px-4 py-5 text-sm text-[var(--color-text-secondary)]">
-                Matching this event against other venues...
+              <div className="panel-elevated px-4 py-5">
+                <SkeletonText lines={['h-3 w-36', 'h-4 w-full', 'h-4 w-4/5']} />
               </div>
             ) : compareQuery.data ? (
               <div className="space-y-5">
@@ -582,7 +610,10 @@ export function EventPage() {
                         <div className="text-left lg:text-right">
                           <div className="stat-label">Volume</div>
                           <div className="mono-data mt-1 text-base font-medium text-[var(--color-text-primary)]">
-                            {formatCompactNumber(comparedEvent.totalVolume)}
+                            {formatMoney(
+                              comparedEvent.totalVolume,
+                              getEventMoneyUnit(comparedEvent.event),
+                            )}
                           </div>
                         </div>
 
@@ -648,8 +679,8 @@ export function EventPage() {
                     rel="noreferrer"
                     target="_blank"
                   >
-                    {event.provider === 'polymarket'
-                      ? 'View on Polymarket'
+                    {providerSourceUrl
+                      ? `Open on ${getProviderLabel(event.provider)}`
                       : 'View resolution source'}
                   </a>
                 ) : null}
@@ -669,17 +700,22 @@ export function EventPage() {
         <SectionHeader
           description="If an event has more than one sub-market, they live here. Some providers package a single event as multiple binary markets, so this board keeps the internal structure visible."
           kicker="Market board"
+          status={isRefreshing ? <RefreshBadge /> : null}
           title="Markets inside this event"
         />
 
         <div className="mt-5 space-y-3">
-          {event.markets.map((market) => (
-            <MarketBoardRow
-              key={market.id}
-              market={market}
-              provider={event.provider}
-            />
-          ))}
+          {event.markets.length ? (
+            event.markets.map((market) => (
+              <MarketBoardRow
+                key={market.id}
+                market={market}
+                provider={event.provider}
+              />
+            ))
+          ) : (
+            <MarketRowsLoadingState count={2} />
+          )}
         </div>
       </section>
     </div>
