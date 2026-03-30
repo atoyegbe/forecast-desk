@@ -64,9 +64,9 @@ jobs so an API process and worker can safely coexist.
 ## Local Setup
 
 1. Copy `.env.example` to `.env`
-2. Create a local database, for example `createdb naija_pulse`
-3. Start Redis if you want Telegram connect codes to work across separate API and worker processes
-4. Run `npm install`
+2. Run `npm install`
+3. From the repo root, start local infra with `make infra-up`, or run `docker compose up -d postgres redis`
+4. If you are not using the checked-in Compose file, create a local database yourself, for example `createdb naija_pulse`
 5. Run `npm run dev`
 
 If you want a dedicated smart-money worker instead of running the scheduler in
@@ -74,10 +74,14 @@ the API process:
 
 1. Start the API with `SMART_MONEY_SCHEDULER_ENABLED=false npm run dev`
 2. Start the worker with `npm run dev:worker`
-3. Set `REDIS_URL` so the worker-issued Telegram verification codes can be claimed by the API process
+3. Set `REDIS_URL` so the worker-issued Telegram verification codes can be claimed by the API process and the API can use Redis-backed caching
+
+If you use the root [Makefile](/Users/atoyegbe/dev/quant/projects/naija-pulse/Makefile), `make api`, `make worker`, and `make dev` already start local Postgres and Redis through the checked-in [compose.yml](/Users/atoyegbe/dev/quant/projects/naija-pulse/compose.yml).
 
 The backend bootstraps its discovery schema on startup. If `DATABASE_URL` is not
-set, it falls back to `postgresql:///postgres` for local development.
+set, it falls back to `postgresql:///postgres` for local development. Server-side
+read caching is backed by Redis when `REDIS_URL` or `REDIS_HOST` is configured,
+and it can be bypassed explicitly with `CACHE_ENABLED=false`.
 
 The first Smart Money request can take noticeably longer than normal discovery
 reads because it may need to refresh the wallet snapshot on demand before

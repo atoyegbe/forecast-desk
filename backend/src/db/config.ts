@@ -1,8 +1,10 @@
 const DEFAULT_DATABASE_URL = 'postgresql:///postgres'
 const DEFAULT_ALERT_DELIVERY_INTERVAL_MS = 60 * 1000
+const DEFAULT_CACHE_ENABLED = true
 const DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS = 2 * 60 * 1000
 const DEFAULT_FX_API_BASE = 'https://api.frankfurter.dev/v2'
 const DEFAULT_FX_CACHE_TTL_MS = 30 * 60 * 1000
+const DEFAULT_REDIS_PORT = 6379
 const DEFAULT_QUORUM_AUTH_CODE_TTL_MINUTES = 15
 const DEFAULT_QUORUM_BASE_URL = 'http://localhost:5173'
 const DEFAULT_QUORUM_SESSION_TTL_DAYS = 30
@@ -74,6 +76,13 @@ export function getAlertDeliveryIntervalMs() {
   return parsePositiveInteger(
     process.env.ALERT_DELIVERY_INTERVAL_MS,
     DEFAULT_ALERT_DELIVERY_INTERVAL_MS,
+  )
+}
+
+export function isCacheEnabled() {
+  return parseBoolean(
+    process.env.CACHE_ENABLED,
+    DEFAULT_CACHE_ENABLED,
   )
 }
 
@@ -187,6 +196,21 @@ export function getRedisUrl() {
   return process.env.REDIS_URL?.trim() || null
 }
 
+export function getRedisHost() {
+  return process.env.REDIS_HOST?.trim() || null
+}
+
+export function getRedisPort() {
+  return parsePositiveInteger(
+    process.env.REDIS_PORT,
+    DEFAULT_REDIS_PORT,
+  )
+}
+
+export function getRedisPassword() {
+  return process.env.REDIS_PASSWORD?.trim() || null
+}
+
 export function isSmartMoneySchedulerEnabled() {
   return parseBoolean(
     process.env.SMART_MONEY_SCHEDULER_ENABLED,
@@ -253,9 +277,11 @@ export function getSmartMoneyMinSignalSizeUsd() {
 export {
   DEFAULT_DATABASE_URL,
   DEFAULT_ALERT_DELIVERY_INTERVAL_MS,
+  DEFAULT_CACHE_ENABLED,
   DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS,
   DEFAULT_FX_API_BASE,
   DEFAULT_FX_CACHE_TTL_MS,
+  DEFAULT_REDIS_PORT,
   DEFAULT_QUORUM_AUTH_CODE_TTL_MINUTES,
   DEFAULT_QUORUM_BASE_URL,
   DEFAULT_QUORUM_SESSION_TTL_DAYS,

@@ -7,6 +7,7 @@ import {
   getFxApiBase,
   getFxCacheTtlMs,
 } from '../db/config.js'
+import { buildCacheKey, cached } from '../lib/cache.js'
 import { fetchJson } from '../providers/shared.js'
 
 type FrankfurterRate = {
@@ -16,9 +17,8 @@ type FrankfurterRate = {
   rate?: number | string | null
 }
 
-let cachedSnapshot: PulseCurrencySnapshot | null = null
-let cachedAt = 0
 let inFlightSnapshot: Promise<PulseCurrencySnapshot> | null = null
+let lastKnownSnapshot: PulseCurrencySnapshot | null = null
 
 function isDisplayCurrency(value: string): value is PulseDisplayCurrency {
   return DISPLAY_CURRENCIES.includes(value as PulseDisplayCurrency)
@@ -71,27 +71,19 @@ async function loadCurrencySnapshot() {
   } satisfies PulseCurrencySnapshot
 }
 
-export async function getCurrencySnapshot() {
-  const cacheTtlMs = getFxCacheTtlMs()
-
-  if (cachedSnapshot && Date.now() - cachedAt < cacheTtlMs) {
-    return cachedSnapshot
-  }
-
+async function loadFreshCurrencySnapshot() {
   if (inFlightSnapshot) {
     return inFlightSnapshot
   }
 
   inFlightSnapshot = loadCurrencySnapshot()
     .then((snapshot) => {
-      cachedSnapshot = snapshot
-      cachedAt = Date.now()
-
+      lastKnownSnapshot = snapshot
       return snapshot
     })
     .catch((error) => {
-      if (cachedSnapshot) {
-        return cachedSnapshot
+      if (lastKnownSnapshot) {
+        return lastKnownSnapshot
       }
 
       throw error
@@ -101,4 +93,14 @@ export async function getCurrencySnapshot() {
     })
 
   return inFlightSnapshot
+}
+
+export async function getCurrencySnapshot() {
+  const cacheTtlSeconds = Math.max(60, Math.floor(getFxCacheTtlMs() / 1_000))
+
+  return cached(
+    buildCacheKey('currencies', 'snapshot', 'display'),
+    cacheTtlSeconds,
+    loadFreshCurrencySnapshot,
+  )
 }

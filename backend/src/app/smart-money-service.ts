@@ -38,6 +38,7 @@ import {
 } from '../db/smart-money-repository.js'
 import type { PulseEvent } from '../contracts/pulse-events.js'
 import { withSmartMoneyJobLock } from '../db/job-locks.js'
+import { buildCacheKey, cached, cacheDel, cacheDelPattern } from '../lib/cache.js'
 import {
   discoverPolymarketTradeWallets,
   listPolymarketLeaderboardWallets,
@@ -52,11 +53,14 @@ import {
 import { formatCategory, normalizeText, toNumber } from '../providers/shared.js'
 import { queueAlertDeliveriesForSignals } from './alerts-service.js'
 import { listEvents } from './events-service.js'
-import { invalidateCachedResponses } from './response-cache.js'
 
 const SMART_MONEY_SIGNAL_WATCH_SYNC_KEY = 'smart-money-signal-watch'
 const SMART_MONEY_SNAPSHOT_SYNC_KEY = 'smart-money-snapshot'
 const MAX_SMART_MONEY_BACKOFF_MS = 60 * 60 * 1000
+const SMART_MONEY_STATUS_CACHE_TTL_SECONDS = 60
+const SMART_MONEY_SIGNAL_FEED_CACHE_TTL_SECONDS = 60
+const SMART_MONEY_WALLET_LIST_CACHE_TTL_SECONDS = 300
+const SMART_MONEY_WALLET_DETAIL_CACHE_TTL_SECONDS = 120
 let smartMoneySignalWatchPromise: Promise<PulseSmartMoneySignal[]> | null = null
 let smartMoneySnapshotRefreshPromise: Promise<PulseSmartMoneySignal[]> | null = null
 let signalWatchJobRunning = false
@@ -67,6 +71,47 @@ let schedulerStarted = false
 const smartMoneySignalListeners = new Set<
   (signals: PulseSmartMoneySignal[]) => void
 >()
+
+function buildSmartMoneyStatusCacheKey() {
+  return buildCacheKey('smart-money', 'status')
+}
+
+function buildSmartMoneySignalsCacheKey(params: PulseSmartMoneySignalListParams) {
+  return buildCacheKey(
+    'signals',
+    'feed',
+    params.category,
+    params.minScore,
+    params.minSize,
+    params.sort ?? 'newest',
+    params.limit ?? 30,
+  )
+}
+
+function buildSmartMoneyWalletsCacheKey(params: PulseSmartMoneyWalletListParams) {
+  return buildCacheKey(
+    'wallets',
+    'leaderboard',
+    params.minScore,
+    params.minVolume,
+    params.limit ?? 25,
+  )
+}
+
+function buildSmartMoneyWalletDetailCacheKey(address: string) {
+  return buildCacheKey('wallets', 'detail', address)
+}
+
+async function invalidateSmartMoneyCaches(address?: string) {
+  await Promise.all([
+    cacheDel(buildSmartMoneyStatusCacheKey()),
+    cacheDelPattern(buildCacheKey('signals', 'feed', '*')),
+    cacheDelPattern(buildCacheKey('wallets', 'leaderboard', '*')),
+    address
+      ? cacheDel(buildSmartMoneyWalletDetailCacheKey(address))
+      : cacheDelPattern(buildCacheKey('wallets', 'detail', '*')),
+  ])
+}
 
 type EventLookup = {
   byProviderEventId: Map<string, PulseEvent>
@@ -812,7 +857,7 @@ async function refreshSmartMoneySnapshot() {
       attemptedAt,
       SMART_MONEY_SNAPSHOT_SYNC_KEY,
     )
-    invalidateCachedResponses('/api/v1/smart-money')
+    await invalidateSmartMoneyCaches()
     await recordSmartMoneySyncSuccess(
       SMART_MONEY_SNAPSHOT_SYNC_KEY,
       attemptedAt,
@@ -878,7 +923,7 @@ async function watchSmartMoneySignals() {
       return [] as PulseSmartMoneySignal[]
     }
 
-    invalidateCachedResponses('/api/v1/smart-money')
+    await invalidateSmartMoneyCaches()
 
     const nextSignals = await listStoredSmartMoneySignalsByIds(insertedSignalIds)
     await queueAlertDeliveriesForSignals(nextSignals)
@@ -1076,54 +1121,76 @@ function toJobStatus(
 }
 
 export async function getSmartMoneyStatus() {
-  const [walletCount, signalCount, snapshotState, signalWatchState] = await Promise.all([
-    countStoredSmartMoneyWallets(),
-    countStoredSmartMoneySignals(),
-    getSmartMoneySyncState(SMART_MONEY_SNAPSHOT_SYNC_KEY),
-    getSmartMoneySyncState(SMART_MONEY_SIGNAL_WATCH_SYNC_KEY),
-  ])
+  return cached(
+    buildSmartMoneyStatusCacheKey(),
+    SMART_MONEY_STATUS_CACHE_TTL_SECONDS,
+    async () => {
+      const [walletCount, signalCount, snapshotState, signalWatchState] = await Promise.all([
+        countStoredSmartMoneyWallets(),
+        countStoredSmartMoneySignals(),
+        getSmartMoneySyncState(SMART_MONEY_SNAPSHOT_SYNC_KEY),
+        getSmartMoneySyncState(SMART_MONEY_SIGNAL_WATCH_SYNC_KEY),
+      ])
 
-  return {
-    jobStatus: [
-      toJobStatus(
-        'snapshot',
-        snapshotState,
-        snapshotJobRunning,
-        getSmartMoneySnapshotRefreshIntervalMs(),
-      ),
-      toJobStatus(
-        'signal-watch',
-        signalWatchState,
-        signalWatchJobRunning,
-        getSmartMoneySignalWatchIntervalMs(),
-      ),
-    ],
-    signalCount,
-    walletCount,
-    watchWalletLimit: getSmartMoneyWatchWalletLimit(),
-  } satisfies PulseSmartMoneyStatus
+      return {
+        jobStatus: [
+          toJobStatus(
+            'snapshot',
+            snapshotState,
+            snapshotJobRunning,
+            getSmartMoneySnapshotRefreshIntervalMs(),
+          ),
+          toJobStatus(
+            'signal-watch',
+            signalWatchState,
+            signalWatchJobRunning,
+            getSmartMoneySignalWatchIntervalMs(),
+          ),
+        ],
+        signalCount,
+        walletCount,
+        watchWalletLimit: getSmartMoneyWatchWalletLimit(),
+      } satisfies PulseSmartMoneyStatus
+    },
+  )
 }
 
 export async function listSmartMoneySignals(params: PulseSmartMoneySignalListParams) {
-  await ensureSmartMoneySnapshot()
-
-  return listStoredSmartMoneySignals(params)
+  return cached(
+    buildSmartMoneySignalsCacheKey(params),
+    SMART_MONEY_SIGNAL_FEED_CACHE_TTL_SECONDS,
+    async () => {
+      await ensureSmartMoneySnapshot()
+      return listStoredSmartMoneySignals(params)
+    },
+  )
 }
 
 export async function listSmartMoneyWallets(params: PulseSmartMoneyWalletListParams) {
-  await ensureSmartMoneySnapshot()
-
-  return listStoredSmartMoneyWallets(params)
+  return cached(
+    buildSmartMoneyWalletsCacheKey(params),
+    SMART_MONEY_WALLET_LIST_CACHE_TTL_SECONDS,
+    async () => {
+      await ensureSmartMoneySnapshot()
+      return listStoredSmartMoneyWallets(params)
+    },
+  )
 }
 
 export async function getSmartMoneyWallet(address: string) {
-  await ensureSmartMoneySnapshot()
+  return cached(
+    buildSmartMoneyWalletDetailCacheKey(address),
+    SMART_MONEY_WALLET_DETAIL_CACHE_TTL_SECONDS,
+    async () => {
+      await ensureSmartMoneySnapshot()
 
-  const wallet = await getStoredSmartMoneyWallet(address)
+      const wallet = await getStoredSmartMoneyWallet(address)
 
-  if (!wallet) {
-    throw new Error('Smart money wallet not found.')
-  }
+      if (!wallet) {
+        throw new Error('Smart money wallet not found.')
+      }
 
-  return wallet
+      return wallet
+    },
+  )
 }

@@ -55,11 +55,13 @@ crawlers receive wallet-specific HTML, metadata, and JSON-LD on direct hits.
 Environment variables:
 
 - `DATABASE_URL=${{Postgres.DATABASE_URL}}`
+- `REDIS_URL=${{Redis.REDIS_URL}}`
 - `QUORUM_AUTH_FRONTEND_BASE_URL=https://<frontend-public-domain>`
 - `RESEND_API_KEY=...`
 - `QUORUM_EMAIL_FROM=alerts@your-domain.com`
 - `QUORUM_SESSION_TTL_DAYS=30`
 - `QUORUM_AUTH_CODE_TTL_MINUTES=15`
+- `CACHE_ENABLED=true`
 
 Optional provider/runtime overrides:
 
@@ -77,7 +79,7 @@ Optional provider/runtime overrides:
 - `FX_API_BASE`
 - `FX_CACHE_TTL_MS`
 
-The API service explicitly disables the embedded smart-money scheduler because the dedicated worker owns those loops in production.
+The API service explicitly disables the embedded smart-money scheduler because the dedicated worker owns those loops in production. The shared Redis service is also used by the API for server-side read caching.
 
 ### 3. Worker service
 

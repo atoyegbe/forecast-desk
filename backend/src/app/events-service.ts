@@ -1,3 +1,4 @@
+import { buildCacheKey, cached, cacheDel, cacheDelPattern } from '../lib/cache.js'
 import type {
   PulseComparisonGroup,
   PulseMarket,
@@ -51,6 +52,82 @@ const providers = {
 const providerNames = Object.keys(providers) as PulseProvider[]
 const refreshLocks = new Map<PulseProvider, Promise<void>>()
 let eventLinksRefreshPromise: Promise<void> | null = null
+const EVENT_LIST_CACHE_TTL_SECONDS = 60
+const EVENT_DETAIL_CACHE_TTL_SECONDS = 30
+const EVENT_SEARCH_CACHE_TTL_SECONDS = 30
+const EVENT_COMPARE_CACHE_TTL_SECONDS = 30
+const DIVERGENCE_LIST_CACHE_TTL_SECONDS = 60
+
+function getHistoryCacheTtlSeconds(interval = '1d') {
+  return interval === '1h' || interval === '4h'
+    ? 120
+    : 300
+}
+
+function buildEventListCacheKey(params: PulseEventListParams = {}) {
+  return buildCacheKey(
+    'events',
+    'list',
+    params.provider,
+    params.category,
+    params.status,
+    params.keyword,
+  )
+}
+
+function buildEventSearchCacheKey(params: PulseSearchParams = {}) {
+  return buildCacheKey(
+    'events',
+    'search',
+    params.provider,
+    params.category,
+    params.status,
+    params.q,
+  )
+}
+
+function buildEventDetailCacheKey(eventId: string) {
+  return buildCacheKey('events', 'detail', eventId)
+}
+
+function buildEventHistoryCacheKey(eventId: string, interval = '1d') {
+  return buildCacheKey('events', 'history', eventId, interval)
+}
+
+function buildEventCompareCacheKey(eventId: string) {
+  return buildCacheKey('events', 'compare', eventId)
+}
+
+function buildDivergenceCacheKey(params: PulseDivergenceListParams = {}) {
+  return buildCacheKey(
+    'divergence',
+    'list',
+    params.category,
+    params.minDivergence,
+    params.sort ?? 'divergence',
+    params.limit ?? 24,
+  )
+}
+
+async function invalidateEventDiscoveryCaches(eventId?: string) {
+  await Promise.all([
+    cacheDelPattern(buildCacheKey('events', 'list', '*')),
+    cacheDelPattern(buildCacheKey('events', 'search', '*')),
+    cacheDelPattern(buildCacheKey('events', 'detail', '*')),
+    cacheDelPattern(buildCacheKey('events', 'compare', '*')),
+    cacheDelPattern(buildCacheKey('divergence', 'list', '*')),
+    eventId
+      ? cacheDelPattern(buildCacheKey('events', 'history', eventId, '*'))
+      : Promise.resolve(),
+  ])
+}
+
+async function invalidateComparisonCaches() {
+  await Promise.all([
+    cacheDelPattern(buildCacheKey('events', 'compare', '*')),
+    cacheDelPattern(buildCacheKey('divergence', 'list', '*')),
+  ])
+}
 
 function getProvider(provider: PulseProvider) {
   return providers[provider]
@@ -332,6 +409,7 @@ async function refreshProviderDiscovery(provider: PulseProvider) {
   try {
     const snapshot = await fetchProviderDiscoverySnapshot(provider)
     await upsertStoredDiscoveryEvents(snapshot.events, attemptedAt)
+    await invalidateEventDiscoveryCaches()
     await recordProviderSyncSuccess(provider, attemptedAt, snapshot.note)
   } catch (error) {
     await recordProviderSyncFailure(provider, getErrorMessage(error), attemptedAt)
@@ -387,6 +465,7 @@ async function refreshEventLinks() {
   const links = runEntityMatching(openEvents)
 
   await replaceStoredEventLinks(links, matchedAt)
+  await invalidateComparisonCaches()
 }
 
 async function ensureEventLinksCache() {
@@ -411,183 +490,220 @@ async function ensureEventLinksCache() {
 }
 
 export async function listEvents(params: PulseEventListParams = {}) {
-  await ensureDiscoveryCache(params.provider)
-
-  return listStoredDiscoveryEvents(params)
+  return cached(
+    buildEventListCacheKey(params),
+    EVENT_LIST_CACHE_TTL_SECONDS,
+    async () => {
+      await ensureDiscoveryCache(params.provider)
+      return listStoredDiscoveryEvents(params)
+    },
+  )
 }
 
 export async function searchEvents(params: PulseSearchParams = {}) {
-  await ensureDiscoveryCache(params.provider)
+  return cached(
+    buildEventSearchCacheKey(params),
+    EVENT_SEARCH_CACHE_TTL_SECONDS,
+    async () => {
+      await ensureDiscoveryCache(params.provider)
 
-  return listStoredDiscoveryEvents({
-    category: params.category,
-    keyword: params.q,
-    provider: params.provider,
-    status: params.status,
-  })
+      return listStoredDiscoveryEvents({
+        category: params.category,
+        keyword: params.q,
+        provider: params.provider,
+        status: params.status,
+      })
+    },
+  )
 }
 
 export async function getEvent(eventId: string) {
-  const { provider, providerId } = parseProviderScopedId(eventId)
-  await ensureDiscoveryCache(provider)
-  const storedEvent = await getStoredDiscoveryEvent(eventId)
+  return cached(
+    buildEventDetailCacheKey(eventId),
+    EVENT_DETAIL_CACHE_TTL_SECONDS,
+    async () => {
+      const { provider, providerId } = parseProviderScopedId(eventId)
+      await ensureDiscoveryCache(provider)
+      const storedEvent = await getStoredDiscoveryEvent(eventId)
 
-  if (storedEvent) {
-    return storedEvent
-  }
+      if (storedEvent) {
+        return storedEvent
+      }
 
-  const syncedAt = new Date()
-  const event = await getProvider(provider).getEvent(providerId)
+      const syncedAt = new Date()
+      const event = await getProvider(provider).getEvent(providerId)
 
-  await upsertStoredDiscoveryEvents([event], syncedAt)
+      await upsertStoredDiscoveryEvents([event], syncedAt)
+      await invalidateEventDiscoveryCaches(event.id)
 
-  return {
-    ...event,
-    freshness: getFreshnessSnapshot(syncedAt),
-  }
+      return {
+        ...event,
+        freshness: getFreshnessSnapshot(syncedAt),
+      }
+    },
+  )
 }
 
 export async function getPriceHistory(
   eventId: string,
   interval = '1d',
 ): Promise<PulsePriceHistory> {
-  const event = await getEvent(eventId)
-  const primaryMarket = event.markets[0]
+  return cached(
+    buildEventHistoryCacheKey(eventId, interval),
+    getHistoryCacheTtlSeconds(interval),
+    async () => {
+      const event = await getEvent(eventId)
+      const primaryMarket = event.markets[0]
 
-  if (!primaryMarket) {
-    return {
-      eventId: event.id,
-      eventTitle: event.title,
-      freshness: event.freshness,
-      marketId: '',
-      marketTitle: 'Primary market',
-      points: [],
-    }
-  }
-
-  const storedHistory = await getStoredPriceHistory(event, primaryMarket.id, interval)
-
-  if (storedHistory && !storedHistory.freshness?.isStale) {
-    return storedHistory
-  }
-
-  try {
-    const syncedAt = new Date()
-    const liveHistory = await getProvider(event.provider).getPriceHistory({
-      event,
-      interval,
-    })
-
-    await replaceStoredPriceHistory(event, liveHistory, interval, syncedAt)
-    const persistedHistory = await getStoredPriceHistory(
-      event,
-      liveHistory.marketId || primaryMarket.id,
-      interval,
-    )
-
-    return (
-      persistedHistory ?? {
-        ...liveHistory,
-        freshness: getFreshnessSnapshot(syncedAt),
-      }
-    )
-  } catch (error) {
-    if (storedHistory) {
-      return {
-        ...storedHistory,
-        freshness: storedHistory.freshness
-          ? {
-              ...storedHistory.freshness,
-              isStale: true,
-            }
-          : undefined,
-      }
-    }
-
-    throw error
-  }
-}
-
-export async function getEventCompare(eventId: string): Promise<PulseEventComparison | null> {
-  const event = await getEvent(eventId)
-
-  if (event.status !== 'open') {
-    return null
-  }
-
-  await ensureDiscoveryCache()
-  await ensureEventLinksCache()
-  const link = await getStoredEventLinkByEventId(event.id)
-
-  if (!link) {
-    return null
-  }
-
-  const linkedEvents = await listStoredDiscoveryEventsByIds(link.eventIds)
-  const comparisonGroup = buildComparisonGroup(link, linkedEvents)
-
-  if (!comparisonGroup) {
-    return null
-  }
-
-  return {
-    ...comparisonGroup,
-    anchorEventId: event.id,
-  }
-}
-
-export async function listDivergence(params: PulseDivergenceListParams = {}) {
-  await ensureDiscoveryCache()
-  await ensureEventLinksCache()
-
-  const links = await listStoredEventLinks()
-  const linkedEvents = await listStoredDiscoveryEventsByIds(
-    links.flatMap((link) => link.eventIds),
-  )
-  const linkedEventsById = new Map(linkedEvents.map((event) => [event.id, event]))
-  const comparisonGroups = links
-    .map((link) => {
-      const events = link.eventIds
-        .map((eventId) => linkedEventsById.get(eventId))
-        .filter((event): event is PulseEvent => Boolean(event))
-
-      return buildComparisonGroup(link, events)
-    })
-    .filter((group): group is PulseComparisonGroup => Boolean(group))
-  const categoryFilter = params.category?.trim()
-  const minimumDivergence = parsePositiveFloat(params.minDivergence, 0)
-  const sortOrder = params.sort === 'volume' ? 'volume' : 'divergence'
-  const limitedCount = parsePositiveInteger(params.limit, 24)
-
-  return comparisonGroups
-    .filter((group) => {
-      if (categoryFilter && categoryFilter !== 'All' && group.category !== categoryFilter) {
-        return false
-      }
-
-      return group.maxDivergence >= minimumDivergence
-    })
-    .sort((leftGroup, rightGroup) => {
-      if (sortOrder === 'volume') {
-        const leftVolume = leftGroup.events.reduce(
-          (volume, event) => volume + event.totalVolume,
-          0,
-        )
-        const rightVolume = rightGroup.events.reduce(
-          (volume, event) => volume + event.totalVolume,
-          0,
-        )
-
-        if (rightVolume !== leftVolume) {
-          return rightVolume - leftVolume
+      if (!primaryMarket) {
+        return {
+          eventId: event.id,
+          eventTitle: event.title,
+          freshness: event.freshness,
+          marketId: '',
+          marketTitle: 'Primary market',
+          points: [],
         }
       }
 
-      if (rightGroup.maxDivergence !== leftGroup.maxDivergence) {
-        return rightGroup.maxDivergence - leftGroup.maxDivergence
+      const storedHistory = await getStoredPriceHistory(event, primaryMarket.id, interval)
+
+      if (storedHistory && !storedHistory.freshness?.isStale) {
+        return storedHistory
       }
 
-      return rightGroup.confidence - leftGroup.confidence
-    })
-    .slice(0, limitedCount)
+      try {
+        const syncedAt = new Date()
+        const liveHistory = await getProvider(event.provider).getPriceHistory({
+          event,
+          interval,
+        })
+
+        await replaceStoredPriceHistory(event, liveHistory, interval, syncedAt)
+        await cacheDel(buildEventHistoryCacheKey(event.id, interval))
+        const persistedHistory = await getStoredPriceHistory(
+          event,
+          liveHistory.marketId || primaryMarket.id,
+          interval,
+        )
+
+        return (
+          persistedHistory ?? {
+            ...liveHistory,
+            freshness: getFreshnessSnapshot(syncedAt),
+          }
+        )
+      } catch (error) {
+        if (storedHistory) {
+          return {
+            ...storedHistory,
+            freshness: storedHistory.freshness
+              ? {
+                  ...storedHistory.freshness,
+                  isStale: true,
+                }
+              : undefined,
+          }
+        }
+
+        throw error
+      }
+    },
+  )
+}
+
+export async function getEventCompare(eventId: string): Promise<PulseEventComparison | null> {
+  return cached(
+    buildEventCompareCacheKey(eventId),
+    EVENT_COMPARE_CACHE_TTL_SECONDS,
+    async () => {
+      const event = await getEvent(eventId)
+
+      if (event.status !== 'open') {
+        return null
+      }
+
+      await ensureDiscoveryCache()
+      await ensureEventLinksCache()
+      const link = await getStoredEventLinkByEventId(event.id)
+
+      if (!link) {
+        return null
+      }
+
+      const linkedEvents = await listStoredDiscoveryEventsByIds(link.eventIds)
+      const comparisonGroup = buildComparisonGroup(link, linkedEvents)
+
+      if (!comparisonGroup) {
+        return null
+      }
+
+      return {
+        ...comparisonGroup,
+        anchorEventId: event.id,
+      }
+    },
+  )
+}
+
+export async function listDivergence(params: PulseDivergenceListParams = {}) {
+  return cached(
+    buildDivergenceCacheKey(params),
+    DIVERGENCE_LIST_CACHE_TTL_SECONDS,
+    async () => {
+      await ensureDiscoveryCache()
+      await ensureEventLinksCache()
+
+      const links = await listStoredEventLinks()
+      const linkedEvents = await listStoredDiscoveryEventsByIds(
+        links.flatMap((link) => link.eventIds),
+      )
+      const linkedEventsById = new Map(linkedEvents.map((event) => [event.id, event]))
+      const comparisonGroups = links
+        .map((link) => {
+          const events = link.eventIds
+            .map((linkedEventId) => linkedEventsById.get(linkedEventId))
+            .filter((event): event is PulseEvent => Boolean(event))
+
+          return buildComparisonGroup(link, events)
+        })
+        .filter((group): group is PulseComparisonGroup => Boolean(group))
+      const categoryFilter = params.category?.trim()
+      const minimumDivergence = parsePositiveFloat(params.minDivergence, 0)
+      const sortOrder = params.sort === 'volume' ? 'volume' : 'divergence'
+      const limitedCount = parsePositiveInteger(params.limit, 24)
+
+      return comparisonGroups
+        .filter((group) => {
+          if (categoryFilter && categoryFilter !== 'All' && group.category !== categoryFilter) {
+            return false
+          }
+
+          return group.maxDivergence >= minimumDivergence
+        })
+        .sort((leftGroup, rightGroup) => {
+          if (sortOrder === 'volume') {
+            const leftVolume = leftGroup.events.reduce(
+              (volume, event) => volume + event.totalVolume,
+              0,
+            )
+            const rightVolume = rightGroup.events.reduce(
+              (volume, event) => volume + event.totalVolume,
+              0,
+            )
+
+            if (rightVolume !== leftVolume) {
+              return rightVolume - leftVolume
+            }
+          }
+
+          if (rightGroup.maxDivergence !== leftGroup.maxDivergence) {
+            return rightGroup.maxDivergence - leftGroup.maxDivergence
+          }
+
+          return rightGroup.confidence - leftGroup.confidence
+        })
+        .slice(0, limitedCount)
+    },
+  )
 }

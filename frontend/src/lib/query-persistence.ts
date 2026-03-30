@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query'
 
 const QUERY_CACHE_STORAGE_KEY = 'quorum-query-cache'
-const QUERY_CACHE_BUSTER = '2026-03-27-cache-v1'
+const QUERY_CACHE_BUSTER = '2026-03-30-cache-v2'
 const QUERY_CACHE_MAX_AGE_MS = 10 * 60_000
 const QUERY_CACHE_SAVE_DELAY_MS = 1_000
 
@@ -31,6 +31,10 @@ function shouldPersistQuery(
   }
 
   if (scope === 'runtime') {
+    return false
+  }
+
+  if (scope === 'alerts') {
     return false
   }
 

@@ -1,9 +1,4 @@
 import type { FastifyPluginAsync } from 'fastify'
-import {
-  applyHttpCacheHeaders,
-  buildRequestCacheKey,
-  withCachedResponse,
-} from '../../app/response-cache.js'
 import { createApiResponse } from '../../contracts/api-response.js'
 import type {
   PulseSmartMoneySignalListData,
@@ -19,79 +14,42 @@ import {
   listSmartMoneyWallets,
 } from '../../app/smart-money-service.js'
 
-const SMART_MONEY_CACHE_POLICY = {
-  maxAgeSeconds: 120,
-  staleWhileRevalidateSeconds: 600,
-} as const
-
 export const v1SmartMoneyRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/smart-money/status', async (request, reply) => {
-    applyHttpCacheHeaders(reply, SMART_MONEY_CACHE_POLICY)
+  app.get('/smart-money/status', async () => {
+    const status = await getSmartMoneyStatus()
 
-    return withCachedResponse(
-      buildRequestCacheKey(request),
-      SMART_MONEY_CACHE_POLICY,
-      async () => {
-        const status = await getSmartMoneyStatus()
-
-        return createApiResponse<PulseSmartMoneyStatus>(status)
-      },
-    )
+    return createApiResponse<PulseSmartMoneyStatus>(status)
   })
 
   app.get<{
     Querystring: PulseSmartMoneySignalListParams
-  }>('/smart-money/signals', async (request, reply) => {
-    applyHttpCacheHeaders(reply, SMART_MONEY_CACHE_POLICY)
+  }>('/smart-money/signals', async (request) => {
+    const items = await listSmartMoneySignals(request.query)
+    const data: PulseSmartMoneySignalListData = { items }
 
-    return withCachedResponse(
-      buildRequestCacheKey(request),
-      SMART_MONEY_CACHE_POLICY,
-      async () => {
-        const items = await listSmartMoneySignals(request.query)
-        const data: PulseSmartMoneySignalListData = { items }
-
-        return createApiResponse(data, {
-          total: items.length,
-        })
-      },
-    )
+    return createApiResponse(data, {
+      total: items.length,
+    })
   })
 
   app.get<{
     Querystring: PulseSmartMoneyWalletListParams
-  }>('/smart-money/wallets', async (request, reply) => {
-    applyHttpCacheHeaders(reply, SMART_MONEY_CACHE_POLICY)
+  }>('/smart-money/wallets', async (request) => {
+    const items = await listSmartMoneyWallets(request.query)
+    const data: PulseSmartMoneyWalletListData = { items }
 
-    return withCachedResponse(
-      buildRequestCacheKey(request),
-      SMART_MONEY_CACHE_POLICY,
-      async () => {
-        const items = await listSmartMoneyWallets(request.query)
-        const data: PulseSmartMoneyWalletListData = { items }
-
-        return createApiResponse(data, {
-          total: items.length,
-        })
-      },
-    )
+    return createApiResponse(data, {
+      total: items.length,
+    })
   })
 
   app.get<{
     Params: {
       address: string
     }
-  }>('/smart-money/wallets/:address', async (request, reply) => {
-    applyHttpCacheHeaders(reply, SMART_MONEY_CACHE_POLICY)
+  }>('/smart-money/wallets/:address', async (request) => {
+    const wallet = await getSmartMoneyWallet(request.params.address)
 
-    return withCachedResponse(
-      buildRequestCacheKey(request),
-      SMART_MONEY_CACHE_POLICY,
-      async () => {
-        const wallet = await getSmartMoneyWallet(request.params.address)
-
-        return createApiResponse(wallet)
-      },
-    )
+    return createApiResponse(wallet)
   })
 }
