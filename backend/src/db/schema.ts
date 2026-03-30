@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS pulse_users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   telegram_handle TEXT,
-  telegram_chat_id TEXT,
+  telegram_chat_id BIGINT,
   default_channel TEXT NOT NULL DEFAULT 'email',
   last_login_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -147,7 +147,15 @@ ALTER TABLE pulse_users
   ADD COLUMN IF NOT EXISTS telegram_handle TEXT;
 
 ALTER TABLE pulse_users
-  ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
+  ADD COLUMN IF NOT EXISTS telegram_chat_id BIGINT;
+
+ALTER TABLE pulse_users
+  ALTER COLUMN telegram_chat_id TYPE BIGINT
+  USING CASE
+    WHEN telegram_chat_id IS NULL THEN NULL
+    WHEN telegram_chat_id::TEXT ~ '^-?[0-9]+$' THEN telegram_chat_id::BIGINT
+    ELSE NULL
+  END;
 
 ALTER TABLE pulse_users
   ADD COLUMN IF NOT EXISTS default_channel TEXT NOT NULL DEFAULT 'email';
@@ -382,6 +390,13 @@ CREATE TABLE IF NOT EXISTS pulse_alert_deliveries (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(subscription_id, signal_id, channel)
 );
+
+ALTER TABLE pulse_alert_deliveries
+  DROP CONSTRAINT IF EXISTS pulse_alert_deliveries_channel_check;
+
+ALTER TABLE pulse_alert_deliveries
+  ADD CONSTRAINT pulse_alert_deliveries_channel_check
+  CHECK (channel IN ('email', 'telegram'));
 
 CREATE INDEX IF NOT EXISTS idx_pulse_alert_deliveries_status
   ON pulse_alert_deliveries(status, next_attempt_at);

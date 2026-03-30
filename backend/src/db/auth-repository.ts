@@ -299,6 +299,26 @@ export async function getUserById(userId: string) {
   return result.rows[0] ? mapUser(result.rows[0]) : null
 }
 
+export async function getUserByTelegramChatId(chatId: string) {
+  const result = await getDbPool().query<AuthUserRow>(
+    `
+      SELECT
+        id,
+        email,
+        telegram_handle,
+        telegram_chat_id,
+        default_channel,
+        created_at,
+        last_login_at
+      FROM pulse_users
+      WHERE telegram_chat_id = $1
+    `,
+    [chatId],
+  )
+
+  return result.rows[0] ? mapUser(result.rows[0]) : null
+}
+
 export async function updateUserPreferences(input: {
   defaultChannel?: 'both' | 'email' | 'telegram'
   email?: string

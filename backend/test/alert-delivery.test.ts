@@ -6,24 +6,28 @@ import {
   queueAlertDeliveriesForSignals,
 } from '../src/app/alerts-service.js'
 import { setTestEmailSender } from '../src/app/email-service.js'
-import {
-  pollTelegramBotUpdatesOnce,
-  setTestTelegramApi,
-} from '../src/app/telegram-service.js'
+import { handleStartCommand } from '../src/bot/handlers.js'
 import type { PulseSmartMoneySignal } from '../src/contracts/pulse-smart-money.js'
+import { setTestTelegramBot } from '../src/bot/index.js'
 import {
   replaceStoredSmartMoneySnapshot,
   type StoredSmartMoneySignalInput,
   type StoredSmartMoneyWalletInput,
 } from '../src/db/smart-money-repository.js'
 import { registerAppTestLifecycle } from './helpers/test-app.js'
+import {
+  createTestTelegramMessage,
+  registerTestTelegramBot,
+  resetTestTelegramBot,
+  TestTelegramBot,
+} from './helpers/test-telegram-bot.js'
 
 const testApp = registerAppTestLifecycle()
 const AUTH_MAGIC_TOKEN = 'test-magic-token'
 
 afterEach(() => {
   setTestEmailSender(null)
-  setTestTelegramApi(null)
+  resetTestTelegramBot()
 })
 
 async function queryRow<T>(query: string, values: unknown[] = []) {
@@ -129,47 +133,21 @@ async function createWalletAlertForEmail(
 }
 
 async function issueTelegramConnectCode(input?: {
-  chatId?: string
+  chatId?: number
   username?: string
 }) {
-  const sentMessages: Array<{
-    chatId: string
-    text: string
-  }> = []
+  const bot = registerTestTelegramBot()
 
-  setTestTelegramApi({
-    async getUpdates() {
-      return [
-        {
-          message: {
-            chat: {
-              id: input?.chatId ?? '7001',
-              type: 'private',
-            },
-            from: {
-              first_name: 'Signal',
-              id: '8801',
-              username: input?.username ?? 'signal_reader',
-            },
-            message_id: '11',
-            text: '/start',
-          },
-          update_id: 1,
-        },
-      ]
-    },
-    async sendMessage(message) {
-      sentMessages.push(message)
+  await handleStartCommand(
+    bot,
+    createTestTelegramMessage({
+      chatId: input?.chatId ?? 7001,
+      text: '/start',
+      username: input?.username ?? 'signal_reader',
+    }),
+  )
 
-      return {
-        providerMessageId: 'tg_connect_message_1',
-      }
-    },
-  })
-
-  await pollTelegramBotUpdatesOnce()
-
-  const codeMatch = sentMessages[0]?.text.match(/\b(\d{6})\b/)
+  const codeMatch = bot.sentMessages[0]?.text.match(/\b(\d{6})\b/)
 
   assert.ok(codeMatch)
 
@@ -587,27 +565,13 @@ describe('Alert delivery pipeline', () => {
       defaultChannel: 'telegram',
       email: 'reader@example.com',
     })
-    const [matchingSignal] = await seedSmartMoneySignals()
-    const sentMessages: Array<{
-      chatId: string
-      text: string
-    }> = []
+  const [matchingSignal] = await seedSmartMoneySignals()
+    const bot = new TestTelegramBot()
 
     setTestEmailSender(async () => {
       throw new Error('Email should not be used for telegram-only alerts')
     })
-    setTestTelegramApi({
-      async getUpdates() {
-        return []
-      },
-      async sendMessage(message) {
-        sentMessages.push(message)
-
-        return {
-          providerMessageId: 'tg_delivery_message_1',
-        }
-      },
-    })
+    setTestTelegramBot(bot)
 
     await queueAlertDeliveriesForSignals([matchingSignal])
 
@@ -629,8 +593,9 @@ describe('Alert delivery pipeline', () => {
       processed: 1,
       sent: 1,
     })
-    assert.equal(sentMessages.length, 1)
-    assert.match(sentMessages[0]?.text ?? '', /Signal Whale opened a new position/i)
+    assert.equal(bot.sentMessages.length, 1)
+    assert.match(bot.sentMessages[0]?.text ?? '', /Signal Whale/i)
+    assert.match(bot.sentMessages[0]?.text ?? '', /opened a new position/i)
     assert.equal(delivery?.channel, 'telegram')
     assert.equal(delivery?.status, 'sent')
   })

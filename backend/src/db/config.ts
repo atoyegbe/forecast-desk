@@ -4,6 +4,7 @@ const DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS = 2 * 60 * 1000
 const DEFAULT_FX_API_BASE = 'https://api.frankfurter.dev/v2'
 const DEFAULT_FX_CACHE_TTL_MS = 30 * 60 * 1000
 const DEFAULT_QUORUM_AUTH_CODE_TTL_MINUTES = 15
+const DEFAULT_QUORUM_BASE_URL = 'http://localhost:5173'
 const DEFAULT_QUORUM_SESSION_TTL_DAYS = 30
 const DEFAULT_QUORUM_TELEGRAM_CONNECT_CODE_TTL_MINUTES = 15
 const DEFAULT_QUORUM_TELEGRAM_POLL_INTERVAL_MS = 15 * 1000
@@ -107,6 +108,36 @@ export function getQuorumAuthFrontendBaseUrl() {
   return process.env.QUORUM_AUTH_FRONTEND_BASE_URL?.trim() || null
 }
 
+export function getQuorumApiBaseUrl() {
+  return process.env.QUORUM_API_BASE_URL?.trim() || null
+}
+
+export function getQuorumBaseUrl() {
+  const explicitBaseUrl = process.env.QUORUM_BASE_URL?.trim()
+
+  if (explicitBaseUrl) {
+    return explicitBaseUrl
+  }
+
+  const frontendBaseUrl = getQuorumAuthFrontendBaseUrl()
+
+  if (frontendBaseUrl) {
+    return frontendBaseUrl
+  }
+
+  const apiBaseUrl = getQuorumApiBaseUrl()
+
+  if (apiBaseUrl) {
+    try {
+      return new URL(apiBaseUrl).origin
+    } catch {
+      return apiBaseUrl
+    }
+  }
+
+  return DEFAULT_QUORUM_BASE_URL
+}
+
 export function getQuorumAuthTestMagicToken() {
   return process.env.QUORUM_AUTH_TEST_MAGIC_TOKEN?.trim() || null
 }
@@ -123,7 +154,11 @@ export function getQuorumSessionTtlDays() {
 }
 
 export function getQuorumTelegramBotToken() {
-  return process.env.QUORUM_TELEGRAM_BOT_TOKEN?.trim() || null
+  return (
+    process.env.TELEGRAM_BOT_TOKEN?.trim() ||
+    process.env.QUORUM_TELEGRAM_BOT_TOKEN?.trim() ||
+    null
+  )
 }
 
 export function getQuorumTelegramBotUsername() {
@@ -146,6 +181,10 @@ export function getQuorumTelegramPollIntervalMs() {
 
 export function getResendApiKey() {
   return process.env.RESEND_API_KEY?.trim() || null
+}
+
+export function getRedisUrl() {
+  return process.env.REDIS_URL?.trim() || null
 }
 
 export function isSmartMoneySchedulerEnabled() {
@@ -218,6 +257,7 @@ export {
   DEFAULT_FX_API_BASE,
   DEFAULT_FX_CACHE_TTL_MS,
   DEFAULT_QUORUM_AUTH_CODE_TTL_MINUTES,
+  DEFAULT_QUORUM_BASE_URL,
   DEFAULT_QUORUM_SESSION_TTL_DAYS,
   DEFAULT_QUORUM_TELEGRAM_CONNECT_CODE_TTL_MINUTES,
   DEFAULT_QUORUM_TELEGRAM_POLL_INTERVAL_MS,

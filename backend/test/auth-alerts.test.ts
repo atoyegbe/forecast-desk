@@ -2,17 +2,23 @@ import assert from 'node:assert/strict'
 import { afterEach, describe, test } from 'node:test'
 import { setTestEmailSender } from '../src/app/email-service.js'
 import {
-  pollTelegramBotUpdatesOnce,
-  setTestTelegramApi,
-} from '../src/app/telegram-service.js'
+  handleStartCommand,
+  handleStatusCommand,
+  handleStopCommand,
+} from '../src/bot/handlers.js'
 import { registerAppTestLifecycle } from './helpers/test-app.js'
+import {
+  createTestTelegramMessage,
+  registerTestTelegramBot,
+  resetTestTelegramBot,
+} from './helpers/test-telegram-bot.js'
 
 const testApp = registerAppTestLifecycle()
 const AUTH_MAGIC_TOKEN = 'test-magic-token'
 
 afterEach(() => {
   setTestEmailSender(null)
-  setTestTelegramApi(null)
+  resetTestTelegramBot()
 })
 
 async function requestMagicLink(email: string, returnToPath = '/smart-money') {
@@ -38,47 +44,21 @@ async function verifyMagicLink(email: string, token = AUTH_MAGIC_TOKEN) {
 }
 
 async function issueTelegramConnectCode(input?: {
-  chatId?: string
+  chatId?: number
   username?: string
 }) {
-  const sentMessages: Array<{
-    chatId: string
-    text: string
-  }> = []
+  const bot = registerTestTelegramBot()
 
-  setTestTelegramApi({
-    async getUpdates() {
-      return [
-        {
-          message: {
-            chat: {
-              id: input?.chatId ?? '1001',
-              type: 'private',
-            },
-            from: {
-              first_name: 'Reader',
-              id: '5001',
-              username: input?.username ?? 'reader_tg',
-            },
-            message_id: '11',
-            text: '/start',
-          },
-          update_id: 1,
-        },
-      ]
-    },
-    async sendMessage(message) {
-      sentMessages.push(message)
+  await handleStartCommand(
+    bot,
+    createTestTelegramMessage({
+      chatId: input?.chatId,
+      text: '/start',
+      username: input?.username,
+    }),
+  )
 
-      return {
-        providerMessageId: 'tg_connect_message_1',
-      }
-    },
-  })
-
-  await pollTelegramBotUpdatesOnce()
-
-  const codeMatch = sentMessages[0]?.text.match(/\b(\d{6})\b/)
+  const codeMatch = bot.sentMessages[0]?.text.match(/\b(\d{6})\b/)
 
   assert.ok(codeMatch)
 
@@ -294,7 +274,7 @@ describe('Auth and alerts', () => {
     assert.equal(invalidResponse.json().error.code, 'invalid_code')
 
     const code = await issueTelegramConnectCode({
-      chatId: '2002',
+      chatId: 2002,
       username: 'reader_channel',
     })
 
@@ -351,7 +331,7 @@ describe('Auth and alerts', () => {
     const verifyResponse = await verifyMagicLink('reader@example.com')
     const token = verifyResponse.json().data.session.token as string
     const code = await issueTelegramConnectCode({
-      chatId: '3003',
+      chatId: 3003,
       username: 'reader_once',
     })
 
@@ -380,6 +360,143 @@ describe('Auth and alerts', () => {
     assert.equal(firstConnectResponse.statusCode, 200)
     assert.equal(secondConnectResponse.statusCode, 400)
     assert.equal(secondConnectResponse.json().error.code, 'invalid_code')
+  })
+
+  test('locks Telegram verification after three failed attempts', async () => {
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
+    const token = verifyResponse.json().data.session.token as string
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await testApp.getApp().inject({
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        method: 'POST',
+        payload: {
+          code: '000000',
+        },
+        url: '/api/v1/telegram/connect',
+      })
+
+      assert.equal(response.statusCode, 400)
+      assert.equal(response.json().error.code, 'invalid_code')
+    }
+
+    const lockedResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        code: '000000',
+      },
+      url: '/api/v1/telegram/connect',
+    })
+
+    assert.equal(lockedResponse.statusCode, 429)
+    assert.equal(lockedResponse.json().error.code, 'too_many_attempts')
+  })
+
+  test('reports Telegram connection status through the bot command', async () => {
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
+    const token = verifyResponse.json().data.session.token as string
+    const code = await issueTelegramConnectCode({
+      chatId: 9010,
+      username: 'status_reader',
+    })
+
+    const connectResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        code,
+      },
+      url: '/api/v1/telegram/connect',
+    })
+
+    assert.equal(connectResponse.statusCode, 200)
+
+    const createSubscriptionResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        type: 'wallet',
+        walletAddress: '0xabc123',
+      },
+      url: '/api/v1/alerts/subscriptions',
+    })
+
+    assert.equal(createSubscriptionResponse.statusCode, 201)
+
+    const bot = registerTestTelegramBot()
+
+    await handleStatusCommand(
+      bot,
+      createTestTelegramMessage({
+        chatId: 9010,
+        text: '/status',
+        username: 'status_reader',
+      }),
+    )
+
+    assert.equal(bot.sentMessages.length, 1)
+    assert.match(bot.sentMessages[0]?.text ?? '', /reader@example\.com/)
+    assert.match(bot.sentMessages[0]?.text ?? '', /`1`/)
+  })
+
+  test('disconnects Telegram through the bot /stop command', async () => {
+    await requestMagicLink('reader@example.com')
+    const verifyResponse = await verifyMagicLink('reader@example.com')
+    const token = verifyResponse.json().data.session.token as string
+    const code = await issueTelegramConnectCode({
+      chatId: 9020,
+      username: 'stop_reader',
+    })
+
+    const connectResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'POST',
+      payload: {
+        code,
+      },
+      url: '/api/v1/telegram/connect',
+    })
+
+    assert.equal(connectResponse.statusCode, 200)
+
+    const bot = registerTestTelegramBot()
+
+    await handleStopCommand(
+      bot,
+      createTestTelegramMessage({
+        chatId: 9020,
+        text: '/stop',
+        username: 'stop_reader',
+      }),
+    )
+
+    assert.equal(bot.sentMessages.length, 1)
+    assert.match(bot.sentMessages[0]?.text ?? '', /Alerts paused/)
+
+    const refreshedResponse = await testApp.getApp().inject({
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      method: 'GET',
+      url: '/api/v1/user/me',
+    })
+
+    assert.equal(refreshedResponse.statusCode, 200)
+    assert.equal(refreshedResponse.json().data.telegramHandle, null)
+    assert.equal(refreshedResponse.json().data.defaultChannel, 'email')
   })
 
   test('creates and lists wallet alert subscriptions for an authenticated user', async () => {

@@ -65,14 +65,16 @@ jobs so an API process and worker can safely coexist.
 
 1. Copy `.env.example` to `.env`
 2. Create a local database, for example `createdb naija_pulse`
-3. Run `npm install`
-4. Run `npm run dev`
+3. Start Redis if you want Telegram connect codes to work across separate API and worker processes
+4. Run `npm install`
+5. Run `npm run dev`
 
 If you want a dedicated smart-money worker instead of running the scheduler in
 the API process:
 
 1. Start the API with `SMART_MONEY_SCHEDULER_ENABLED=false npm run dev`
 2. Start the worker with `npm run dev:worker`
+3. Set `REDIS_URL` so the worker-issued Telegram verification codes can be claimed by the API process
 
 The backend bootstraps its discovery schema on startup. If `DATABASE_URL` is not
 set, it falls back to `postgresql:///postgres` for local development.
@@ -90,6 +92,17 @@ The backend now deploys to Railway as two services:
 
 The API disables the embedded scheduler at start, while the worker owns smart
 money refreshes, alert delivery, and Telegram bot polling in production.
+
+Telegram bot code now lives under:
+
+```text
+src/
+  bot/
+    handlers.ts
+    index.ts
+    messages.ts
+    verify.ts
+```
 
 Full deployment notes live in [docs/railway-deployment.md](/Users/atoyegbe/dev/quant/projects/naija-pulse/docs/railway-deployment.md).
 

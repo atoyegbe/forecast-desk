@@ -24,8 +24,9 @@ import {
   listStoredSmartMoneySignalsByIds,
   listStoredSmartMoneyWalletsByAddresses,
 } from '../db/smart-money-repository.js'
+import { sendTelegramAlert } from '../bot/index.js'
 import { sendWalletSignalAlertEmail } from './email-service.js'
-import { sendWalletSignalAlertTelegram } from './telegram-service.js'
+import { disconnectTelegramChannel } from './user-service.js'
 
 type PostgresError = Error & {
   code?: string
@@ -260,36 +261,49 @@ export async function processPendingAlertDeliveries(limit = 25) {
     }
 
     try {
-      const result = job.delivery.channel === 'telegram'
-        ? await (() => {
-            if (!job.subscription.userTelegramChatId) {
-              throw new Error('Missing Telegram chat connection.')
-            }
+      if (job.delivery.channel === 'telegram') {
+        if (!job.subscription.userTelegramChatId) {
+          throw new Error('Missing Telegram chat connection.')
+        }
 
-            return sendWalletSignalAlertTelegram({
-              chatId: job.subscription.userTelegramChatId,
-              signal,
-              wallet,
-            })
-          })()
-        : await (() => {
-            if (!job.subscription.userEmail) {
-              throw new Error('Missing user email for alert delivery.')
-            }
+        const result = await sendTelegramAlert(
+          job.subscription.userTelegramChatId,
+          signal,
+        )
 
-            return sendWalletSignalAlertEmail({
-              email: job.subscription.userEmail,
-              signal,
-              subscription: job.subscription,
-              unsubscribeToken: job.delivery.id,
-              wallet,
-            })
-          })()
+        if (!result.success) {
+          if (
+            result.error === 'user_blocked_bot' &&
+            job.subscription.userId
+          ) {
+            await disconnectTelegramChannel(job.subscription.userId)
+          }
 
-      await markAlertDeliverySent({
-        deliveryId: job.delivery.id,
-        providerMessageId: result.providerMessageId,
-      })
+          throw new Error(result.error ?? 'Telegram delivery failed.')
+        }
+
+        await markAlertDeliverySent({
+          deliveryId: job.delivery.id,
+          providerMessageId: result.providerMessageId,
+        })
+      } else {
+        if (!job.subscription.userEmail) {
+          throw new Error('Missing user email for alert delivery.')
+        }
+
+        const result = await sendWalletSignalAlertEmail({
+          email: job.subscription.userEmail,
+          signal,
+          subscription: job.subscription,
+          unsubscribeToken: job.delivery.id,
+          wallet,
+        })
+
+        await markAlertDeliverySent({
+          deliveryId: job.delivery.id,
+          providerMessageId: result.providerMessageId,
+        })
+      }
       sent += 1
     } catch (error) {
       failed += 1

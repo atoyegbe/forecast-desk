@@ -4,8 +4,15 @@ import type {
   PulseUserDefaultChannel,
   PulseUserPreferencesUpdateInput,
 } from '../contracts/pulse-auth.js'
+import { sendTelegramConnectedMessage } from '../bot/index.js'
 import {
-  claimTelegramConnectCode,
+  clearVerificationFailureAttempts,
+  consumeVerificationCode,
+  isVerificationCooldownActive,
+  recordFailedVerificationAttempt,
+} from '../bot/verify.js'
+import { failPendingTelegramDeliveriesForUser } from '../db/alerts-repository.js'
+import {
   getUserById,
   updateUserPreferences,
   updateUserTelegramConnection,
@@ -30,6 +37,12 @@ export class InvalidTelegramCodeError extends Error {
   }
 }
 
+export class TelegramVerificationCooldownError extends Error {
+  constructor() {
+    super('Too many invalid codes. Wait 10 minutes, then request a new code.')
+  }
+}
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
@@ -39,9 +52,17 @@ function isDefaultChannel(value: string): value is PulseUserDefaultChannel {
 }
 
 function validateTelegramCode(code: string) {
-  if (!TELEGRAM_CODE_PATTERN.test(code.trim())) {
-    throw new InvalidTelegramCodeError()
+  return TELEGRAM_CODE_PATTERN.test(code.trim())
+}
+
+async function handleFailedVerificationAttempt(userId: string): Promise<never> {
+  const attemptCount = await recordFailedVerificationAttempt(userId)
+
+  if (attemptCount >= 3) {
+    throw new TelegramVerificationCooldownError()
   }
+
+  throw new InvalidTelegramCodeError()
 }
 
 export async function getUserProfile(userId: string) {
@@ -100,14 +121,44 @@ export async function connectTelegramChannel(
   user: PulseAuthUser,
   code: string,
 ): Promise<PulseTelegramConnectResult> {
-  validateTelegramCode(code)
-  const connectedUser = await claimTelegramConnectCode({
-    code: code.trim(),
+  if (await isVerificationCooldownActive(user.id)) {
+    throw new TelegramVerificationCooldownError()
+  }
+
+  const normalizedCode = code.trim()
+
+  if (!validateTelegramCode(normalizedCode)) {
+    await handleFailedVerificationAttempt(user.id)
+  }
+
+  const claimedCode = await consumeVerificationCode(normalizedCode)
+
+  if (!claimedCode?.telegramHandle || !claimedCode.chatId) {
+    return handleFailedVerificationAttempt(user.id)
+  }
+
+  const { chatId, telegramHandle } = claimedCode
+
+  const connectedUser = await updateUserTelegramConnection({
+    telegramChatId: chatId,
+    telegramHandle,
     userId: user.id,
   })
 
   if (!connectedUser?.telegramHandle) {
     throw new InvalidTelegramCodeError()
+  }
+
+  await clearVerificationFailureAttempts(user.id)
+  const confirmationResult = await sendTelegramConnectedMessage({
+    chatId,
+    email: user.email,
+  })
+
+  if (!confirmationResult.success) {
+    console.warn(
+      `Telegram connected confirmation failed for user ${user.id}: ${confirmationResult.error}`,
+    )
   }
 
   return {
@@ -116,6 +167,10 @@ export async function connectTelegramChannel(
 }
 
 export async function disconnectTelegramChannel(userId: string) {
+  await failPendingTelegramDeliveriesForUser(
+    userId,
+    'Telegram connection removed.',
+  )
   await updateUserTelegramConnection({
     telegramChatId: null,
     telegramHandle: null,

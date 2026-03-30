@@ -4,7 +4,7 @@ import {
   stopAlertDeliveryWorker,
 } from './app/alerts-service.js'
 import { startSmartMoneyScheduler, stopSmartMoneyScheduler } from './app/smart-money-service.js'
-import { startTelegramBotWorker, stopTelegramBotWorker } from './app/telegram-service.js'
+import { startTelegramBotWorker, stopTelegramBotWorker } from './bot/index.js'
 import { closeDbPool } from './db/pool.js'
 import { ensureDiscoverySchema } from './db/schema.js'
 
@@ -19,7 +19,7 @@ async function shutdown(signal: string) {
   console.log(`[smart-money-worker] stopping on ${signal}`)
   stopAlertDeliveryWorker()
   stopSmartMoneyScheduler()
-  stopTelegramBotWorker()
+  await stopTelegramBotWorker()
   await closeDbPool()
   process.exit(0)
 }
@@ -28,7 +28,7 @@ async function start() {
   await ensureDiscoverySchema()
   startAlertDeliveryWorker()
   startSmartMoneyScheduler()
-  startTelegramBotWorker()
+  await startTelegramBotWorker()
   console.log('[smart-money-worker] scheduler and alerts worker started')
 }
 

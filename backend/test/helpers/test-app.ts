@@ -32,6 +32,9 @@ export function registerAppTestLifecycle() {
   before(async () => {
     process.env.QUORUM_AUTH_TEST_MAGIC_TOKEN = 'test-magic-token'
     process.env.QUORUM_AUTH_FRONTEND_BASE_URL = 'http://localhost:5173'
+    process.env.QUORUM_BASE_URL = 'http://localhost:5173'
+    process.env.QUORUM_API_BASE_URL = 'http://localhost:8787/api/v1'
+    process.env.TELEGRAM_BOT_TOKEN = 'test-telegram-token'
     process.env.QUORUM_TELEGRAM_BOT_TOKEN = 'test-telegram-token'
     process.env.QUORUM_TELEGRAM_BOT_USERNAME = 'QuorumAlertsBot'
     process.env.SMART_MONEY_SCHEDULER_ENABLED = 'false'

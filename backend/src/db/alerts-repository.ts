@@ -9,6 +9,7 @@ import type {
   PulseAlertTriggerMode,
 } from '../contracts/pulse-alerts.js'
 import type { PulseSmartMoneySignal } from '../contracts/pulse-smart-money.js'
+import { getQuorumTelegramBotToken } from './config.js'
 import { getDbPool } from './pool.js'
 
 type AlertSubscriptionRow = {
@@ -74,6 +75,7 @@ type PendingAlertDeliveryJobRow = AlertDeliveryRow & {
   subscription_updated_at: Date | string
   type: 'wallet'
   user_default_channel: 'both' | 'email' | 'telegram'
+  user_id: string
   user_email: string
   user_telegram_chat_id: string | null
   user_telegram_handle: string | null
@@ -83,6 +85,7 @@ type PendingAlertDeliveryJobRow = AlertDeliveryRow & {
 export type StoredAlertSubscription = PulseAlertSubscription & {
   userDefaultChannel?: 'both' | 'email' | 'telegram'
   userEmail?: string
+  userId?: string
   userTelegramChatId?: string | null
   userTelegramHandle?: string | null
 }
@@ -538,6 +541,7 @@ export async function listPendingAlertDeliveryJobs(limit = 25) {
           WHERE previous_deliveries.subscription_id = subscriptions.id
             AND previous_deliveries.status = 'sent'
         ) AS last_delivered_at,
+        users.id AS user_id,
         users.email AS user_email,
         users.default_channel AS user_default_channel,
         users.telegram_chat_id AS user_telegram_chat_id,
@@ -572,11 +576,52 @@ export async function listPendingAlertDeliveryJobs(limit = 25) {
         toIsoString(row.subscription_updated_at) ?? new Date(0).toISOString(),
       userEmail: row.user_email,
       userDefaultChannel: row.user_default_channel,
+      userId: row.user_id,
       userTelegramChatId: row.user_telegram_chat_id,
       userTelegramHandle: row.user_telegram_handle,
       walletAddress: row.wallet_address,
     } satisfies StoredAlertSubscription,
   }))
+}
+
+export async function countActiveAlertSubscriptionsByUser(userId: string) {
+  const result = await getDbPool().query<{ count: string }>(
+    `
+      SELECT COUNT(*)::TEXT AS count
+      FROM pulse_alert_subscriptions
+      WHERE user_id = $1
+        AND status = 'active'
+    `,
+    [userId],
+  )
+
+  return Number.parseInt(result.rows[0]?.count ?? '0', 10)
+}
+
+export async function failPendingTelegramDeliveriesForUser(
+  userId: string,
+  error: string,
+) {
+  const result = await getDbPool().query<{ id: string }>(
+    `
+      UPDATE pulse_alert_deliveries deliveries
+      SET
+        status = 'failed',
+        last_attempt_at = NOW(),
+        next_attempt_at = NULL,
+        last_error = $2,
+        updated_at = NOW()
+      FROM pulse_alert_subscriptions subscriptions
+      WHERE deliveries.subscription_id = subscriptions.id
+        AND subscriptions.user_id = $1
+        AND deliveries.channel = 'telegram'
+        AND deliveries.status = 'pending'
+      RETURNING deliveries.id
+    `,
+    [userId, error],
+  )
+
+  return result.rowCount ?? 0
 }
 
 export async function markAlertDeliveryFailed(input: {
@@ -664,13 +709,14 @@ export async function queueAlertDeliveriesForMatches(
   }
 
   const queuedDeliveries = matches.flatMap((match) => {
+    const telegramEnabled = Boolean(getQuorumTelegramBotToken())
     const preferredChannels: PulseAlertDeliveryChannel[] =
       match.subscription.userDefaultChannel === 'telegram'
-        ? match.subscription.userTelegramChatId
+        ? telegramEnabled && match.subscription.userTelegramChatId
           ? ['telegram']
           : ['email']
         : match.subscription.userDefaultChannel === 'both'
-          ? match.subscription.userTelegramChatId
+          ? telegramEnabled && match.subscription.userTelegramChatId
             ? ['email', 'telegram']
             : ['email']
           : ['email']

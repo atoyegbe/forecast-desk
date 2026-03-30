@@ -3,6 +3,7 @@ import { getBearerToken, getCurrentSession } from '../../app/auth-service.js'
 import {
   DuplicateUserEmailError,
   InvalidTelegramCodeError,
+  TelegramVerificationCooldownError,
   connectTelegramChannel,
   disconnectTelegramChannel,
   getUserProfile,
@@ -136,6 +137,10 @@ export const v1UserRoutes: FastifyPluginAsync = async (app) => {
     } catch (error) {
       if (error instanceof InvalidTelegramCodeError) {
         return replyWithError(reply, 400, 'invalid_code', error.message)
+      }
+
+      if (error instanceof TelegramVerificationCooldownError) {
+        return replyWithError(reply, 429, 'too_many_attempts', error.message)
       }
 
       if (error instanceof Error) {
