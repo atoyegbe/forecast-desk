@@ -3,7 +3,7 @@ import type {
   PulseSmartMoneySignal,
   PulseSmartMoneyWallet,
 } from '../contracts/pulse-smart-money.js'
-import { getPulseAuthFrontendBaseUrl } from '../db/config.js'
+import { getQuorumAuthFrontendBaseUrl } from '../db/config.js'
 
 const FALLBACK_FRONTEND_BASE_URL = 'http://localhost:5173'
 
@@ -341,7 +341,7 @@ function formatPlatformCode(provider: PulseProvider) {
 }
 
 function getFrontendBaseUrl() {
-  return getPulseAuthFrontendBaseUrl() || FALLBACK_FRONTEND_BASE_URL
+  return getQuorumAuthFrontendBaseUrl() || FALLBACK_FRONTEND_BASE_URL
 }
 
 function buildAppUrl(pathname: string) {

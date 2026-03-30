@@ -79,7 +79,7 @@ function parseLiveMessage(rawMessage: string): PulseLiveMessage | null {
 }
 
 function buildBackendLiveUrl(eventId: string) {
-  const configuredBase = import.meta.env.VITE_BACKEND_WS_BASE?.trim()
+  const configuredBase = import.meta.env.QUORUM_PUBLIC_BACKEND_WS_BASE?.trim()
 
   if (configuredBase) {
     return `${configuredBase.replace(/\/$/, '')}/api/v1/live/events/${encodeURIComponent(eventId)}`

@@ -9,7 +9,7 @@ import {
 import { createApp } from '../../src/app/create-app.js'
 import { createTestDatabase, dropTestDatabase } from './test-db.js'
 
-let app: FastifyInstance
+let app: FastifyInstance | null = null
 let connectionString = ''
 let databaseName = ''
 
@@ -30,10 +30,10 @@ async function resetPublicSchema() {
 
 export function registerAppTestLifecycle() {
   before(async () => {
-    process.env.PULSE_AUTH_TEST_MAGIC_TOKEN = 'test-magic-token'
-    process.env.PULSE_AUTH_FRONTEND_BASE_URL = 'http://localhost:5173'
-    process.env.PULSE_TELEGRAM_BOT_TOKEN = 'test-telegram-token'
-    process.env.PULSE_TELEGRAM_BOT_USERNAME = 'QuorumAlertsBot'
+    process.env.QUORUM_AUTH_TEST_MAGIC_TOKEN = 'test-magic-token'
+    process.env.QUORUM_AUTH_FRONTEND_BASE_URL = 'http://localhost:5173'
+    process.env.QUORUM_TELEGRAM_BOT_TOKEN = 'test-telegram-token'
+    process.env.QUORUM_TELEGRAM_BOT_USERNAME = 'QuorumAlertsBot'
     process.env.SMART_MONEY_SCHEDULER_ENABLED = 'false'
     const database = await createTestDatabase()
 
@@ -49,13 +49,19 @@ export function registerAppTestLifecycle() {
   })
 
   after(async () => {
-    await app.close()
+    await app?.close()
     await closeDbPool()
-    await dropTestDatabase(databaseName)
+    if (databaseName) {
+      await dropTestDatabase(databaseName)
+    }
   })
 
   return {
     getApp() {
+      if (!app) {
+        throw new Error('Test app is not initialized')
+      }
+
       return app
     },
     getConnectionString() {

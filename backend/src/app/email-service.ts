@@ -2,8 +2,8 @@ import { Resend } from 'resend'
 import type { PulseSmartMoneySignal } from '../contracts/pulse-smart-money.js'
 import type { StoredAlertSubscription } from '../db/alerts-repository.js'
 import {
-  getPulseAuthCodeTtlMinutes,
-  getPulseEmailFrom,
+  getQuorumAuthCodeTtlMinutes,
+  getQuorumEmailFrom,
   getResendApiKey,
 } from '../db/config.js'
 import {
@@ -56,7 +56,7 @@ async function sendEmail(input: {
   }
 
   const response = await client.emails.send({
-    from: getPulseEmailFrom(),
+    from: getQuorumEmailFrom(),
     html: input.html,
     subject: input.subject,
     text: input.text,
@@ -79,7 +79,7 @@ export async function sendPasswordlessMagicLinkEmail(input: {
   return sendEmail({
     email: input.email,
     subject: 'Your Quorum magic link',
-    text: `Open this link to sign in to Quorum: ${input.magicLinkUrl} The link expires in ${getPulseAuthCodeTtlMinutes()} minutes.`,
+    text: `Open this link to sign in to Quorum: ${input.magicLinkUrl} The link expires in ${getQuorumAuthCodeTtlMinutes()} minutes.`,
   })
 }
 

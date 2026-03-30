@@ -16,10 +16,10 @@ import {
   revokeSession,
 } from '../db/auth-repository.js'
 import {
-  getPulseAuthCodeTtlMinutes,
-  getPulseAuthFrontendBaseUrl,
-  getPulseAuthTestMagicToken,
-  getPulseSessionTtlDays,
+  getQuorumAuthCodeTtlMinutes,
+  getQuorumAuthFrontendBaseUrl,
+  getQuorumAuthTestMagicToken,
+  getQuorumSessionTtlDays,
 } from '../db/config.js'
 import { sendPasswordlessMagicLinkEmail } from './email-service.js'
 
@@ -65,7 +65,7 @@ function generateSessionToken() {
 }
 
 function generateMagicToken() {
-  const testToken = getPulseAuthTestMagicToken()
+  const testToken = getQuorumAuthTestMagicToken()
 
   if (testToken) {
     return testToken
@@ -89,7 +89,7 @@ function sanitizeReturnToPath(value?: string | null) {
 }
 
 function getFrontendBaseUrl(requestOrigin?: string | null) {
-  const configuredBaseUrl = getPulseAuthFrontendBaseUrl()
+  const configuredBaseUrl = getQuorumAuthFrontendBaseUrl()
 
   if (configuredBaseUrl) {
     return configuredBaseUrl
@@ -182,7 +182,7 @@ export async function requestPasswordlessLink(input: {
     magicLinkUrl,
   })
   const expiresAt = new Date(
-    Date.now() + getPulseAuthCodeTtlMinutes() * 60 * 1000,
+    Date.now() + getQuorumAuthCodeTtlMinutes() * 60 * 1000,
   ).toISOString()
 
   await createAuthChallenge({
@@ -216,7 +216,7 @@ export async function verifyPasswordlessLink(input: {
   const sessionToken = generateSessionToken()
   const session = await createSession({
     expiresAt: new Date(
-      Date.now() + getPulseSessionTtlDays() * 24 * 60 * 60 * 1000,
+      Date.now() + getQuorumSessionTtlDays() * 24 * 60 * 60 * 1000,
     ).toISOString(),
     tokenHash: buildSessionTokenHash(sessionToken),
     userId: user.id,

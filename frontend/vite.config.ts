@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
+  envPrefix: 'QUORUM_PUBLIC_',
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {

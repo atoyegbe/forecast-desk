@@ -8,9 +8,9 @@ import {
   saveTelegramUpdatesCursor,
 } from '../db/auth-repository.js'
 import {
-  getPulseTelegramBotToken,
-  getPulseTelegramConnectCodeTtlMinutes,
-  getPulseTelegramPollIntervalMs,
+  getQuorumTelegramBotToken,
+  getQuorumTelegramConnectCodeTtlMinutes,
+  getQuorumTelegramPollIntervalMs,
 } from '../db/config.js'
 
 type TelegramUpdate = {
@@ -52,7 +52,7 @@ let telegramPollingInterval: NodeJS.Timeout | null = null
 let testTelegramApi: TelegramApi | null = null
 
 function getTelegramApiBaseUrl() {
-  const token = getPulseTelegramBotToken()
+  const token = getQuorumTelegramBotToken()
 
   if (!token) {
     return null
@@ -97,7 +97,7 @@ function getTelegramApi(): TelegramApi | null {
     return testTelegramApi
   }
 
-  if (!getPulseTelegramBotToken()) {
+  if (!getQuorumTelegramBotToken()) {
     return null
   }
 
@@ -168,7 +168,7 @@ async function issueConnectCodeForChat(input: {
   }
 
   const expiresAt = new Date(
-    Date.now() + getPulseTelegramConnectCodeTtlMinutes() * 60 * 1000,
+    Date.now() + getQuorumTelegramConnectCodeTtlMinutes() * 60 * 1000,
   ).toISOString()
 
   for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -322,7 +322,7 @@ export function startTelegramBotWorker() {
   void pollTelegramBotUpdatesOnce()
   telegramPollingInterval = setInterval(() => {
     void pollTelegramBotUpdatesOnce()
-  }, getPulseTelegramPollIntervalMs())
+  }, getQuorumTelegramPollIntervalMs())
 }
 
 export function stopTelegramBotWorker() {

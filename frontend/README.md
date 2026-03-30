@@ -53,9 +53,9 @@ The frontend is intended to run as its own Railway service.
 
 Before deploying the frontend, set:
 
-- `VITE_BACKEND_API_BASE`
-- `VITE_BACKEND_WS_BASE`
-- `VITE_BACKEND_HEALTH_URL`
+- `QUORUM_PUBLIC_BACKEND_API_BASE`
+- `QUORUM_PUBLIC_BACKEND_WS_BASE`
+- `QUORUM_PUBLIC_BACKEND_HEALTH_URL`
 
 These should point at the owned backend service's public Railway domain. Full
 setup notes live in [docs/railway-deployment.md](/Users/atoyegbe/dev/quant/projects/naija-pulse/docs/railway-deployment.md).

@@ -1,6 +1,7 @@
 import type { BackendHealth } from './types'
 
-const BACKEND_HEALTH_URL = import.meta.env.VITE_BACKEND_HEALTH_URL ?? '/health'
+const BACKEND_HEALTH_URL =
+  import.meta.env.QUORUM_PUBLIC_BACKEND_HEALTH_URL ?? '/health'
 
 export async function getBackendHealth() {
   const response = await fetch(BACKEND_HEALTH_URL)

@@ -13,7 +13,7 @@ export type BackendApiResponse<T> = {
   error?: BackendApiError
 }
 
-const BACKEND_API_BASE = import.meta.env.VITE_BACKEND_API_BASE ?? '/api/v1'
+const BACKEND_API_BASE = import.meta.env.QUORUM_PUBLIC_BACKEND_API_BASE ?? '/api/v1'
 
 export class BackendRequestError extends Error {
   code?: string

@@ -3,10 +3,10 @@ const DEFAULT_ALERT_DELIVERY_INTERVAL_MS = 60 * 1000
 const DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS = 2 * 60 * 1000
 const DEFAULT_FX_API_BASE = 'https://api.frankfurter.dev/v2'
 const DEFAULT_FX_CACHE_TTL_MS = 30 * 60 * 1000
-const DEFAULT_PULSE_AUTH_CODE_TTL_MINUTES = 15
-const DEFAULT_PULSE_SESSION_TTL_DAYS = 30
-const DEFAULT_PULSE_TELEGRAM_CONNECT_CODE_TTL_MINUTES = 15
-const DEFAULT_PULSE_TELEGRAM_POLL_INTERVAL_MS = 15 * 1000
+const DEFAULT_QUORUM_AUTH_CODE_TTL_MINUTES = 15
+const DEFAULT_QUORUM_SESSION_TTL_DAYS = 30
+const DEFAULT_QUORUM_TELEGRAM_CONNECT_CODE_TTL_MINUTES = 15
+const DEFAULT_QUORUM_TELEGRAM_POLL_INTERVAL_MS = 15 * 1000
 const DEFAULT_SMART_MONEY_SCHEDULER_ENABLED = true
 const DEFAULT_SMART_MONEY_DISCOVERY_LOOKBACK_DAYS = 30
 const DEFAULT_SMART_MONEY_DISCOVERY_WALLET_LIMIT = 40
@@ -96,51 +96,51 @@ export function getFxCacheTtlMs() {
   )
 }
 
-export function getPulseAuthCodeTtlMinutes() {
+export function getQuorumAuthCodeTtlMinutes() {
   return parsePositiveInteger(
-    process.env.PULSE_AUTH_CODE_TTL_MINUTES,
-    DEFAULT_PULSE_AUTH_CODE_TTL_MINUTES,
+    process.env.QUORUM_AUTH_CODE_TTL_MINUTES,
+    DEFAULT_QUORUM_AUTH_CODE_TTL_MINUTES,
   )
 }
 
-export function getPulseAuthFrontendBaseUrl() {
-  return process.env.PULSE_AUTH_FRONTEND_BASE_URL?.trim() || null
+export function getQuorumAuthFrontendBaseUrl() {
+  return process.env.QUORUM_AUTH_FRONTEND_BASE_URL?.trim() || null
 }
 
-export function getPulseAuthTestMagicToken() {
-  return process.env.PULSE_AUTH_TEST_MAGIC_TOKEN?.trim() || null
+export function getQuorumAuthTestMagicToken() {
+  return process.env.QUORUM_AUTH_TEST_MAGIC_TOKEN?.trim() || null
 }
 
-export function getPulseEmailFrom() {
-  return process.env.PULSE_EMAIL_FROM?.trim() || 'alerts@quorum.local'
+export function getQuorumEmailFrom() {
+  return process.env.QUORUM_EMAIL_FROM?.trim() || 'alerts@quorum.local'
 }
 
-export function getPulseSessionTtlDays() {
+export function getQuorumSessionTtlDays() {
   return parsePositiveInteger(
-    process.env.PULSE_SESSION_TTL_DAYS,
-    DEFAULT_PULSE_SESSION_TTL_DAYS,
+    process.env.QUORUM_SESSION_TTL_DAYS,
+    DEFAULT_QUORUM_SESSION_TTL_DAYS,
   )
 }
 
-export function getPulseTelegramBotToken() {
-  return process.env.PULSE_TELEGRAM_BOT_TOKEN?.trim() || null
+export function getQuorumTelegramBotToken() {
+  return process.env.QUORUM_TELEGRAM_BOT_TOKEN?.trim() || null
 }
 
-export function getPulseTelegramBotUsername() {
-  return process.env.PULSE_TELEGRAM_BOT_USERNAME?.trim() || null
+export function getQuorumTelegramBotUsername() {
+  return process.env.QUORUM_TELEGRAM_BOT_USERNAME?.trim() || null
 }
 
-export function getPulseTelegramConnectCodeTtlMinutes() {
+export function getQuorumTelegramConnectCodeTtlMinutes() {
   return parsePositiveInteger(
-    process.env.PULSE_TELEGRAM_CONNECT_CODE_TTL_MINUTES,
-    DEFAULT_PULSE_TELEGRAM_CONNECT_CODE_TTL_MINUTES,
+    process.env.QUORUM_TELEGRAM_CONNECT_CODE_TTL_MINUTES,
+    DEFAULT_QUORUM_TELEGRAM_CONNECT_CODE_TTL_MINUTES,
   )
 }
 
-export function getPulseTelegramPollIntervalMs() {
+export function getQuorumTelegramPollIntervalMs() {
   return parsePositiveInteger(
-    process.env.PULSE_TELEGRAM_POLL_INTERVAL_MS,
-    DEFAULT_PULSE_TELEGRAM_POLL_INTERVAL_MS,
+    process.env.QUORUM_TELEGRAM_POLL_INTERVAL_MS,
+    DEFAULT_QUORUM_TELEGRAM_POLL_INTERVAL_MS,
   )
 }
 
@@ -217,10 +217,10 @@ export {
   DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS,
   DEFAULT_FX_API_BASE,
   DEFAULT_FX_CACHE_TTL_MS,
-  DEFAULT_PULSE_AUTH_CODE_TTL_MINUTES,
-  DEFAULT_PULSE_SESSION_TTL_DAYS,
-  DEFAULT_PULSE_TELEGRAM_CONNECT_CODE_TTL_MINUTES,
-  DEFAULT_PULSE_TELEGRAM_POLL_INTERVAL_MS,
+  DEFAULT_QUORUM_AUTH_CODE_TTL_MINUTES,
+  DEFAULT_QUORUM_SESSION_TTL_DAYS,
+  DEFAULT_QUORUM_TELEGRAM_CONNECT_CODE_TTL_MINUTES,
+  DEFAULT_QUORUM_TELEGRAM_POLL_INTERVAL_MS,
   DEFAULT_SMART_MONEY_ACTIVITY_LOOKBACK_DAYS,
   DEFAULT_SMART_MONEY_DISCOVERY_LOOKBACK_DAYS,
   DEFAULT_SMART_MONEY_DISCOVERY_WALLET_LIMIT,

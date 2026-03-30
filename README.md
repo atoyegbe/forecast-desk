@@ -56,7 +56,7 @@ For email delivery, the backend worker will use Resend when these env vars are
 set:
 
 - `RESEND_API_KEY=...`
-- `PULSE_EMAIL_FROM=alerts@your-domain.com`
+- `QUORUM_EMAIL_FROM=alerts@your-domain.com`
 
 Without a Resend key, auth code and alert email sending fall back to a local
 no-op mode that is useful for tests and UI development, but it will not deliver

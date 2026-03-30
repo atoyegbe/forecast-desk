@@ -30,9 +30,9 @@ Compose can still be introduced later for local orchestration if needed, but it 
 
 Environment variables:
 
-- `VITE_BACKEND_API_BASE=https://<api-public-domain>/api/v1`
-- `VITE_BACKEND_WS_BASE=wss://<api-public-domain>`
-- `VITE_BACKEND_HEALTH_URL=https://<api-public-domain>/health`
+- `QUORUM_PUBLIC_BACKEND_API_BASE=https://<api-public-domain>/api/v1`
+- `QUORUM_PUBLIC_BACKEND_WS_BASE=wss://<api-public-domain>`
+- `QUORUM_PUBLIC_BACKEND_HEALTH_URL=https://<api-public-domain>/health`
 
 The frontend runs as a compiled static SPA served by `serve`.
 
@@ -46,11 +46,11 @@ The frontend runs as a compiled static SPA served by `serve`.
 Environment variables:
 
 - `DATABASE_URL=${{Postgres.DATABASE_URL}}`
-- `PULSE_AUTH_FRONTEND_BASE_URL=https://<frontend-public-domain>`
+- `QUORUM_AUTH_FRONTEND_BASE_URL=https://<frontend-public-domain>`
 - `RESEND_API_KEY=...`
-- `PULSE_EMAIL_FROM=alerts@your-domain.com`
-- `PULSE_SESSION_TTL_DAYS=30`
-- `PULSE_AUTH_CODE_TTL_MINUTES=15`
+- `QUORUM_EMAIL_FROM=alerts@your-domain.com`
+- `QUORUM_SESSION_TTL_DAYS=30`
+- `QUORUM_AUTH_CODE_TTL_MINUTES=15`
 
 Optional provider/runtime overrides:
 
@@ -80,10 +80,10 @@ Environment variables:
 
 - `DATABASE_URL=${{Postgres.DATABASE_URL}}`
 - `RESEND_API_KEY=...`
-- `PULSE_EMAIL_FROM=alerts@your-domain.com`
-- `PULSE_AUTH_FRONTEND_BASE_URL=https://<frontend-public-domain>`
-- `PULSE_TELEGRAM_BOT_TOKEN=...`
-- `PULSE_TELEGRAM_BOT_USERNAME=QuorumAlertsBot`
+- `QUORUM_EMAIL_FROM=alerts@your-domain.com`
+- `QUORUM_AUTH_FRONTEND_BASE_URL=https://<frontend-public-domain>`
+- `QUORUM_TELEGRAM_BOT_TOKEN=...`
+- `QUORUM_TELEGRAM_BOT_USERNAME=QuorumAlertsBot`
 
 Optional smart money tuning:
 
@@ -121,6 +121,14 @@ The repo now contains the service config files Railway will read during deploys:
 - `/frontend/railway.toml`
 - `/backend/railway.toml`
 - `/backend/railway.worker.toml`
+
+Railway can also suggest variables automatically from `.env` files it finds in
+the repo root. This repo now includes root-level import templates for each
+service:
+
+- `/.env.frontend.example`
+- `/.env.api.example`
+- `/.env.worker.example`
 
 For the worker service, point the Railway service config path to `/backend/railway.worker.toml` because it shares the same source directory as the API.
 
