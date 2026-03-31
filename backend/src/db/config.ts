@@ -4,6 +4,10 @@ const DEFAULT_CACHE_ENABLED = true
 const DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS = 2 * 60 * 1000
 const DEFAULT_FX_API_BASE = 'https://api.frankfurter.dev/v2'
 const DEFAULT_FX_CACHE_TTL_MS = 30 * 60 * 1000
+const DEFAULT_LOCAL_FRONTEND_ORIGINS = [
+  'http://127.0.0.1:5173',
+  'http://localhost:5173',
+]
 const DEFAULT_REDIS_PORT = 6379
 const DEFAULT_QUORUM_AUTH_CODE_TTL_MINUTES = 15
 const DEFAULT_QUORUM_BASE_URL = 'http://localhost:5173'
@@ -64,6 +68,24 @@ function parseBoolean(value: string | undefined, fallback: boolean) {
   }
 
   return fallback
+}
+
+function normalizeOrigin(value: string | null | undefined) {
+  const candidate = value?.trim()
+
+  if (!candidate) {
+    return null
+  }
+
+  const normalizedValue = /^https?:\/\//i.test(candidate)
+    ? candidate
+    : `https://${candidate}`
+
+  try {
+    return new URL(normalizedValue).origin
+  } catch {
+    return null
+  }
 }
 
 export function getDatabaseUrl() {
@@ -145,6 +167,25 @@ export function getQuorumBaseUrl() {
   }
 
   return DEFAULT_QUORUM_BASE_URL
+}
+
+export function getQuorumCorsAllowedOrigins() {
+  const allowedOrigins = new Set<string>(DEFAULT_LOCAL_FRONTEND_ORIGINS)
+  const configuredOrigins = process.env.QUORUM_CORS_ALLOWED_ORIGINS
+    ?.split(',')
+    .map((origin) => normalizeOrigin(origin))
+    .filter((origin): origin is string => Boolean(origin)) ?? []
+  const derivedOrigins = [
+    normalizeOrigin(getQuorumAuthFrontendBaseUrl()),
+    normalizeOrigin(process.env.QUORUM_BASE_URL?.trim()),
+    normalizeOrigin(process.env.RAILWAY_SERVICE_QUR_FRONTEND_URL?.trim()),
+  ].filter((origin): origin is string => Boolean(origin))
+
+  for (const origin of [...configuredOrigins, ...derivedOrigins]) {
+    allowedOrigins.add(origin)
+  }
+
+  return [...allowedOrigins]
 }
 
 export function getQuorumAuthTestMagicToken() {
@@ -281,6 +322,7 @@ export {
   DEFAULT_DISCOVERY_REFRESH_INTERVAL_MS,
   DEFAULT_FX_API_BASE,
   DEFAULT_FX_CACHE_TTL_MS,
+  DEFAULT_LOCAL_FRONTEND_ORIGINS,
   DEFAULT_REDIS_PORT,
   DEFAULT_QUORUM_AUTH_CODE_TTL_MINUTES,
   DEFAULT_QUORUM_BASE_URL,

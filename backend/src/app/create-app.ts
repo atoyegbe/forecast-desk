@@ -1,10 +1,14 @@
+import cors from '@fastify/cors'
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import {
   startSmartMoneyScheduler,
   stopSmartMoneyScheduler,
 } from './smart-money-service.js'
-import { isSmartMoneySchedulerEnabled } from '../db/config.js'
+import {
+  getQuorumCorsAllowedOrigins,
+  isSmartMoneySchedulerEnabled,
+} from '../db/config.js'
 import { closeDbPool } from '../db/pool.js'
 import { ensureDiscoverySchema } from '../db/schema.js'
 import { bayseLiveHub } from '../realtime/bayse-live-hub.js'
@@ -27,6 +31,28 @@ export async function createApp() {
 
   const app = Fastify({
     logger: true,
+  })
+
+  const allowedOrigins = new Set(getQuorumCorsAllowedOrigins())
+
+  await app.register(cors, {
+    allowedHeaders: ['Authorization', 'Content-Type'],
+    maxAge: 86_400,
+    methods: ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST'],
+    origin(requestOrigin, callback) {
+      if (!requestOrigin) {
+        callback(null, true)
+        return
+      }
+
+      try {
+        const normalizedOrigin = new URL(requestOrigin).origin
+
+        callback(null, allowedOrigins.has(normalizedOrigin))
+      } catch {
+        callback(null, false)
+      }
+    },
   })
 
   await app.register(websocket)

@@ -36,7 +36,7 @@ export function registerAppTestLifecycle() {
     process.env.QUORUM_API_BASE_URL = 'http://localhost:8787/api/v1'
     process.env.TELEGRAM_BOT_TOKEN = 'test-telegram-token'
     process.env.QUORUM_TELEGRAM_BOT_TOKEN = 'test-telegram-token'
-    process.env.QUORUM_TELEGRAM_BOT_USERNAME = 'QuorumAlertsBot'
+    process.env.QUORUM_TELEGRAM_BOT_USERNAME = 'QuorumSignalsBot'
     process.env.SMART_MONEY_SCHEDULER_ENABLED = 'false'
     const database = await createTestDatabase()
 

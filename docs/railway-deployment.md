@@ -57,6 +57,7 @@ Environment variables:
 - `DATABASE_URL=${{Postgres.DATABASE_URL}}`
 - `REDIS_URL=${{Redis.REDIS_URL}}`
 - `QUORUM_AUTH_FRONTEND_BASE_URL=https://<frontend-public-domain>`
+- `QUORUM_CORS_ALLOWED_ORIGINS=https://<frontend-public-domain>,https://<frontend-preview-domain-optional>`
 - `RESEND_API_KEY=...`
 - `QUORUM_EMAIL_FROM=alerts@your-domain.com`
 - `QUORUM_SESSION_TTL_DAYS=30`
@@ -97,7 +98,7 @@ Environment variables:
 - `QUORUM_AUTH_FRONTEND_BASE_URL=https://<frontend-public-domain>`
 - `QUORUM_BASE_URL=https://<frontend-public-domain>`
 - `TELEGRAM_BOT_TOKEN=...`
-- `QUORUM_TELEGRAM_BOT_USERNAME=QuorumAlertsBot`
+- `QUORUM_TELEGRAM_BOT_USERNAME=QuorumSignalsBot`
 
 Optional smart money tuning:
 

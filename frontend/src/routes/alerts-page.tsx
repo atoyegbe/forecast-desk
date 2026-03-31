@@ -1185,11 +1185,11 @@ export function AlertsPage() {
                       </p>
                       <a
                         className="mt-3 flex w-full items-center justify-center rounded-[7px] border border-[var(--color-border)] px-4 py-[10px] text-[13px] font-medium text-[var(--color-text-primary)] transition-colors duration-150 hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
-                        href="https://t.me/QuorumAlertsBot"
+                        href="https://t.me/QuorumSignalsBot"
                         rel="noreferrer"
                         target="_blank"
                       >
-                        Open @QuorumAlertsBot →
+                        Open @QuorumSignalsBot →
                       </a>
                       <div className="mt-3 text-[12px] font-mono text-[var(--color-text-tertiary)]">
                         The bot will give you a 6-digit code.

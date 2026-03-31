@@ -3,7 +3,7 @@
   1. Message @BotFather on Telegram
   2. Send /newbot
   3. Set name: Quorum Alerts
-  4. Set username: QuorumAlertsBot (or available variant)
+  4. Set username: QuorumSignalsBot (or available variant)
   5. Copy the token into TELEGRAM_BOT_TOKEN in .env
   6. Send /setdescription to BotFather:
        "Get instant alerts when high-conviction
@@ -220,8 +220,7 @@ export async function startTelegramBotWorker() {
     pollingStarted = true
   } catch (error) {
     console.error(
-      `Telegram bot failed to start: ${
-        error instanceof Error ? error.message : String(error)
+      `Telegram bot failed to start: ${error instanceof Error ? error.message : String(error)
       }`,
     )
   }
