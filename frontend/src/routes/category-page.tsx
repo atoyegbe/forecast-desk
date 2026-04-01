@@ -162,9 +162,15 @@ export function CategoryPage() {
       <section className="panel p-5 lg:p-6">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_360px]">
           <div className="space-y-6">
-            <div className="space-y-1">
+            <div className="space-y-2">
+              <Link
+                className="inline-flex min-h-11 items-center text-[13px] text-[var(--color-text-tertiary)] transition hover:text-[var(--color-text-primary)]"
+                {...getMarketsRoute()}
+              >
+                ← Markets
+              </Link>
               <div className={SECTION_LABEL_CLASSNAME}>Markets</div>
-              <h1 className="text-[28px] font-semibold leading-[1.05] tracking-[-0.04em] text-[var(--color-text-primary)]">
+              <h1 className="text-[24px] font-semibold leading-[1.05] tracking-[-0.04em] text-[var(--color-text-primary)] sm:text-[28px]">
                 {category} desk
               </h1>
               <p className="max-w-3xl text-sm leading-6 text-[var(--color-text-secondary)]">
@@ -172,7 +178,7 @@ export function CategoryPage() {
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="metric-card">
                 <div className="stat-label">Open markets</div>
                 <strong>{formatCompactNumber(categoryEvents.length)}</strong>
@@ -232,7 +238,7 @@ export function CategoryPage() {
         {hasMoreMostActive ? (
           <div className="flex justify-center">
             <button
-              className="text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+              className="min-h-11 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
               onClick={() => {
                 setShowAllMostActive((currentValue) => !currentValue)
               }}

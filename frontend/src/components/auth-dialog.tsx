@@ -102,19 +102,23 @@ export function AuthDialog() {
   }
 
   return (
-    <Modal isOpen={authDialog.isOpen} onClose={closeAuthDialog}>
+    <Modal
+      className="min-h-[60vh] sm:min-h-0"
+      isOpen={authDialog.isOpen}
+      onClose={closeAuthDialog}
+    >
       {authDialog.step === 'email' ? (
         <>
           <img
             alt=""
             aria-hidden="true"
-            className="mx-auto mb-5 h-8 w-8"
+            className="mx-auto mb-5 h-8 w-8 sm:h-8 sm:w-8"
             height="32"
             src="/logo-symbol-consensus-q-transparent.svg"
             width="32"
           />
 
-          <h2 className="text-center text-[20px] font-semibold text-[var(--color-text-primary)]">
+          <h2 className="text-center text-[20px] font-semibold text-[var(--color-text-primary)] sm:text-[20px]">
             Get alerts when whales move.
           </h2>
           <p className="mt-2 mb-6 text-center text-[13px] leading-5 text-[var(--color-text-secondary)]">
@@ -135,7 +139,7 @@ export function AuthDialog() {
           >
             <input
               autoComplete="email"
-              className="w-full rounded-[7px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-[14px] py-[11px] text-[14px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#00c58e] focus:shadow-[0_0_0_3px_rgba(0,197,142,0.1)]"
+              className="h-12 w-full rounded-[7px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-[14px] py-[11px] text-[16px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#00c58e] focus:shadow-[0_0_0_3px_rgba(0,197,142,0.1)]"
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@example.com"
               type="email"
@@ -149,7 +153,7 @@ export function AuthDialog() {
             ) : null}
 
             <button
-              className="mt-[10px] inline-flex w-full items-center justify-center rounded-[7px] bg-[#00c58e] px-4 py-[11px] text-[14px] font-semibold text-[#0d0f10] transition-opacity disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-[10px] inline-flex min-h-12 w-full items-center justify-center rounded-[7px] bg-[#00c58e] px-4 py-[11px] text-[14px] font-semibold text-[#0d0f10] transition-opacity disabled:cursor-not-allowed disabled:opacity-70"
               disabled={authDialog.isSubmitting}
               type="submit"
             >

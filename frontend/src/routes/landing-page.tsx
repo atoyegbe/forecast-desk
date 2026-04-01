@@ -74,7 +74,7 @@ export function LandingPage() {
         Prediction market intelligence
       </div>
 
-      <h1 className="mx-auto text-[36px] font-semibold leading-[1.15] tracking-[-0.01em] text-[var(--color-text-primary)]">
+      <h1 className="mx-auto text-[28px] font-semibold leading-[1.15] tracking-[-0.01em] text-[var(--color-text-primary)] sm:text-[36px]">
         What the crowd thinks, across{' '}
         <span className="text-[#00c58e]">every market</span>.
       </h1>
@@ -86,7 +86,7 @@ export function LandingPage() {
       </p>
 
       <button
-        className="inline-flex items-center justify-center rounded-[7px] bg-[#00c58e] px-6 py-[11px] text-[14px] font-semibold text-[#0d0f10] transition-opacity duration-150 hover:opacity-[0.88]"
+        className="inline-flex min-h-12 w-full items-center justify-center rounded-[7px] bg-[#00c58e] px-6 py-[11px] text-[14px] font-semibold text-[#0d0f10] transition-opacity duration-150 hover:opacity-[0.88] sm:w-auto"
         onClick={() => {
           void navigate({ to: '/markets' })
         }}
@@ -95,7 +95,7 @@ export function LandingPage() {
         Open the board →
       </button>
 
-      <div className="mt-12 grid w-full gap-px overflow-hidden rounded-[8px] bg-[#1f2528] text-left sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-12 grid w-full grid-cols-2 gap-px overflow-hidden rounded-[8px] bg-[#1f2528] text-left lg:grid-cols-4">
         <StatCell label="Platforms" value="PM · KL · MF · BY" />
         <StatCell label="Markets live" value={liveMarketCount} />
         <StatCell label="Smart money" value={signalCountToday} />

@@ -185,7 +185,7 @@ export function PriceHistoryChart({
         </button>
       </div>
 
-      <div className="mt-3 h-[200px]">
+      <div className="mt-3 h-[180px] sm:h-[200px]">
         <ResponsiveContainer height="100%" width="100%">
           <AreaChart data={chartData} margin={{ bottom: 0, left: 0, right: 0, top: 8 }}>
             <defs>

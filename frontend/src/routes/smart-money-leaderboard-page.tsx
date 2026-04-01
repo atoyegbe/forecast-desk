@@ -136,7 +136,52 @@ export function SmartMoneyLeaderboardPage() {
           title="Leaderboard"
         />
 
-        <div className="mt-5 overflow-hidden rounded-lg border border-[var(--color-border)]">
+        <div className="mt-5 space-y-0 lg:hidden">
+          {wallets.map((wallet) => (
+            <div
+              className="flex items-center gap-3 border-b border-[var(--color-border-subtle)] py-[14px]"
+              key={wallet.address}
+            >
+              <div className="mono-data w-7 shrink-0 text-[13px] text-[var(--color-text-tertiary)]">
+                #{wallet.rank}
+              </div>
+
+              <Link
+                className="min-w-0 flex-1"
+                {...getSmartMoneyWalletRoute(wallet.address)}
+              >
+                <div className="truncate text-[14px] font-medium text-[var(--color-text-primary)]">
+                  {wallet.displayName || wallet.shortAddress}
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[11px] text-[var(--color-text-tertiary)]">
+                  <span className={wallet.roi >= 0 ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}>
+                    {formatSignedPercent(wallet.roi)} ROI
+                  </span>
+                  <span>·</span>
+                  <span>{formatTimeAgo(wallet.lastActiveAt)}</span>
+                </div>
+              </Link>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="relative h-[3px] w-7 overflow-hidden rounded-[2px] bg-[var(--color-border)]">
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-[2px] bg-[#00c58e]"
+                    style={{ width: `${Math.max(8, Math.min(wallet.score, 100))}%` }}
+                  />
+                </span>
+                <span className="mono-data text-[13px] text-[var(--color-text-primary)]">
+                  {wallet.score}
+                </span>
+                <WalletAlertButton
+                  {...createWalletAlertPropsFromWallet(wallet)}
+                  variant="leaderboard"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 hidden overflow-hidden rounded-lg border border-[var(--color-border)] lg:block">
           <div className="hidden grid-cols-[84px_minmax(0,1.4fr)_110px_120px_120px_140px_100px_120px] gap-4 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)] lg:grid">
             <div>Rank</div>
             <div>Wallet</div>

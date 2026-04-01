@@ -97,12 +97,16 @@
 html {
   scroll-behavior: smooth;
   background: var(--color-bg-base);
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  overflow-x: clip;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   background:
     radial-gradient(circle at top left, rgba(0, 197, 142, 0.12), transparent 24%),
     radial-gradient(circle at 92% 2%, rgba(0, 112, 243, 0.12), transparent 22%),
@@ -126,11 +130,12 @@ body::before {
 
 #root {
   min-height: 100vh;
-  overflow-x: clip;
+  overflow-x: hidden;
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: rgba(0, 197, 142, 0.1);
 }
 
 button,
@@ -138,6 +143,14 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="number"],
+textarea,
+select {
+  font-size: 16px;
 }
 
 button {
@@ -242,6 +255,7 @@ img {
 
   .terminal-button {
     display: inline-flex;
+    min-height: 44px;
     align-items: center;
     justify-content: center;
     gap: 8px;
@@ -345,6 +359,7 @@ img {
   .nav-link {
     position: relative;
     display: inline-flex;
+    min-height: 44px;
     align-items: center;
     margin-right: 2px;
     border-radius: 5px;
@@ -426,7 +441,7 @@ img {
     margin-top: 8px;
     color: var(--color-text-primary);
     font-family: var(--font-mono);
-    font-size: 1.35rem;
+    font-size: 1.12rem;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
   }
@@ -509,8 +524,8 @@ img {
 
   .shell-icon-button {
     display: inline-flex;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     align-items: center;
     justify-content: center;
     border: 1px solid transparent;
@@ -539,12 +554,13 @@ img {
   }
 
   .venue-filter-pill {
+    min-height: 44px;
     border: 1px solid var(--color-border-subtle);
     border-radius: 4px;
     background: transparent;
     color: var(--color-text-tertiary);
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 400;
     line-height: 1;
     padding: 4px 10px;
@@ -577,6 +593,7 @@ img {
 
   .shell-sign-in-button {
     display: inline-flex;
+    min-height: 44px;
     align-items: center;
     justify-content: center;
     border: 1px solid var(--color-border);
@@ -598,8 +615,8 @@ img {
 
   .shell-avatar {
     display: inline-flex;
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
     align-items: center;
     justify-content: center;
     border: 1px solid var(--color-border);
@@ -609,6 +626,17 @@ img {
     font-family: var(--font-mono);
     font-size: 12px;
   }
+}
+
+.tab-bar-safe {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+}
+
+.mobile-sheet-handle {
+  width: 32px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-border);
 }
 
 @keyframes telegram-code-shake {
@@ -713,6 +741,12 @@ img {
 @media (max-width: 767px) {
   .ticker-marquee {
     animation-duration: var(--ticker-duration-mobile, 60s);
+  }
+}
+
+@media (min-width: 640px) {
+  .metric-card strong {
+    font-size: 1.35rem;
   }
 }
 

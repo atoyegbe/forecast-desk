@@ -44,7 +44,7 @@ export function DeskTabs<T extends string>({
     <section className="panel p-4 sm:p-5">
       <div
         aria-label={activeItem.title}
-        className="flex flex-wrap gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1.5"
+        className="flex gap-2 overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1.5"
         role="tablist"
       >
         {items.map((item) => {
@@ -56,7 +56,7 @@ export function DeskTabs<T extends string>({
             <button
               aria-controls={panelId}
               aria-selected={isActive}
-              className={`rounded-md border px-3 py-2 text-sm font-medium transition ${
+              className={`min-h-11 shrink-0 rounded-md border px-3 py-2 text-sm font-medium transition ${
                 isActive
                   ? 'terminal-chip terminal-chip-active'
                   : 'border-transparent bg-transparent text-[var(--color-text-tertiary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]'

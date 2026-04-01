@@ -280,7 +280,7 @@ function DeliveryChannelButton({
   return (
     <button
       className={clsx(
-        'px-[12px] py-[5px] text-[13px]',
+        'flex-1 px-[12px] py-[10px] text-[13px]',
         isFirst && 'rounded-l-[6px]',
         isLast && 'rounded-r-[6px]',
         isActive
@@ -307,7 +307,7 @@ function TriggerPill({
   return (
     <button
       className={clsx(
-        'rounded-[20px] border px-[14px] py-[6px] text-[13px]',
+        'min-h-11 rounded-[20px] border px-[14px] py-[8px] text-[13px]',
         isActive
           ? 'border-[#00c58e] bg-[rgba(0,197,142,0.1)] text-[#00c58e]'
           : 'border-[var(--color-border)] text-[var(--color-text-secondary)]',
@@ -363,7 +363,8 @@ function AlertSubscriptionDrawer({
         onClick={onClose}
         type="button"
       />
-      <div className="absolute inset-x-0 bottom-0 max-h-[90vh] rounded-t-[12px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-5 py-5 md:inset-y-0 md:right-0 md:left-auto md:w-[360px] md:rounded-none md:rounded-l-[12px] md:border-l md:border-t-0 md:border-r-0 md:border-b-0 md:px-6 md:py-6">
+      <div className="absolute inset-x-0 bottom-0 max-h-[85vh] rounded-t-[16px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-4 md:inset-y-0 md:right-0 md:left-auto md:w-[360px] md:max-h-none md:rounded-none md:rounded-l-[12px] md:border-l md:border-t-0 md:border-r-0 md:border-b-0 md:px-6 md:py-6">
+        <div className="mobile-sheet-handle md:hidden" />
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
@@ -375,7 +376,7 @@ function AlertSubscriptionDrawer({
           </div>
           <button
             aria-label="Close alert drawer"
-            className="text-[var(--color-text-tertiary)]"
+            className="flex h-11 w-11 items-center justify-center rounded-[8px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:bg-[var(--color-bg-hover)]"
             onClick={onClose}
             type="button"
           >
@@ -444,7 +445,7 @@ function AlertSubscriptionDrawer({
 
         <div className="mt-8 border-t border-[var(--color-border)] pt-5">
           <button
-            className="w-full rounded-[7px] bg-[#00c58e] px-4 py-[11px] text-[14px] font-semibold text-[#0d0f10] disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-11 w-full rounded-[7px] bg-[#00c58e] px-4 py-[11px] text-[14px] font-semibold text-[#0d0f10] disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isBusy}
             onClick={() =>
               onSave({
@@ -460,7 +461,7 @@ function AlertSubscriptionDrawer({
           </button>
 
           <button
-            className="mt-3 w-full rounded-[7px] border border-[var(--color-border)] px-4 py-[10px] text-[13px] text-[var(--color-text-primary)]"
+            className="mt-3 min-h-11 w-full rounded-[7px] border border-[var(--color-border)] px-4 py-[10px] text-[13px] text-[var(--color-text-primary)]"
             onClick={() => onToggleStatus(subscription.id)}
             type="button"
           >
@@ -468,7 +469,7 @@ function AlertSubscriptionDrawer({
           </button>
 
           <button
-            className="mt-3 block w-full text-center text-[12px] text-[#ef4444]"
+            className="mt-3 block min-h-11 w-full text-center text-[12px] text-[#ef4444]"
             onClick={() => onDelete(subscription.id)}
             type="button"
           >
@@ -482,7 +483,7 @@ function AlertSubscriptionDrawer({
 
 function AlertsLoadingState() {
   return (
-    <div className="mx-auto max-w-[600px] px-6 py-12">
+    <div className="mx-auto max-w-[600px] px-4 py-12 md:px-6">
       <div className="h-3 w-16 rounded-full bg-[var(--color-bg-hover)]" />
       <div className="mt-4 h-8 w-48 rounded-full bg-[var(--color-bg-hover)]" />
       <div className="mt-8 space-y-4">
@@ -503,7 +504,7 @@ function AlertsAuthRequiredState({
   onSignIn: () => void
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-[600px] flex-col px-6 py-12 sm:px-8">
+    <div className="mx-auto flex w-full max-w-[600px] flex-col px-4 py-12 md:px-6">
       <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">
         Alerts
       </div>
@@ -515,7 +516,7 @@ function AlertsAuthRequiredState({
         see recent alert history.
       </p>
       <button
-        className="mt-8 inline-flex w-fit items-center justify-center rounded-[7px] border border-[var(--color-border)] px-4 py-[10px] text-[13px] font-medium text-[var(--color-text-primary)] transition-colors duration-150 hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
+        className="mt-8 inline-flex min-h-11 w-full items-center justify-center rounded-[7px] border border-[var(--color-border)] px-4 py-[10px] text-[13px] font-medium text-[var(--color-text-primary)] transition-colors duration-150 hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)] sm:w-fit"
         onClick={onSignIn}
         type="button"
       >
@@ -984,7 +985,7 @@ export function AlertsPage() {
 
   return (
     <>
-      <div className="mx-auto flex w-full max-w-[600px] flex-col px-6 py-12 sm:px-8">
+      <div className="mx-auto flex w-full max-w-[600px] flex-col px-4 py-12 md:px-6">
         <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">
           Alerts
         </div>
@@ -998,7 +999,7 @@ export function AlertsPage() {
           </div>
 
           <div className="mt-3 border-t border-[var(--color-border-subtle)]">
-            <div className="flex items-center gap-3 border-b border-[var(--color-border-subtle)] py-[14px]">
+            <div className="flex flex-col gap-3 border-b border-[var(--color-border-subtle)] py-[14px] sm:flex-row sm:items-center">
               <div className="flex w-5 justify-center text-[var(--color-text-secondary)]">
                 <EnvelopeIcon className="h-[14px] w-[14px]" />
               </div>
@@ -1011,7 +1012,7 @@ export function AlertsPage() {
                   {editingEmail ? (
                     <input
                       autoFocus
-                      className="min-w-0 flex-1 border-0 border-b border-b-[#00c58e] bg-transparent px-0 py-0 text-[13px] text-[var(--color-text-secondary)] outline-none"
+                      className="min-h-11 min-w-0 flex-1 border-0 border-b border-b-[#00c58e] bg-transparent px-0 py-0 text-[16px] text-[var(--color-text-secondary)] outline-none"
                       onBlur={() => void saveEmail()}
                       onChange={(event) => setEmailDraft(event.target.value)}
                       onKeyDown={(event) => {
@@ -1031,7 +1032,7 @@ export function AlertsPage() {
                     <>
                       <span className="truncate">{activeUser?.email}</span>
                       <button
-                        className="inline-flex h-4 w-4 items-center justify-center text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[#00c58e]"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-[8px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:bg-[var(--color-bg-hover)] hover:text-[#00c58e]"
                         onClick={() => setEditingEmail(true)}
                         type="button"
                       >
@@ -1047,13 +1048,13 @@ export function AlertsPage() {
                 </div>
               </div>
 
-              <div className="shrink-0">
+              <div className="shrink-0 self-start sm:self-auto">
                 <ChannelStatusPill>{isSavingEmail ? 'Saving' : 'Verified'}</ChannelStatusPill>
               </div>
             </div>
 
             <div className="border-b border-[var(--color-border-subtle)] py-[14px]">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div
                   className={clsx(
                     'flex w-5 justify-center',
@@ -1079,24 +1080,24 @@ export function AlertsPage() {
                   </div>
                 </div>
 
-                <div className="shrink-0">
+                <div className="shrink-0 sm:self-auto">
                   {telegramHandle ? (
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
                       <ChannelStatusPill>Connected</ChannelStatusPill>
                       {telegramDisconnectConfirm ? (
-                        <div className="flex items-center gap-2 text-[12px]">
+                        <div className="flex flex-wrap items-center gap-2 text-[12px]">
                           <span className="text-[var(--color-text-tertiary)]">
                             Disconnect Telegram?
                           </span>
                           <button
-                            className="text-[var(--color-text-tertiary)]"
+                            className="min-h-11 text-[var(--color-text-tertiary)]"
                             onClick={() => setTelegramDisconnectConfirm(false)}
                             type="button"
                           >
                             Cancel
                           </button>
                           <button
-                            className="text-[#ef4444]"
+                            className="min-h-11 text-[#ef4444]"
                             onClick={() => void handleDisconnectTelegram()}
                             type="button"
                           >
@@ -1105,7 +1106,7 @@ export function AlertsPage() {
                         </div>
                       ) : (
                         <button
-                          className="text-[12px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[#ef4444]"
+                          className="min-h-11 text-[12px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[#ef4444]"
                           onClick={() => setTelegramDisconnectConfirm(true)}
                           type="button"
                         >
@@ -1116,7 +1117,7 @@ export function AlertsPage() {
                   ) : (
                     <button
                       className={clsx(
-                        'rounded-[6px] border px-3 py-[5px] text-[12px] font-medium transition-colors duration-150',
+                        'min-h-11 w-full rounded-[6px] border px-3 py-[9px] text-[13px] font-medium transition-colors duration-150 sm:w-auto',
                         telegramFlowStep === 'hidden'
                           ? 'border-[rgba(0,197,142,0.3)] bg-[rgba(0,197,142,0.06)] text-[#00c58e] hover:border-[#00c58e] hover:bg-[rgba(0,197,142,0.12)]'
                           : 'border-[var(--color-border)] text-[var(--color-text-tertiary)]',
@@ -1138,7 +1139,7 @@ export function AlertsPage() {
 
               {renderTelegramConnectPanel ? (
                 <div className="mt-3 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
-                  <div className="flex items-center gap-2 font-mono text-[12px]">
+                  <div className="flex flex-wrap items-center gap-2 font-mono text-[12px]">
                     <div
                       className={clsx(
                         'inline-flex items-center gap-2',
@@ -1184,7 +1185,7 @@ export function AlertsPage() {
                         Open our Telegram bot and press Start.
                       </p>
                       <a
-                        className="mt-3 flex w-full items-center justify-center rounded-[7px] border border-[var(--color-border)] px-4 py-[10px] text-[13px] font-medium text-[var(--color-text-primary)] transition-colors duration-150 hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
+                        className="mt-3 flex min-h-11 w-full items-center justify-center rounded-[7px] border border-[var(--color-border)] px-4 py-[10px] text-[13px] font-medium text-[var(--color-text-primary)] transition-colors duration-150 hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
                         href="https://t.me/QuorumSignalsBot"
                         rel="noreferrer"
                         target="_blank"
@@ -1195,7 +1196,7 @@ export function AlertsPage() {
                         The bot will give you a 6-digit code.
                       </div>
                       <button
-                        className="mt-4 text-[13px] text-[#00c58e] hover:underline"
+                        className="mt-4 min-h-11 text-[13px] text-[#00c58e] hover:underline"
                         onClick={() => setTelegramFlowStep('enter-code')}
                         type="button"
                       >
@@ -1216,7 +1217,7 @@ export function AlertsPage() {
                         {telegramCodeDigits.map((digit, index) => (
                           <input
                             className={clsx(
-                              'h-12 w-10 rounded-[6px] border bg-[var(--color-bg-base)] text-center font-mono text-[20px] font-medium text-[var(--color-text-primary)] outline-none transition-[border-color,box-shadow,opacity] duration-150',
+                              'h-[52px] w-11 rounded-[8px] border bg-[var(--color-bg-base)] text-center font-mono text-[24px] font-medium text-[var(--color-text-primary)] outline-none transition-[border-color,box-shadow,opacity] duration-150',
                               telegramCodeError
                                 ? 'border-[#ef4444]'
                                 : 'border-[var(--color-border)] focus:border-[#00c58e] focus:shadow-[0_0_0_3px_rgba(0,197,142,0.1)]',
@@ -1247,7 +1248,7 @@ export function AlertsPage() {
                         </div>
                       ) : null}
                       <button
-                        className="mt-3 text-[12px] text-[var(--color-text-tertiary)] hover:underline"
+                        className="mt-3 min-h-11 text-[12px] text-[var(--color-text-tertiary)] hover:underline"
                         onClick={() => {
                           setTelegramFlowStep('open-bot')
                           setTelegramCodeDigits(Array.from({ length: 6 }, () => ''))
@@ -1265,12 +1266,12 @@ export function AlertsPage() {
             </div>
 
             {telegramHandle ? (
-              <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] py-[14px]">
+              <div className="flex flex-col gap-3 border-b border-[var(--color-border-subtle)] py-[14px] sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-[14px] text-[var(--color-text-secondary)]">
                   Default channel
                 </div>
 
-                <div className="overflow-hidden rounded-[6px] border border-[var(--color-border)]">
+                <div className="w-full overflow-hidden rounded-[6px] border border-[var(--color-border)] sm:w-auto">
                   <div className="flex items-stretch">
                     <DeliveryChannelButton
                       isActive={defaultChannel === 'email'}
@@ -1327,20 +1328,20 @@ export function AlertsPage() {
                     key={subscription.id}
                   >
                     {isDeleteConfirming ? (
-                      <div className="flex items-center justify-between gap-3 text-[13px]">
+                      <div className="flex flex-col gap-3 text-[13px] sm:flex-row sm:items-center sm:justify-between">
                         <span className="text-[var(--color-text-secondary)]">
                           Delete this alert?
                         </span>
                         <div className="flex items-center gap-3">
                           <button
-                            className="text-[var(--color-text-tertiary)]"
+                            className="min-h-11 text-[var(--color-text-tertiary)]"
                             onClick={clearDeleteConfirmation}
                             type="button"
                           >
                             Cancel
                           </button>
                           <button
-                            className="text-[#ef4444]"
+                            className="min-h-11 text-[#ef4444]"
                             onClick={() => void handleDeleteSubscription(subscription.id)}
                             type="button"
                           >
@@ -1366,7 +1367,7 @@ export function AlertsPage() {
                           </div>
                         </div>
 
-                        <div className="relative flex shrink-0 items-center gap-3">
+                        <div className="relative flex shrink-0 items-center gap-3 self-start">
                           <span
                             className={clsx(
                               'font-mono text-[13px] font-medium',
@@ -1379,7 +1380,7 @@ export function AlertsPage() {
                           </span>
 
                           <button
-                            className="flex h-7 w-7 items-center justify-center rounded-[4px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]"
+                            className="flex h-11 w-11 items-center justify-center rounded-[8px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]"
                             onClick={() =>
                               setOpenMenuId((current) =>
                                 current === subscription.id ? null : subscription.id,
@@ -1393,7 +1394,7 @@ export function AlertsPage() {
                           {isMenuOpen ? (
                             <div className="absolute top-[32px] right-0 z-10 min-w-[148px] rounded-[6px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1 shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
                               <button
-                                className="block w-full rounded-[5px] px-[14px] py-[8px] text-left text-[13px] hover:bg-[var(--color-bg-hover)]"
+                                className="block min-h-11 w-full rounded-[5px] px-[14px] py-[8px] text-left text-[13px] hover:bg-[var(--color-bg-hover)]"
                                 onClick={() => {
                                   setActiveDrawerId(subscription.id)
                                   setOpenMenuId(null)
@@ -1403,7 +1404,7 @@ export function AlertsPage() {
                                 Edit
                               </button>
                               <button
-                                className="block w-full rounded-[5px] px-[14px] py-[8px] text-left text-[13px] hover:bg-[var(--color-bg-hover)]"
+                                className="block min-h-11 w-full rounded-[5px] px-[14px] py-[8px] text-left text-[13px] hover:bg-[var(--color-bg-hover)]"
                                 onClick={() => {
                                   setOpenMenuId(null)
                                   void handleToggleSubscriptionStatus(subscription.id)
@@ -1414,7 +1415,7 @@ export function AlertsPage() {
                               </button>
                               <div className="my-1 h-px bg-[var(--color-border)]" />
                               <button
-                                className="block w-full rounded-[5px] px-[14px] py-[8px] text-left text-[13px] text-[#ef4444] hover:bg-[var(--color-bg-hover)]"
+                                className="block min-h-11 w-full rounded-[5px] px-[14px] py-[8px] text-left text-[13px] text-[#ef4444] hover:bg-[var(--color-bg-hover)]"
                                 onClick={() => beginDeleteConfirmation(subscription.id)}
                                 type="button"
                               >
@@ -1455,11 +1456,11 @@ export function AlertsPage() {
             <div className="mt-3 border-t border-[var(--color-border-subtle)]">
               {visibleDeliveries.map((delivery) => (
                 <div
-                  className="flex flex-col gap-2 border-b border-[var(--color-border-subtle)] py-[10px] text-[12px] sm:flex-row sm:items-center"
+                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 border-b border-[var(--color-border-subtle)] py-[10px] text-[12px] sm:flex sm:flex-row sm:items-center"
                   key={delivery.id}
                 >
                   <Link
-                    className="w-[110px] truncate font-mono text-[13px] text-[var(--color-text-secondary)] transition-colors duration-150 hover:text-[var(--color-brand)]"
+                    className="truncate font-mono text-[13px] text-[var(--color-text-secondary)] transition-colors duration-150 hover:text-[var(--color-brand)] sm:w-[110px]"
                     {...getSmartMoneyWalletRoute(delivery.walletAddress)}
                   >
                     {getWalletTitle(delivery)}
@@ -1469,12 +1470,12 @@ export function AlertsPage() {
                       ? `${delivery.marketTitle.slice(0, 45)}…`
                       : delivery.marketTitle}
                   </div>
-                  <div className="w-[80px] shrink-0 text-left font-mono text-[12px] text-[var(--color-text-tertiary)] sm:text-right">
+                  <div className="hidden w-[80px] shrink-0 text-left font-mono text-[12px] text-[var(--color-text-tertiary)] sm:block sm:text-right">
                     {formatTimeAgo(delivery.occurredAt)}
                   </div>
                   <div
                     className={clsx(
-                      'flex w-[80px] shrink-0 items-center gap-1 font-mono text-[12px] font-medium sm:justify-end',
+                      'col-span-2 flex items-center gap-1 font-mono text-[12px] font-medium sm:col-span-1 sm:w-[80px] sm:shrink-0 sm:justify-end',
                       delivery.status === 'delivered' && 'text-[#00c58e]',
                       delivery.status === 'failed' && 'text-[#ef4444]',
                       delivery.status === 'pending' && 'text-[var(--color-text-tertiary)]',
@@ -1498,7 +1499,7 @@ export function AlertsPage() {
             </div>
             {deliveries.length > 5 ? (
               <button
-                className="mt-3 text-[13px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[var(--color-text-secondary)]"
+                className="mt-3 min-h-11 text-[13px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[var(--color-text-secondary)]"
                 onClick={() => setShowAllDeliveries((current) => !current)}
                 type="button"
               >
@@ -1509,7 +1510,7 @@ export function AlertsPage() {
         ) : null}
 
         <button
-          className="mt-10 self-start text-[12px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[var(--color-text-secondary)]"
+          className="mt-10 min-h-11 self-start text-[12px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:text-[var(--color-text-secondary)]"
           onClick={() => void signOut()}
           type="button"
         >

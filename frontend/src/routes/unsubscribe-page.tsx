@@ -18,7 +18,7 @@ function MessageBlock({
   title: string
 }) {
   return (
-    <section className="panel mx-auto max-w-[640px] p-8 text-center">
+    <section className="panel mx-auto max-w-[640px] px-4 py-8 text-center md:px-6">
       <div className="section-kicker">{eyebrow}</div>
       <h1 className="mt-4 text-[28px] font-semibold text-[var(--color-text-primary)]">
         {title}
@@ -26,7 +26,7 @@ function MessageBlock({
       <p className="mx-auto mt-4 max-w-xl text-[15px] leading-7 text-[var(--color-text-secondary)]">
         {body}
       </p>
-      {actions ? <div className="mt-8 flex flex-wrap items-center justify-center gap-3">{actions}</div> : null}
+      {actions ? <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap sm:items-center">{actions}</div> : null}
     </section>
   )
 }
@@ -97,13 +97,13 @@ export function UnsubscribePage() {
         actions={
           <>
             <Link
-              className="terminal-button terminal-button-primary text-sm font-medium"
+              className="terminal-button terminal-button-primary w-full text-sm font-medium sm:w-auto"
               {...getAlertsRoute()}
             >
               Manage alerts
             </Link>
             <Link
-              className="terminal-button text-sm font-medium"
+              className="terminal-button w-full text-sm font-medium sm:w-auto"
               {...getSmartMoneyRoute()}
             >
               Back to smart money
@@ -122,7 +122,7 @@ export function UnsubscribePage() {
       <MessageBlock
         actions={
           <Link
-            className="terminal-button text-sm font-medium"
+            className="terminal-button w-full text-sm font-medium sm:w-auto"
             {...getSmartMoneyRoute()}
           >
             Browse smart money
@@ -139,7 +139,7 @@ export function UnsubscribePage() {
     <MessageBlock
       actions={
         <Link
-          className="terminal-button text-sm font-medium"
+          className="terminal-button w-full text-sm font-medium sm:w-auto"
           {...getAlertsRoute()}
         >
           Open alerts

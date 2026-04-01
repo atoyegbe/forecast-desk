@@ -26,7 +26,7 @@ export function CompactMarketCard({ event }: CompactMarketCardProps) {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <PlatformBadge platform={event.provider} short size="sm" />
-          <span className="terminal-chip border-[var(--color-border-subtle)] bg-transparent px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
+          <span className="terminal-chip hidden border-[var(--color-border-subtle)] bg-transparent px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)] sm:inline-flex">
             {event.category}
           </span>
         </div>
@@ -41,7 +41,7 @@ export function CompactMarketCard({ event }: CompactMarketCardProps) {
         </div>
       </div>
 
-      <div className="mt-3 line-clamp-3 text-[0.98rem] leading-7 text-[var(--color-text-primary)]">
+      <div className="mt-3 line-clamp-3 text-[14px] leading-6 text-[var(--color-text-primary)] sm:text-[0.98rem] sm:leading-7">
         {event.title}
       </div>
 

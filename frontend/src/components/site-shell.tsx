@@ -23,6 +23,7 @@ import {
   getAlertsRoute,
 } from '../lib/routes'
 import { AuthDialog } from './auth-dialog'
+import { BottomSheet } from './bottom-sheet'
 import { LiveTicker } from './live-ticker'
 
 const THEME_STORAGE_KEY = 'quorum-theme'
@@ -45,8 +46,6 @@ const toolNav: NavItem[] = [
   { icon: '↔', label: 'Divergence', to: '/divergence' },
   { icon: '⬡', label: 'Smart Money', to: '/smart-money' },
 ]
-
-const mobileNav: NavItem[] = [...primaryNav, ...toolNav]
 
 const footerNav = [
   { label: 'Markets', to: '/markets' },
@@ -153,6 +152,94 @@ function BellIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.6"
+      />
+    </svg>
+  )
+}
+
+function MarketsIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="14"
+      viewBox="0 0 16 16"
+      width="14"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M3 4.25H13M3 8H13M3 11.75H13"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  )
+}
+
+function DivergenceIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="14"
+      viewBox="0 0 16 16"
+      width="14"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M2 8h12M5 5 2 8l3 3M11 5l3 3-3 3"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  )
+}
+
+function DiamondIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="14"
+      viewBox="0 0 16 16"
+      width="14"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M8 2.5 13 8 8 13.5 3 8 8 2.5Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  )
+}
+
+function PersonIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill={filled ? 'currentColor' : 'none'}
+      height="14"
+      viewBox="0 0 16 16"
+      width="14"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle
+        cx="8"
+        cy="5.1"
+        r="2.35"
+        stroke="currentColor"
+        strokeWidth={filled ? 0 : 1.5}
+      />
+      <path
+        d="M3.25 13c.6-2.15 2.33-3.25 4.75-3.25s4.15 1.1 4.75 3.25"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
       />
     </svg>
   )
@@ -298,36 +385,6 @@ function ShellNavLink({ item }: { item: NavItem }) {
   )
 }
 
-function MobileNavLink({
-  currentProvider,
-  item,
-  pathname,
-}: {
-  currentProvider: VenueFilterId | undefined
-  item: NavItem
-  pathname: string
-}) {
-  const isActive = isNavItemActive(pathname, item)
-
-  return (
-    <Link
-      className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md px-2 py-2 text-xs transition ${
-        isActive
-          ? 'bg-[var(--color-brand-dim)] text-[var(--color-brand)]'
-          : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
-      }`}
-      search={
-        shouldShowVenueFilter(item.to)
-          ? (current): AppSearch => applyProviderSearch(current, currentProvider)
-          : undefined
-      }
-      to={item.to}
-    >
-      <span>{item.label}</span>
-    </Link>
-  )
-}
-
 function LiveStatusPill({
   status,
   updatedLabel,
@@ -383,10 +440,91 @@ function getLiveFreshnessLabel(freshnessLabel: string) {
   return freshnessLabel.replace(/^Updated\s+/i, '')
 }
 
+function isMarketsTabActive(pathname: string) {
+  return (
+    pathname === '/markets' ||
+    pathname === '/search' ||
+    pathname.startsWith('/events/') ||
+    pathname.startsWith('/categories/')
+  )
+}
+
+function isSmartMoneyTabActive(pathname: string) {
+  return pathname === '/smart-money' || pathname.startsWith('/smart-money/')
+}
+
+function MobileTabLink({
+  children,
+  currentProvider,
+  isActive,
+  label,
+  to,
+}: {
+  children: ReactNode
+  currentProvider: VenueFilterId | undefined
+  isActive: boolean
+  label: string
+  to: string
+}) {
+  return (
+    <Link
+      aria-current={isActive ? 'page' : undefined}
+      className={`relative flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-1 px-2 text-[10px] transition ${
+        isActive
+          ? 'text-[var(--color-brand)]'
+          : 'text-[var(--color-text-tertiary)]'
+      }`}
+      search={
+        shouldShowVenueFilter(to)
+          ? (current): AppSearch => applyProviderSearch(current, currentProvider)
+          : undefined
+      }
+      to={to}
+    >
+      <span className="inline-flex h-4 w-4 items-center justify-center">
+        {children}
+      </span>
+      <span className="truncate">{label}</span>
+    </Link>
+  )
+}
+
+function MobileTabAction({
+  badge,
+  children,
+  isActive,
+  label,
+  onClick,
+}: {
+  badge?: boolean
+  children: ReactNode
+  isActive: boolean
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      className={`relative flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-1 px-2 text-[10px] transition ${
+        isActive
+          ? 'text-[var(--color-brand)]'
+          : 'text-[var(--color-text-tertiary)]'
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      <span className="relative inline-flex h-4 w-4 items-center justify-center">
+        {children}
+        {badge ? <span className="shell-alert-dot" /> : null}
+      </span>
+      <span className="truncate">{label}</span>
+    </button>
+  )
+}
+
 function GlobalFooter() {
   return (
-    <footer className="hidden border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-base)] px-5 py-4 md:block md:px-10 md:py-0">
-      <div className="mx-auto flex min-h-[52px] max-w-[1380px] flex-col justify-center gap-[10px] md:flex-row md:items-center md:justify-between">
+    <footer className="hidden border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-base)] px-5 py-4 lg:block lg:px-10 lg:py-0">
+      <div className="mx-auto flex min-h-[52px] max-w-[1380px] flex-col justify-center gap-[10px] lg:flex-row lg:items-center lg:justify-between">
         <nav aria-label="Footer" className="flex flex-wrap items-center gap-5">
           {footerNav.map((item) => (
             <Link
@@ -410,6 +548,7 @@ function GlobalFooter() {
 export function SiteShell() {
   const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isMobileAccountSheetOpen, setIsMobileAccountSheetOpen] = useState(false)
   const navigate = useNavigate()
   const {
     consumePendingAction,
@@ -484,6 +623,11 @@ export function SiteShell() {
     }
   }, [isUserMenuOpen])
 
+  useEffect(() => {
+    setIsUserMenuOpen(false)
+    setIsMobileAccountSheetOpen(false)
+  }, [pathname])
+
   return (
     <div className="flex min-h-screen flex-col">
       <a
@@ -494,9 +638,9 @@ export function SiteShell() {
       </a>
 
       <header className="sticky top-0 z-40 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-base)]">
-        <div className="mx-auto flex h-[52px] max-w-[1380px] items-center px-6">
+        <div className="mx-auto flex h-[52px] max-w-[1380px] items-center px-4 lg:px-6">
           <Link
-            className="mr-8 flex shrink-0 items-center gap-[10px]"
+            className="mr-4 flex shrink-0 items-center gap-[10px] lg:mr-8"
             to="/"
           >
             <img
@@ -514,7 +658,7 @@ export function SiteShell() {
 
           <nav
             aria-label="Primary"
-            className="hidden min-w-0 flex-1 items-center md:flex"
+            className="hidden min-w-0 flex-1 items-center lg:flex"
           >
             {primaryNav.map((item) => (
               <ShellNavLink item={item} key={item.to} />
@@ -525,13 +669,17 @@ export function SiteShell() {
             ))}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center gap-[6px]">
-            <LiveStatusPill
-              status={runtimeConnectionStatus}
-              updatedLabel={getLiveFreshnessLabel(freshnessLabel)}
-            />
+          <div className="ml-auto flex shrink-0 items-center gap-[2px] lg:gap-[6px]">
+            <div className="hidden lg:block">
+              <LiveStatusPill
+                status={runtimeConnectionStatus}
+                updatedLabel={getLiveFreshnessLabel(freshnessLabel)}
+              />
+            </div>
 
-            <Divider />
+            <div className="hidden lg:block">
+              <Divider />
+            </div>
 
             <Link
               aria-label="Open search"
@@ -545,34 +693,36 @@ export function SiteShell() {
               <SearchIcon />
             </Link>
 
-            <IconButtonTooltip label={bellTooltip}>
-              {isAuthenticated ? (
-                <Link
-                  aria-label={bellTooltip}
-                  className="shell-icon-button relative"
-                  data-active={isAlertsRoute ? 'true' : 'false'}
-                  {...getAlertsRoute()}
-                >
-                  <BellIcon />
-                  {hasActiveAlerts ? <span className="shell-alert-dot" /> : null}
-                </Link>
-              ) : (
-                <button
-                  aria-label={bellTooltip}
-                  className="shell-icon-button relative"
-                  onClick={() =>
-                    openAuthDialog({
-                      pendingAction: {
-                        type: 'alerts-route',
-                      },
-                    })
-                  }
-                  type="button"
-                >
-                  <BellIcon />
-                </button>
-              )}
-            </IconButtonTooltip>
+            <div className="hidden lg:block">
+              <IconButtonTooltip label={bellTooltip}>
+                {isAuthenticated ? (
+                  <Link
+                    aria-label={bellTooltip}
+                    className="shell-icon-button relative"
+                    data-active={isAlertsRoute ? 'true' : 'false'}
+                    {...getAlertsRoute()}
+                  >
+                    <BellIcon />
+                    {hasActiveAlerts ? <span className="shell-alert-dot" /> : null}
+                  </Link>
+                ) : (
+                  <button
+                    aria-label={bellTooltip}
+                    className="shell-icon-button relative"
+                    onClick={() =>
+                      openAuthDialog({
+                        pendingAction: {
+                          type: 'alerts-route',
+                        },
+                      })
+                    }
+                    type="button"
+                  >
+                    <BellIcon />
+                  </button>
+                )}
+              </IconButtonTooltip>
+            </div>
 
             <button
               aria-label={
@@ -595,14 +745,16 @@ export function SiteShell() {
               {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
             </button>
 
-            <Divider />
+            <div className="hidden lg:block">
+              <Divider />
+            </div>
 
             {isAuthenticated ? (
               <div className="relative" ref={userMenuRef}>
                 <button
                   aria-expanded={isUserMenuOpen}
                   aria-haspopup="menu"
-                  className="rounded-full"
+                  className="hidden rounded-full lg:inline-flex"
                   onClick={() => {
                     setIsUserMenuOpen((current) => !current)
                   }}
@@ -641,7 +793,7 @@ export function SiteShell() {
               </div>
             ) : (
               <button
-                className="shell-sign-in-button"
+                className="hidden shell-sign-in-button lg:inline-flex"
                 onClick={() => openAuthDialog()}
                 type="button"
               >
@@ -651,8 +803,23 @@ export function SiteShell() {
           </div>
         </div>
 
+        {runtimeConnectionStatus === 'connected' ? (
+          <div className="border-t border-b border-[rgba(0,197,142,0.1)] bg-[rgba(0,197,142,0.06)] lg:hidden">
+            <div className="mx-auto flex h-7 max-w-[1380px] items-center justify-center gap-2 px-4">
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full bg-[#00c58e]"
+                style={{ animation: 'nav-status-pulse 2s ease-in-out infinite' }}
+              />
+              <span className="mono-data text-[11px] text-[#00c58e]">
+                Live · {freshnessLabel}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
         {showVenueFilter ? (
-          <div className="border-t border-[var(--color-border-subtle)]">
+          <div className="hidden border-t border-[var(--color-border-subtle)] lg:block">
             <div className="mx-auto flex max-w-[1380px] items-center overflow-x-auto px-6 py-2">
               <div className="flex min-w-max gap-[6px]">
                 {venueNav.map((item) => (
@@ -692,16 +859,16 @@ export function SiteShell() {
       <div className="flex flex-1 flex-col">
         {isLandingRoute ? (
           <main
-            className="flex flex-1 items-center justify-center px-6 py-10"
+            className="tab-bar-safe flex flex-1 items-center justify-center px-4 py-10 lg:px-6 lg:py-10 lg:pb-10"
             id="main-content"
           >
             <Outlet />
           </main>
         ) : (
-          <div className="mx-auto flex w-full max-w-[1380px] flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4">
+          <div className="mx-auto flex w-full max-w-[1380px] flex-1 flex-col px-4 py-3 lg:px-6 lg:py-4">
             {showTopLiveTicker ? <LiveTicker /> : null}
 
-            <main className="flex-1 pb-24 pt-4" id="main-content">
+            <main className="tab-bar-safe flex-1 pt-4 lg:pb-0" id="main-content">
               <Outlet />
             </main>
           </div>
@@ -712,19 +879,102 @@ export function SiteShell() {
 
       <nav
         aria-label="Primary mobile"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--surface-shell-mobile-bg)] px-3 py-2 backdrop-blur-md md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] backdrop-blur-md lg:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="mx-auto flex max-w-[1380px] items-center gap-1">
-          {mobileNav.map((item) => (
-            <MobileNavLink
-              currentProvider={currentProvider}
-              item={item}
-              key={item.to}
-              pathname={pathname}
-            />
-          ))}
+        <div className="mx-auto flex max-w-[1380px] items-stretch">
+          <MobileTabLink
+            currentProvider={currentProvider}
+            isActive={isMarketsTabActive(pathname)}
+            label="Markets"
+            to="/markets"
+          >
+            <MarketsIcon />
+          </MobileTabLink>
+          <MobileTabLink
+            currentProvider={currentProvider}
+            isActive={pathname === '/divergence'}
+            label="Diverge"
+            to="/divergence"
+          >
+            <DivergenceIcon />
+          </MobileTabLink>
+          <MobileTabLink
+            currentProvider={currentProvider}
+            isActive={isSmartMoneyTabActive(pathname)}
+            label="Signals"
+            to="/smart-money"
+          >
+            <DiamondIcon />
+          </MobileTabLink>
+          <MobileTabLink
+            currentProvider={currentProvider}
+            isActive={isAlertsRoute}
+            label="Alerts"
+            to="/alerts"
+          >
+            <span className="relative inline-flex">
+              <BellIcon />
+              {hasActiveAlerts ? <span className="shell-alert-dot" /> : null}
+            </span>
+          </MobileTabLink>
+          {isAuthenticated ? (
+            <MobileTabAction
+              isActive={isMobileAccountSheetOpen}
+              label="Account"
+              onClick={() => {
+                setIsMobileAccountSheetOpen(true)
+              }}
+            >
+              <PersonIcon filled />
+            </MobileTabAction>
+          ) : (
+            <MobileTabAction
+              isActive={false}
+              label="Sign in"
+              onClick={() => {
+                openAuthDialog()
+              }}
+            >
+              <PersonIcon />
+            </MobileTabAction>
+          )}
         </div>
       </nav>
+
+      <BottomSheet
+        isOpen={isMobileAccountSheetOpen && isAuthenticated}
+        onClose={() => {
+          setIsMobileAccountSheetOpen(false)
+        }}
+        title="Account"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3 font-mono text-[13px] text-[var(--color-text-tertiary)]">
+            {user?.email}
+          </div>
+          <div className="h-px bg-[var(--color-border-subtle)]" />
+          <Link
+            className="flex min-h-11 items-center rounded-lg px-4 text-[14px] text-[var(--color-text-primary)] transition hover:bg-[var(--color-bg-hover)]"
+            onClick={() => {
+              setIsMobileAccountSheetOpen(false)
+            }}
+            {...getAlertsRoute()}
+          >
+            Manage alerts
+          </Link>
+          <button
+            className="flex min-h-11 w-full items-center rounded-lg px-4 text-left text-[14px] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-hover)]"
+            onClick={() => {
+              setIsMobileAccountSheetOpen(false)
+              void signOut()
+            }}
+            type="button"
+          >
+            Sign out
+          </button>
+        </div>
+      </BottomSheet>
 
       <AuthDialog />
     </div>

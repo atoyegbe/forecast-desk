@@ -43,7 +43,7 @@ function ScoreRing({ score }: { score: number }) {
         : 'var(--color-text-tertiary)'
 
   return (
-    <svg className="h-28 w-28" viewBox="0 0 100 100">
+    <svg className="h-20 w-20 sm:h-28 sm:w-28" viewBox="0 0 100 100">
       <circle
         cx="50"
         cy="50"
@@ -148,7 +148,7 @@ export function SmartMoneyWalletPage() {
       <section className="panel p-5 lg:p-6">
         <div className="space-y-4">
           <Link
-            className="inline-flex text-sm font-medium text-[var(--color-brand)] transition hover:text-[var(--color-text-primary)]"
+            className="inline-flex min-h-11 items-center text-sm font-medium text-[var(--color-brand)] transition hover:text-[var(--color-text-primary)]"
             {...getSmartMoneyLeaderboardRoute()}
           >
             ← Back to leaderboard
@@ -172,11 +172,11 @@ export function SmartMoneyWalletPage() {
                   {isRefreshing ? <RefreshBadge label="Refreshing" /> : null}
                 </div>
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <h1 className="display-title">
+                  <h1 className="text-[24px] font-semibold leading-[1.05] tracking-[-0.04em] text-[var(--color-text-primary)] sm:text-[36px]">
                     {wallet.displayName || wallet.shortAddress}
                   </h1>
                   <button
-                    className="terminal-button border-[var(--color-border)] bg-transparent text-[var(--color-text-primary)] hover:border-[var(--color-brand)] hover:bg-[var(--color-brand-dim)]"
+                    className="terminal-button w-full border-[var(--color-border)] bg-transparent text-[var(--color-text-primary)] hover:border-[var(--color-brand)] hover:bg-[var(--color-brand-dim)] sm:w-auto"
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(walletUrl)
@@ -204,7 +204,7 @@ export function SmartMoneyWalletPage() {
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="metric-card">
                   <div className="stat-label">Win rate</div>
                   <strong>{Math.round(wallet.winRate * 100)}%</strong>
@@ -281,7 +281,61 @@ export function SmartMoneyWalletPage() {
           title={`Current board (${openPositions.length})`}
         />
 
-        <div className="mt-5 overflow-hidden rounded-lg border border-[var(--color-border)]">
+        <div className="mt-5 space-y-3 lg:hidden">
+          {openPositions.map((position) => (
+            <div className="panel-elevated p-4" key={position.conditionId}>
+              <div className="min-w-0">
+                {position.eventId ? (
+                  <Link
+                    className="truncate text-sm font-medium text-[var(--color-text-primary)] transition hover:text-[var(--color-brand)]"
+                    {...getEventRoute({
+                      id: position.eventId,
+                      slug: position.eventSlug,
+                    })}
+                  >
+                    {position.marketTitle}
+                  </Link>
+                ) : (
+                  <div className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                    {position.marketTitle}
+                  </div>
+                )}
+                <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                  {position.category} · closes {position.closingDate ? formatDate(position.closingDate) : 'TBD'}
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-3 text-[13px]">
+                <div>
+                  <div className="stat-label">Entry</div>
+                  <div className="mt-1">
+                    <PriceDisplay size="sm" value={position.entryPrice} />
+                  </div>
+                </div>
+                <div>
+                  <div className="stat-label">Current</div>
+                  <div className="mt-1">
+                    <PriceDisplay size="sm" value={position.currentPrice} />
+                  </div>
+                </div>
+                <div>
+                  <div className="stat-label">P&amp;L</div>
+                  <div className={`mono-data mt-1 text-sm ${position.pnl >= 0 ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}`}>
+                    {formatMoneyChange(position.pnl)}
+                  </div>
+                </div>
+                <div>
+                  <div className="stat-label">Size</div>
+                  <div className="mono-data mt-1 text-sm text-[var(--color-text-primary)]">
+                    {formatMoney(position.entryValue)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 hidden overflow-hidden rounded-lg border border-[var(--color-border)] lg:block">
           <div className="hidden grid-cols-[minmax(0,1.6fr)_120px_100px_100px_110px_120px] gap-4 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-tertiary)] lg:grid">
             <div>Market</div>
             <div>Outcome</div>

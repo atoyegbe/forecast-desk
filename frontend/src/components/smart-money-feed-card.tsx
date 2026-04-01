@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useDisplayCurrency } from '../features/currency/context'
 import { PlatformBadge } from './platform-badge'
 import {
@@ -118,6 +118,7 @@ function getDeltaClassName(delta: number) {
 }
 
 export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
+  const navigate = useNavigate()
   const {
     formatMoney,
     formatMoneyChange,
@@ -132,13 +133,50 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
   return (
     <article
       className={clsx(
-        'border-b border-[var(--color-border-subtle)] border-l-2 bg-[var(--color-bg-surface)] px-7 py-5 transition-colors hover:bg-[var(--color-bg-hover)]',
+        'cursor-pointer border-b border-[var(--color-border-subtle)] border-l-2 bg-[var(--color-bg-surface)] px-4 py-4 transition-colors hover:bg-[var(--color-bg-hover)] sm:px-7 sm:py-5',
         temperatureStyles.borderClassName,
       )}
+      onClick={(event) => {
+        const target = event.target as HTMLElement
+
+        if (target.closest('a,button,input,select,textarea')) {
+          return
+        }
+
+        if (signal.eventId) {
+          void navigate({
+            params: {
+              eventId: signal.eventId,
+              slug: signal.eventSlug,
+            },
+            to: '/events/$eventId/$slug',
+          })
+        }
+      }}
+      onKeyDown={(event) => {
+        const target = event.target as HTMLElement
+
+        if (target.closest('a,button,input,select,textarea')) {
+          return
+        }
+
+        if ((event.key === 'Enter' || event.key === ' ') && signal.eventId) {
+          event.preventDefault()
+          void navigate({
+            params: {
+              eventId: signal.eventId,
+              slug: signal.eventSlug,
+            },
+            to: '/events/$eventId/$slug',
+          })
+        }
+      }}
+      role={signal.eventId ? 'link' : undefined}
       style={{ opacity: temperatureStyles.opacity }}
+      tabIndex={signal.eventId ? 0 : undefined}
     >
-      <div className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <span className="mono-data text-[11px] text-[var(--color-text-tertiary)]">
               Rank #{signal.walletRank}
@@ -170,7 +208,7 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
         <div>
           {signal.eventId ? (
             <Link
-              className="mb-1.5 block text-[15px] font-medium leading-6 text-[var(--color-text-primary)] transition hover:text-[var(--color-brand)]"
+              className="mb-1.5 block line-clamp-2 text-[15px] font-medium leading-6 text-[var(--color-text-primary)] transition hover:text-[var(--color-brand)]"
               {...getEventRoute({
                 id: signal.eventId,
                 slug: signal.eventSlug,
@@ -184,7 +222,7 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
             </h2>
           )}
 
-          <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 text-[13px] sm:flex-row sm:items-center sm:justify-between sm:text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={clsx(
@@ -214,12 +252,7 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
           </div>
         </div>
 
-        <div
-          className={clsx(
-            'grid gap-3',
-            signal.closingDate ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
-          )}
-        >
+        <div className={clsx('hidden gap-3 sm:grid', signal.closingDate ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
           <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-3">
             <div className="section-kicker">Current market</div>
             <div className="mt-2 flex items-center gap-2">
@@ -264,7 +297,7 @@ export function SmartMoneyFeedCard({ signal }: SmartMoneyFeedCardProps) {
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="hidden flex-wrap gap-3 sm:flex">
           {signal.eventId ? (
             <Link
               className="terminal-button"

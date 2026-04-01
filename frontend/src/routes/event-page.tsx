@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Link,
   useParams,
@@ -221,6 +222,15 @@ function MarketBoardRow({
 
 export function EventPage() {
   const { formatMoney } = useDisplayCurrency()
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+  const [isRulesExpanded, setIsRulesExpanded] = useState(false)
+  const [isAiReadOpen, setIsAiReadOpen] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    return window.innerWidth >= 1024
+  })
   const eventId = useParams({
     strict: false,
     select: (params) => ('eventId' in params ? params.eventId : undefined),
@@ -305,6 +315,12 @@ export function EventPage() {
       <section className="panel p-5 lg:p-6">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_340px]">
           <div className="space-y-5">
+            <Link
+              className="inline-flex min-h-11 items-center text-[13px] text-[var(--color-text-tertiary)] transition hover:text-[var(--color-text-primary)]"
+              {...getMarketsRoute()}
+            >
+              ← Markets
+            </Link>
             <div className="flex flex-wrap items-center gap-2">
               <Link
                 className="section-kicker hover:text-[var(--color-text-primary)]"
@@ -330,18 +346,31 @@ export function EventPage() {
             </div>
 
             <div>
-              <h1 className="display-title">{event.title}</h1>
-              <p className="mt-4 max-w-4xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
+              <h1 className="text-[20px] font-semibold leading-[1.08] tracking-[-0.04em] text-[var(--color-text-primary)] sm:text-[28px] lg:text-[40px]">
+                {event.title}
+              </h1>
+              <p className={`mt-4 max-w-4xl text-sm leading-6 text-[var(--color-text-secondary)] sm:text-base sm:leading-7 ${isDescriptionExpanded ? '' : 'line-clamp-3 sm:line-clamp-none'}`}>
                 {event.description || 'This market is being tracked live on NaijaPulse.'}
               </p>
+              {event.description ? (
+                <button
+                  className="mt-2 min-h-11 text-[13px] text-[var(--color-brand)] sm:hidden"
+                  onClick={() => {
+                    setIsDescriptionExpanded((current) => !current)
+                  }}
+                  type="button"
+                >
+                  {isDescriptionExpanded ? 'Read less' : 'Read more'}
+                </button>
+              ) : null}
             </div>
 
             <div className="space-y-3">
-              <div className="flex justify-end">
-                <div className="flex items-end gap-4">
+              <div className="flex justify-start sm:justify-end">
+                <div className="flex items-end gap-1 sm:gap-4">
                   {HISTORY_INTERVAL_IDS.map((interval) => (
                     <button
-                      className={`mono-data min-h-11 border-b-2 px-2 pb-2 pt-2 text-[11px] uppercase tracking-[0.18em] transition ${
+                      className={`mono-data min-h-11 border-b-2 px-2 py-1 text-[11px] uppercase tracking-[0.18em] transition ${
                         activeHistoryInterval === interval
                           ? 'border-[var(--color-brand)] text-[var(--color-text-primary)]'
                           : 'border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
@@ -363,7 +392,7 @@ export function EventPage() {
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
               <div className="metric-card">
                 <div className="stat-label">Yes</div>
                 <strong
@@ -394,58 +423,74 @@ export function EventPage() {
           </div>
 
           <div className="panel-elevated p-4">
-            <div>
-              <div className="section-kicker">Event read</div>
-              <h2 className="mt-3 text-[1.65rem] font-bold leading-tight tracking-[-0.045em] text-[var(--color-text-primary)]">
-                {getMarketStance(yesPrice)}
-              </h2>
-            </div>
+            <button
+              className="flex min-h-11 w-full items-center justify-between gap-3 text-left"
+              onClick={() => {
+                setIsAiReadOpen((current) => !current)
+              }}
+              type="button"
+            >
+              <span className="section-kicker">AI read</span>
+              <span className={`text-[var(--color-text-tertiary)] transition-transform ${isAiReadOpen ? 'rotate-180' : ''}`}>
+                ▾
+              </span>
+            </button>
 
-            <div className="subtle-rule mt-4 pt-4">
-              <p className="text-sm leading-7 text-[var(--color-text-secondary)]">
-                A compact operational read on the current state of the event.
-              </p>
-            </div>
+            {isAiReadOpen ? (
+              <div className="mt-4">
+                <div>
+                  <h2 className="text-[1.4rem] font-bold leading-tight tracking-[-0.045em] text-[var(--color-text-primary)]">
+                    {getMarketStance(yesPrice)}
+                  </h2>
+                </div>
 
-            <div className="mt-4 flex items-center gap-2">
-              <span className={liveStatusClass} />
-              <span className="section-kicker">{liveStatusLabel}</span>
-              <span className="mono-data text-sm text-[var(--color-text-secondary)]">
-                {formatRelativeTime(liveFeed.lastUpdateAt)}
-              </span>
-            </div>
+                <div className="subtle-rule mt-4 pt-4">
+                  <p className="text-sm leading-7 text-[var(--color-text-secondary)]">
+                    A compact operational read on the current state of the event.
+                  </p>
+                </div>
 
-            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3 text-sm">
-              <span className="text-[var(--color-text-tertiary)]">Snapshot sync</span>
-              <span className="mono-data text-right text-[var(--color-text-primary)]">
-                {eventFreshnessLabel}
-              </span>
-              <span className="text-[var(--color-text-tertiary)]">History sync</span>
-              <span className="mono-data text-right text-[var(--color-text-primary)]">
-                {historyFreshnessLabel}
-              </span>
-              <span className="text-[var(--color-text-tertiary)]">Created</span>
-              <span className="mono-data text-right text-[var(--color-text-primary)]">
-                {formatDateTime(event.createdAt)}
-              </span>
-              <span className="text-[var(--color-text-tertiary)]">Provider</span>
-              <span className="mono-data text-right text-[var(--color-text-primary)]">
-                {getProviderLabel(event.provider)}
-              </span>
-            </div>
+                <div className="mt-4 flex items-center gap-2">
+                  <span className={liveStatusClass} />
+                  <span className="section-kicker">{liveStatusLabel}</span>
+                  <span className="mono-data text-sm text-[var(--color-text-secondary)]">
+                    {formatRelativeTime(liveFeed.lastUpdateAt)}
+                  </span>
+                </div>
 
-            {liveSourceUrl ? (
-              <div className="mt-5">
-                <a
-                  className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-[border-color,background-color,color] duration-150 hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
-                  href={liveSourceUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  {providerSourceUrl
-                    ? `Open on ${getProviderLabel(event.provider)}`
-                    : 'View resolution source'}
-                </a>
+                <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3 text-sm">
+                  <span className="text-[var(--color-text-tertiary)]">Snapshot sync</span>
+                  <span className="mono-data text-right text-[var(--color-text-primary)]">
+                    {eventFreshnessLabel}
+                  </span>
+                  <span className="text-[var(--color-text-tertiary)]">History sync</span>
+                  <span className="mono-data text-right text-[var(--color-text-primary)]">
+                    {historyFreshnessLabel}
+                  </span>
+                  <span className="text-[var(--color-text-tertiary)]">Created</span>
+                  <span className="mono-data text-right text-[var(--color-text-primary)]">
+                    {formatDateTime(event.createdAt)}
+                  </span>
+                  <span className="text-[var(--color-text-tertiary)]">Provider</span>
+                  <span className="mono-data text-right text-[var(--color-text-primary)]">
+                    {getProviderLabel(event.provider)}
+                  </span>
+                </div>
+
+                {liveSourceUrl ? (
+                  <div className="mt-5">
+                    <a
+                      className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-[border-color,background-color,color] duration-150 hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
+                      href={liveSourceUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {providerSourceUrl
+                        ? `Open on ${getProviderLabel(event.provider)}`
+                        : 'View resolution source'}
+                    </a>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -483,7 +528,7 @@ export function EventPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
                 {compareQuery.data.events.map((item) => (
                   <span
                     className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2"
@@ -496,7 +541,7 @@ export function EventPage() {
               </div>
 
               <Link
-                className="inline-flex items-center justify-center rounded-lg bg-[var(--color-brand)] px-4 py-2.5 text-sm font-medium text-[#0f1115] transition hover:brightness-[1.04]"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[var(--color-brand)] px-4 py-2.5 text-sm font-medium text-[#0f1115] transition hover:brightness-[1.04] sm:w-auto"
                 {...getEventCompareRoute(event)}
               >
                 View comparison
@@ -669,12 +714,23 @@ export function EventPage() {
           {
             content: (
               <div className="space-y-5">
-                <p className="whitespace-pre-line text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
+                <p className={`whitespace-pre-line text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base ${isRulesExpanded ? '' : 'line-clamp-3 sm:line-clamp-none'}`}>
                   {primaryMarket?.rules || 'Rules have not been published for this market yet.'}
                 </p>
+                {primaryMarket?.rules ? (
+                  <button
+                    className="min-h-11 text-[13px] text-[var(--color-brand)] sm:hidden"
+                    onClick={() => {
+                      setIsRulesExpanded((current) => !current)
+                    }}
+                    type="button"
+                  >
+                    {isRulesExpanded ? 'Read less' : 'Read more'}
+                  </button>
+                ) : null}
                 {liveSourceUrl ? (
                   <a
-                    className="terminal-button terminal-button-primary text-sm font-medium"
+                    className="terminal-button terminal-button-primary w-full text-sm font-medium sm:w-auto"
                     href={liveSourceUrl}
                     rel="noreferrer"
                     target="_blank"

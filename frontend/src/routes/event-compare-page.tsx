@@ -156,14 +156,16 @@ export function EventComparePage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_320px]">
           <div className="space-y-5">
             <Link
-              className="section-kicker hover:text-[var(--color-text-primary)]"
+              className="inline-flex min-h-11 items-center text-[13px] text-[var(--color-text-tertiary)] transition hover:text-[var(--color-text-primary)]"
               {...getEventRoute(event)}
             >
-              Back to market
+              ← Back to market
             </Link>
             <div className="eyebrow">Cross-platform comparison</div>
             <div className="space-y-3">
-              <h1 className="display-title">{comparison.title}</h1>
+              <h1 className="text-[20px] font-semibold leading-[1.08] tracking-[-0.04em] text-[var(--color-text-primary)] sm:text-[28px] lg:text-[40px]">
+                {comparison.title}
+              </h1>
               <p className="max-w-3xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
                 Read the same event across every linked venue in one place: current odds, spread, venue mix, and stored history lines plotted together.
               </p>
@@ -282,10 +284,10 @@ export function EventComparePage() {
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 {item.event.sourceUrl ? (
                   <a
-                    className="terminal-button terminal-button-primary text-sm font-medium"
+                    className="terminal-button terminal-button-primary w-full text-sm font-medium sm:w-auto"
                     href={item.event.sourceUrl}
                     rel="noreferrer"
                     target="_blank"
@@ -294,7 +296,7 @@ export function EventComparePage() {
                   </a>
                 ) : null}
                 <Link
-                  className="terminal-button text-sm font-medium"
+                  className="terminal-button w-full text-sm font-medium sm:w-auto"
                   {...getEventRoute(item.event)}
                 >
                   Open event page
@@ -314,10 +316,10 @@ export function EventComparePage() {
             title="How the spread evolved"
           />
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1 sm:gap-2">
             {HISTORY_INTERVAL_IDS.map((intervalId) => (
               <button
-                className={`min-h-11 border-b-2 px-2 pb-2 pt-2 text-[12px] font-medium uppercase tracking-[0.18em] transition ${
+                className={`min-h-11 border-b-2 px-2 py-1 text-[11px] font-medium uppercase tracking-[0.18em] transition sm:text-[12px] ${
                   activeHistoryInterval === intervalId
                     ? 'border-[var(--color-brand)] text-[var(--color-brand)]'
                     : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
@@ -359,15 +361,15 @@ export function EventComparePage() {
             <div className="mono-data mt-2 text-2xl text-[var(--color-text-primary)]">
               {formatCompactNumber(maxVolume)}
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Link
-                className="terminal-button text-sm font-medium"
+                className="terminal-button w-full text-sm font-medium sm:w-auto"
                 to="/divergence"
               >
                 Divergence board
               </Link>
               <Link
-                className="terminal-button terminal-button-primary text-sm font-medium"
+                className="terminal-button terminal-button-primary w-full text-sm font-medium sm:w-auto"
                 {...getEventCompareRoute(event)}
               >
                 Refresh compare desk

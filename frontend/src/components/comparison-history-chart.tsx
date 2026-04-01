@@ -183,12 +183,12 @@ export function ComparisonHistoryChart({
   }, 0)
 
   if (isLoading && !normalizedHistories.length) {
-    return <ChartLoadingState heightClass="h-[260px]" />
+    return <ChartLoadingState heightClass="h-[160px] sm:h-[260px]" />
   }
 
   if (!normalizedHistories.length) {
     return (
-      <div className="panel-elevated flex h-[260px] items-center justify-center p-6 text-center text-[var(--color-text-secondary)]">
+      <div className="panel-elevated flex h-[160px] items-center justify-center p-6 text-center text-[var(--color-text-secondary)] sm:h-[260px]">
         Stored multi-platform history is not available for this comparison yet.
       </div>
     )
@@ -267,7 +267,7 @@ export function ComparisonHistoryChart({
         </button>
       </div>
 
-      <div className="mt-4 h-[260px]">
+      <div className="mt-4 h-[160px] sm:h-[260px]">
         <ResponsiveContainer height="100%" width="100%">
           <LineChart data={chartData} margin={{ bottom: 0, left: 0, right: 8, top: 8 }}>
             <ReferenceLine

@@ -8,6 +8,7 @@ import {
   useNavigate,
   useSearch,
 } from '@tanstack/react-router'
+import { BottomSheet } from '../components/bottom-sheet'
 import { SearchResultsLoadingState } from '../components/loading-state'
 import { MarketRow } from '../components/market-row'
 import {
@@ -84,6 +85,10 @@ export function SearchPage() {
   const activeProvider = getSearchValue(search.provider) || 'all'
   const activeStatus = getSearchValue(search.status) || 'all'
   const [draftQuery, setDraftQuery] = useState(query)
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
+  const [draftCategory, setDraftCategory] = useState(activeCategory)
+  const [draftProvider, setDraftProvider] = useState(activeProvider)
+  const [draftStatus, setDraftStatus] = useState(activeStatus)
   const categoriesQuery = useEventsQuery({ status: 'open' })
   const searchResultsQuery = useSearchEventsQuery({
     category: activeCategory === 'All' ? undefined : activeCategory,
@@ -95,6 +100,16 @@ export function SearchPage() {
   useEffect(() => {
     setDraftQuery(query)
   }, [query])
+
+  useEffect(() => {
+    if (!isMobileFiltersOpen) {
+      return
+    }
+
+    setDraftCategory(activeCategory)
+    setDraftProvider(activeProvider)
+    setDraftStatus(activeStatus)
+  }, [activeCategory, activeProvider, activeStatus, isMobileFiltersOpen])
 
   useEffect(() => {
     const nextQuery = draftQuery.trim()
@@ -183,6 +198,39 @@ export function SearchPage() {
     })
   }
 
+  const applyMobileFilters = () => {
+    void navigate({
+      resetScroll: false,
+      replace: true,
+      search: (current): AppSearch => {
+        const nextSearch: AppSearch = { ...current }
+
+        if (draftCategory === 'All') {
+          delete nextSearch.category
+        } else {
+          nextSearch.category = draftCategory
+        }
+
+        if (draftProvider === 'all') {
+          delete nextSearch.provider
+        } else {
+          nextSearch.provider = draftProvider
+        }
+
+        if (draftStatus === 'all') {
+          delete nextSearch.status
+        } else {
+          nextSearch.status = draftStatus
+        }
+
+        return nextSearch
+      },
+      to: '/search',
+    })
+
+    setIsMobileFiltersOpen(false)
+  }
+
   return (
     <div className="space-y-6">
       <section className="panel p-5 lg:p-6">
@@ -221,7 +269,7 @@ export function SearchPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="panel h-fit p-4 sm:p-5">
+        <aside className="panel hidden h-fit p-4 sm:p-5 xl:block">
           <div className="space-y-5">
             <SectionHeader
               description="Search updates the result list immediately while keeping the current filter state in the URL."
@@ -304,6 +352,30 @@ export function SearchPage() {
         </aside>
 
         <div className="space-y-4">
+          <div className="space-y-3 xl:hidden">
+            <label className="terminal-input h-12">
+              <span className="section-kicker !tracking-[0.14em]">Query</span>
+              <input
+                className="text-[16px]"
+                onChange={(event) => {
+                  setDraftQuery(event.target.value)
+                }}
+                placeholder="Election, AFCON, rate cut..."
+                value={draftQuery}
+              />
+            </label>
+
+            <button
+              className="terminal-button w-full justify-center text-sm font-medium"
+              onClick={() => {
+                setIsMobileFiltersOpen(true)
+              }}
+              type="button"
+            >
+              {activeFilterCount > 0 ? `Filters · ${activeFilterCount} active` : 'Filters'}
+            </button>
+          </div>
+
           <SectionHeader
             description={
               hasQuery
@@ -411,6 +483,89 @@ export function SearchPage() {
           ) : null}
         </div>
       </section>
+
+      <BottomSheet
+        footer={
+          <div className="flex items-center gap-3">
+            <button
+              className="terminal-button terminal-button-primary flex-1 justify-center text-sm font-medium"
+              onClick={applyMobileFilters}
+              type="button"
+            >
+              Apply filters
+            </button>
+            <button
+              className="min-h-11 text-sm text-[var(--color-text-secondary)]"
+              onClick={() => {
+                setDraftCategory('All')
+                setDraftProvider('all')
+                setDraftStatus('all')
+              }}
+              type="button"
+            >
+              Reset
+            </button>
+          </div>
+        }
+        isOpen={isMobileFiltersOpen}
+        onClose={() => {
+          setIsMobileFiltersOpen(false)
+        }}
+        title="Filters"
+      >
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <div className="section-kicker">Status</div>
+            <div className="flex gap-2">
+              {STATUS_FILTERS.map((statusFilter) => (
+                <button
+                  className="venue-filter-pill flex-1 justify-center"
+                  data-active={draftStatus === statusFilter.value ? 'true' : 'false'}
+                  key={statusFilter.value}
+                  onClick={() => setDraftStatus(statusFilter.value)}
+                  type="button"
+                >
+                  {statusFilter.label.toLowerCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="section-kicker">Platform</div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {PROVIDER_FILTERS.map((providerFilter) => (
+                <button
+                  className="venue-filter-pill shrink-0"
+                  data-active={draftProvider === providerFilter.value ? 'true' : 'false'}
+                  key={providerFilter.value}
+                  onClick={() => setDraftProvider(providerFilter.value)}
+                  type="button"
+                >
+                  {providerFilter.label.toLowerCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="section-kicker">Category</div>
+            <div className="flex flex-wrap gap-2">
+              {categoryOptions.map((category) => (
+                <button
+                  className="venue-filter-pill"
+                  data-active={draftCategory === category ? 'true' : 'false'}
+                  key={category}
+                  onClick={() => setDraftCategory(category)}
+                  type="button"
+                >
+                  {category.toLowerCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   )
 }

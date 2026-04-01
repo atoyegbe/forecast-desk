@@ -1,4 +1,9 @@
+import {
+  useEffect,
+  useState,
+} from 'react'
 import { Link } from '@tanstack/react-router'
+import { BottomSheet } from '../components/bottom-sheet'
 import { DivergenceBoardLoadingState } from '../components/loading-state'
 import { PlatformBadge } from '../components/platform-badge'
 import {
@@ -23,10 +28,20 @@ export function DivergencePage() {
     key: 'sort',
     values: DIVERGENCE_SORT_IDS,
   })
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
+  const [draftSortId, setDraftSortId] = useState<(typeof DIVERGENCE_SORT_IDS)[number]>(activeSortId)
   const divergenceQuery = useDivergenceQuery({
     limit: 24,
     sort: activeSortId,
   })
+
+  useEffect(() => {
+    if (!isMobileFiltersOpen) {
+      return
+    }
+
+    setDraftSortId(activeSortId)
+  }, [activeSortId, isMobileFiltersOpen])
 
   if (divergenceQuery.isLoading) {
     return <DivergenceBoardLoadingState />
@@ -147,7 +162,7 @@ export function DivergencePage() {
             title="Top divergence names"
           />
 
-          <div className="flex flex-wrap gap-2">
+          <div className="hidden flex-wrap gap-2 md:flex">
             {DIVERGENCE_SORT_IDS.map((sortId) => (
               <button
                 className={`terminal-chip px-3 py-2 text-[11px] uppercase tracking-[0.18em] ${
@@ -163,6 +178,16 @@ export function DivergencePage() {
               </button>
             ))}
           </div>
+
+          <button
+            className="terminal-button w-full justify-center text-sm font-medium md:hidden"
+            onClick={() => {
+              setIsMobileFiltersOpen(true)
+            }}
+            type="button"
+          >
+            Filters
+          </button>
         </div>
 
         {divergenceItems.length ? (
@@ -189,7 +214,45 @@ export function DivergencePage() {
                     key={entry.linkId}
                     {...getEventCompareRoute(entry.events[0].event)}
                   >
-                    <div className="grid gap-4 px-4 py-4 md:grid-cols-[minmax(0,1.45fr)_220px_140px_140px_120px] md:items-center">
+                    <div className="space-y-4 px-4 py-4 md:hidden">
+                      <div className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                        {entry.title}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {entry.events.map((item) => (
+                          <PlatformBadge
+                            key={item.event.id}
+                            platform={item.event.provider}
+                            short
+                            size="sm"
+                          />
+                        ))}
+                      </div>
+                      <div>
+                        <div className="mono-data text-sm font-medium text-[var(--color-text-primary)]">
+                          {formatProbabilityPoints(entry.maxDivergence)}
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-bg-elevated)]">
+                          <div
+                            className="h-full rounded-full bg-[linear-gradient(90deg,var(--color-signal),var(--color-brand))]"
+                            style={{ width: spreadWidth }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-[12px] text-[var(--color-text-secondary)]">
+                        <span className="mono-data">
+                          {formatCompactNumber(
+                            entry.events.reduce(
+                              (total, item) => Math.max(total, item.totalVolume),
+                              0,
+                            ),
+                          )}
+                        </span>
+                        <span>{entry.category}</span>
+                      </div>
+                    </div>
+
+                    <div className="hidden gap-4 px-4 py-4 md:grid md:grid-cols-[minmax(0,1.45fr)_220px_140px_140px_120px] md:items-center">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium text-[var(--color-text-primary)]">
                           {entry.title}
@@ -256,6 +319,43 @@ export function DivergencePage() {
           </div>
         )}
       </section>
+
+      <BottomSheet
+        footer={
+          <button
+            className="terminal-button terminal-button-primary w-full justify-center text-sm font-medium"
+            onClick={() => {
+              setActiveSortId(draftSortId)
+              setIsMobileFiltersOpen(false)
+            }}
+            type="button"
+          >
+            Apply filters
+          </button>
+        }
+        isOpen={isMobileFiltersOpen}
+        onClose={() => {
+          setIsMobileFiltersOpen(false)
+        }}
+        title="Filters"
+      >
+        <div className="space-y-2">
+          <label className="section-kicker" htmlFor="divergence-sort-select">
+            Sort
+          </label>
+          <select
+            className="h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 text-[14px] text-[var(--color-text-primary)]"
+            id="divergence-sort-select"
+            onChange={(event) => {
+              setDraftSortId(event.target.value as (typeof DIVERGENCE_SORT_IDS)[number])
+            }}
+            value={draftSortId}
+          >
+            <option value="divergence">Sort by spread</option>
+            <option value="volume">Sort by volume</option>
+          </select>
+        </div>
+      </BottomSheet>
     </div>
   )
 }

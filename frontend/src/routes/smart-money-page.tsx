@@ -517,12 +517,12 @@ export function SmartMoneyPage() {
           </section>
 
           <section className="border-b border-[var(--color-border-subtle)]">
-            <div className="grid md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4">
               <div className="border-b border-[var(--color-border-subtle)] px-[18px] py-[14px] md:border-b-0 xl:border-r xl:border-[var(--color-border-subtle)]">
                 <div className="mono-data text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-tertiary)]">
                   Signals (24h)
                 </div>
-                <div className="mono-data mt-2 text-[22px] font-medium text-[var(--color-up)]">
+                <div className="mono-data mt-2 text-[18px] font-medium text-[var(--color-up)] sm:text-[22px]">
                   {signals.length}
                 </div>
                 <div className="mono-data mt-1 text-[11px] text-[var(--color-text-tertiary)]">
@@ -534,7 +534,7 @@ export function SmartMoneyPage() {
                 <div className="mono-data text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-tertiary)]">
                   Capital tracked
                 </div>
-                <div className="mono-data mt-2 text-[22px] font-medium text-[var(--color-text-primary)]">
+                <div className="mono-data mt-2 text-[18px] font-medium text-[var(--color-text-primary)] sm:text-[22px]">
                   {formatMoney(totalSignalSize)}
                 </div>
                 <div className="mono-data mt-1 text-[11px] text-[var(--color-text-tertiary)]">
@@ -546,7 +546,7 @@ export function SmartMoneyPage() {
                 <div className="mono-data text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-tertiary)]">
                   Avg wallet score
                 </div>
-                <div className={`mono-data mt-2 text-[22px] font-medium ${getValueToneClass(averageScore)}`}>
+                <div className={`mono-data mt-2 text-[18px] font-medium ${getValueToneClass(averageScore)} sm:text-[22px]`}>
                   {averageScore || '—'}
                 </div>
                 <div className="mono-data mt-1 text-[11px] text-[var(--color-text-tertiary)]">
@@ -558,7 +558,7 @@ export function SmartMoneyPage() {
                 <div className="mono-data text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-tertiary)]">
                   Top signal
                 </div>
-                <div className="mono-data mt-2 truncate text-base font-medium text-[var(--color-text-primary)] sm:text-[22px]">
+                <div className="mono-data mt-2 truncate text-[18px] font-medium text-[var(--color-text-primary)] sm:text-[22px]">
                   {topSignal
                     ? topSignal.walletDisplayName || topSignal.walletShortAddress
                     : '—'}
@@ -574,7 +574,8 @@ export function SmartMoneyPage() {
 
           <section className="border-b border-[var(--color-border-subtle)] px-7 py-3">
             <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap gap-2">
+              <div className="-mx-7 overflow-x-auto px-7 pb-1">
+                <div className="flex min-w-max flex-nowrap gap-2">
                 {categoryOptions.map((category) => (
                   <button
                     className={`rounded-full border px-3 py-1.5 text-[13px] transition ${
@@ -592,6 +593,7 @@ export function SmartMoneyPage() {
                     {category}
                   </button>
                 ))}
+                </div>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
@@ -613,10 +615,10 @@ export function SmartMoneyPage() {
                 />
 
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {SORT_OPTIONS.map((option) => (
                       <button
-                        className={`rounded-full border px-3 py-1.5 text-[13px] transition ${
+                        className={`min-h-11 rounded-full border px-3 py-1.5 text-[13px] transition ${
                           activeSort === option.value
                             ? 'border-[var(--color-brand)] text-[var(--color-brand)]'
                             : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]'
@@ -631,6 +633,29 @@ export function SmartMoneyPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </section>
+
+          <section className="border-b border-[var(--color-border-subtle)] px-4 py-3 lg:hidden">
+            <div className="section-kicker">Top wallets</div>
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              {topWallets.map((wallet) => (
+                <Link
+                  className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 text-[13px] text-[var(--color-text-primary)]"
+                  key={wallet.address}
+                  {...getSmartMoneyWalletRoute(wallet.address)}
+                >
+                  <span className="mono-data text-[11px] text-[var(--color-text-tertiary)]">
+                    #{wallet.rank}
+                  </span>
+                  <span className="truncate">
+                    {getWalletLabel(wallet.displayName, wallet.shortAddress)}
+                  </span>
+                  <span className="mono-data text-[11px] text-[#00c58e]">
+                    {wallet.score}
+                  </span>
+                </Link>
+              ))}
             </div>
           </section>
 
@@ -651,7 +676,7 @@ export function SmartMoneyPage() {
           )}
         </div>
 
-        <aside className="border-t border-[var(--color-border)] lg:border-t-0 lg:border-l">
+        <aside className="hidden border-t border-[var(--color-border)] lg:block lg:border-t-0 lg:border-l">
           <section className="border-b border-[var(--color-border-subtle)] px-[18px] py-4">
             <div className="flex items-center justify-between gap-3">
               <div>

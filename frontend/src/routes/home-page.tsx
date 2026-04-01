@@ -1,9 +1,14 @@
 import {
   startTransition,
+  useEffect,
   useMemo,
   useState,
 } from 'react'
-import { Link } from '@tanstack/react-router'
+import {
+  Link,
+  useNavigate,
+} from '@tanstack/react-router'
+import { BottomSheet } from '../components/bottom-sheet'
 import { CompactMarketCard } from '../components/compact-market-card'
 import { DeskTabs } from '../components/desk-tabs'
 import {
@@ -11,6 +16,7 @@ import {
   MarketRowsLoadingState,
   SignalCardsLoadingState,
 } from '../components/loading-state'
+import { MarketCard } from '../components/market-card'
 import { MarketRow } from '../components/market-row'
 import { PlatformBadge } from '../components/platform-badge'
 import { ScoreBadge } from '../components/score-badge'
@@ -58,6 +64,7 @@ import {
   getSmartMoneyRoute,
   getSmartMoneyWalletRoute,
 } from '../lib/routes'
+import type { AppSearch } from '../router'
 import { useUrlSelection } from '../lib/url-state'
 import type {
   PulseMoverWindow,
@@ -70,6 +77,9 @@ import type {
 
 const HOME_TAB_IDS = ['briefing', 'repricing', 'closest', 'velocity'] as const
 const MOVER_WINDOW_IDS: readonly PulseMoverWindow[] = ['1h', '6h', '24h']
+const BOARD_STATUS_IDS = ['open', 'closed', 'all'] as const
+const BOARD_SORT_IDS = ['volume', 'activity', 'tight'] as const
+const PROVIDER_FILTER_IDS = ['all', 'bayse', 'kalshi', 'manifold', 'polymarket'] as const
 const BOARD_CATEGORY_MERGE_MAP: Record<string, string> = {
   Starmer: 'Politics',
   Trump: 'Politics',
@@ -137,8 +147,10 @@ function getBoardCategory(category: string) {
 
 export function HomePage() {
   useSmartMoneyLiveSignals()
+  const navigate = useNavigate()
   const { formatMoney } = useDisplayCurrency()
-  const [activeCategory, setActiveCategory] = useState('All')
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
+  const [activeBoardCategory, setActiveBoardCategory] = useState('All')
   const [activeTabId, setActiveTabId] = useUrlSelection({
     fallback: 'briefing',
     key: 'tab',
@@ -152,12 +164,31 @@ export function HomePage() {
   const [activeProviderId] = useUrlSelection({
     fallback: 'all',
     key: 'provider',
-    values: ['all', 'bayse', 'kalshi', 'manifold', 'polymarket'] as const,
+    values: PROVIDER_FILTER_IDS,
+  })
+  const [activeBoardStatus, setActiveBoardStatus] = useUrlSelection({
+    fallback: 'open',
+    key: 'status',
+    values: BOARD_STATUS_IDS,
+  })
+  const [activeBoardSort, setActiveBoardSort] = useUrlSelection({
+    fallback: 'volume',
+    key: 'sort',
+    values: BOARD_SORT_IDS,
   })
   const eventsQuery = useEventsQuery({
     status: 'open',
   })
+  const boardEventsQuery = useEventsQuery({
+    provider: activeProviderId === 'all' ? undefined : activeProviderId,
+    status: activeBoardStatus === 'all' ? undefined : activeBoardStatus,
+  })
   const events = eventsQuery.data ?? EMPTY_EVENTS
+  const boardEvents = boardEventsQuery.data ?? EMPTY_EVENTS
+  const [draftProviderId, setDraftProviderId] = useState<typeof PROVIDER_FILTER_IDS[number]>(activeProviderId)
+  const [draftBoardCategory, setDraftBoardCategory] = useState(activeBoardCategory)
+  const [draftBoardStatus, setDraftBoardStatus] = useState<typeof BOARD_STATUS_IDS[number]>(activeBoardStatus)
+  const [draftBoardSort, setDraftBoardSort] = useState<typeof BOARD_SORT_IDS[number]>(activeBoardSort)
   const providerFilteredEvents = useMemo(() => {
     if (activeProviderId === 'all') {
       return events
@@ -176,16 +207,16 @@ export function HomePage() {
     return [
       'All',
       ...new Set(
-        providerFilteredEvents.map((event) => getBoardCategory(event.category)).sort(),
+        boardEvents.map((event) => getBoardCategory(event.category)).sort(),
       ),
     ]
-  }, [providerFilteredEvents])
-  const effectiveCategory = boardCategories.includes(activeCategory)
-    ? activeCategory
+  }, [boardEvents])
+  const effectiveCategory = boardCategories.includes(activeBoardCategory)
+    ? activeBoardCategory
     : 'All'
 
   const filteredEvents = useMemo(() => {
-    return providerFilteredEvents
+    const categoryFilteredEvents = boardEvents
       .filter((event) => {
         if (effectiveCategory === 'All') {
           return true
@@ -193,8 +224,16 @@ export function HomePage() {
 
         return getBoardCategory(event.category) === effectiveCategory
       })
-      .sort(sortByVolume)
-  }, [effectiveCategory, providerFilteredEvents])
+    if (activeBoardSort === 'activity') {
+      return categoryFilteredEvents.sort(sortByActivityScore)
+    }
+
+    if (activeBoardSort === 'tight') {
+      return categoryFilteredEvents.sort(sortByTightRace)
+    }
+
+    return categoryFilteredEvents.sort(sortByVolume)
+  }, [activeBoardSort, boardEvents, effectiveCategory])
   const moversQuery = useMoversQuery(filteredEvents, 16)
   const divergenceQuery = useDivergenceQuery({
     limit: 3,
@@ -254,6 +293,8 @@ export function HomePage() {
   const smartMoneySignals = smartMoneySignalsQuery.data ?? []
   const topWhales = smartMoneyWalletsQuery.data ?? []
   const isEventsRefreshing = eventsQuery.isFetching && !eventsQuery.isLoading
+  const isBoardRefreshing =
+    boardEventsQuery.isFetching && !boardEventsQuery.isLoading
   const isDivergenceRefreshing =
     divergenceQuery.isFetching && !divergenceQuery.isLoading
   const isSignalsRefreshing =
@@ -275,6 +316,64 @@ export function HomePage() {
 
     return signalMap
   }, [smartMoneySignals])
+
+  useEffect(() => {
+    if (!isMobileFiltersOpen) {
+      return
+    }
+
+    setDraftProviderId(activeProviderId)
+    setDraftBoardCategory(activeBoardCategory)
+    setDraftBoardStatus(activeBoardStatus)
+    setDraftBoardSort(activeBoardSort)
+  }, [
+    activeBoardCategory,
+    activeBoardSort,
+    activeBoardStatus,
+    activeProviderId,
+    isMobileFiltersOpen,
+  ])
+
+  const mobileActiveFilterCount = [
+    activeProviderId !== 'all',
+    activeBoardCategory !== 'All',
+    activeBoardStatus !== 'open',
+    activeBoardSort !== 'volume',
+  ].filter(Boolean).length
+
+  const applyMobileFilters = () => {
+    startTransition(() => {
+      setActiveBoardCategory(draftBoardCategory)
+      setActiveBoardStatus(draftBoardStatus)
+      setActiveBoardSort(draftBoardSort)
+    })
+
+    void navigate({
+      replace: true,
+      resetScroll: false,
+      search: (current): AppSearch => {
+        const nextSearch: AppSearch = { ...current }
+
+        if (draftProviderId === 'all') {
+          delete nextSearch.provider
+        } else {
+          nextSearch.provider = draftProviderId
+        }
+
+        return nextSearch
+      },
+      to: '.',
+    })
+
+    setIsMobileFiltersOpen(false)
+  }
+
+  const resetMobileFilters = () => {
+    setDraftProviderId('all')
+    setDraftBoardCategory('All')
+    setDraftBoardStatus('open')
+    setDraftBoardSort('volume')
+  }
 
   return (
     <div className="space-y-6">
@@ -299,10 +398,10 @@ export function HomePage() {
 
             <div>
               <div className="section-kicker">What the crowd is saying now</div>
-              <h1 className="display-title mt-3">
+              <h1 className="mt-3 text-[24px] font-semibold leading-[1.05] tracking-[-0.04em] text-[var(--color-text-primary)] sm:text-[28px] lg:text-[40px]">
                 High-score wallets are opening fresh positions.
               </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base">
+              <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--color-text-secondary)] sm:text-base sm:leading-7">
                 The homepage now leads with owned Smart Money flow. These are recent qualifying positions from the highest-scoring wallets in the stored Polymarket snapshot, with current pricing context carried alongside each entry.
               </p>
             </div>
@@ -333,15 +432,15 @@ export function HomePage() {
               </div>
             ) : null}
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
-                className="terminal-button terminal-button-primary text-sm font-medium"
+                className="terminal-button terminal-button-primary w-full text-sm font-medium sm:w-auto"
                 {...getSmartMoneyRoute()}
               >
                 Open signal feed
               </Link>
               <Link
-                className="terminal-button text-sm font-medium"
+                className="terminal-button w-full text-sm font-medium sm:w-auto"
                 {...getSmartMoneyLeaderboardRoute()}
               >
                 View whale leaderboard
@@ -349,7 +448,7 @@ export function HomePage() {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="hidden space-y-4 lg:block">
             <section className="panel-elevated p-4">
               <SectionHeader
                 description="Compact reads on the heaviest names in the book."
@@ -452,11 +551,11 @@ export function HomePage() {
             <SectionHeader
               description="Use the shell venue tabs and category desks to tighten the main board without leaving the homepage feed."
               kicker="Discovery"
-              status={isEventsRefreshing ? <RefreshBadge /> : null}
+              status={isBoardRefreshing ? <RefreshBadge /> : null}
               title="Scan the board"
             />
 
-            <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start">
+            <div className="mt-5 hidden flex-col gap-3 lg:flex lg:flex-row lg:flex-wrap lg:items-start">
               <div className="space-y-2 lg:min-w-[18rem] lg:flex-1">
                 <div className="section-kicker">Category</div>
                 <div className="flex flex-wrap gap-2">
@@ -470,7 +569,7 @@ export function HomePage() {
                       key={category}
                       onClick={() => {
                         startTransition(() => {
-                          setActiveCategory(category)
+                          setActiveBoardCategory(category)
                         })
                       }}
                       type="button"
@@ -481,33 +580,53 @@ export function HomePage() {
                 </div>
               </div>
             </div>
+
+            <div className="mt-5 lg:hidden">
+              <button
+                className="terminal-button w-full justify-center text-sm font-medium"
+                onClick={() => {
+                  setIsMobileFiltersOpen(true)
+                }}
+                type="button"
+              >
+                {mobileActiveFilterCount > 0
+                  ? `Filters · ${mobileActiveFilterCount} active`
+                  : 'Filters'}
+              </button>
+            </div>
           </section>
 
           <section className="space-y-4">
             <SectionHeader
               description="The main board ranks the open market tape by traded volume. Start here before moving into divergence or a vertical desk."
               kicker="Main board"
-              status={isEventsRefreshing ? <RefreshBadge /> : null}
+              status={isBoardRefreshing ? <RefreshBadge /> : null}
               title="Where order flow is thickest"
             />
 
-            {eventsQuery.isLoading ? (
+            {boardEventsQuery.isLoading ? (
               <MarketRowsLoadingState count={4} />
             ) : null}
 
-            {eventsQuery.error ? (
+            {boardEventsQuery.error ? (
               <div className="panel p-6 text-[var(--color-down)]">
-                {(eventsQuery.error as Error).message}
+                {(boardEventsQuery.error as Error).message}
               </div>
             ) : null}
 
-            {!eventsQuery.isLoading && !eventsQuery.error && !hasBoardResults ? (
+            {!boardEventsQuery.isLoading && !boardEventsQuery.error && !hasBoardResults ? (
               <div className="panel p-6 text-[var(--color-text-secondary)]">
-                No open markets matched this venue and desk combination.
+                No markets matched this venue and desk combination.
               </div>
             ) : null}
 
-            <div className="space-y-3">
+            <div className="grid gap-4 md:hidden">
+              {volumeLeaders.map((event) => (
+                <MarketCard event={event} key={event.id} />
+              ))}
+            </div>
+
+            <div className="hidden space-y-3 md:block">
               {volumeLeaders.map((event) => (
                 <MarketRow event={event} key={event.id} />
               ))}
@@ -645,7 +764,7 @@ export function HomePage() {
           />
         </div>
 
-        <aside className="space-y-4">
+        <aside className="hidden space-y-4 xl:block">
           <section className="panel p-4">
             <SectionHeader
               description="Quick entry points into the busiest desks."
@@ -682,6 +801,109 @@ export function HomePage() {
           </section>
         </aside>
       </div>
+
+      <BottomSheet
+        footer={
+          <div className="flex items-center gap-3">
+            <button
+              className="terminal-button terminal-button-primary flex-1 justify-center text-sm font-medium"
+              onClick={applyMobileFilters}
+              type="button"
+            >
+              Apply filters
+            </button>
+            <button
+              className="min-h-11 text-sm text-[var(--color-text-secondary)]"
+              onClick={resetMobileFilters}
+              type="button"
+            >
+              Reset
+            </button>
+          </div>
+        }
+        isOpen={isMobileFiltersOpen}
+        onClose={() => {
+          setIsMobileFiltersOpen(false)
+        }}
+        title="Filters"
+      >
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <div className="section-kicker">Platform</div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {PROVIDER_FILTER_IDS.map((providerId) => (
+                <button
+                  className={`venue-filter-pill shrink-0 ${draftProviderId === providerId ? '' : ''}`}
+                  data-active={draftProviderId === providerId ? 'true' : 'false'}
+                  key={providerId}
+                  onClick={() => {
+                    setDraftProviderId(providerId)
+                  }}
+                  type="button"
+                >
+                  {providerId === 'all' ? 'all venues' : providerId}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="section-kicker">Category</div>
+            <div className="flex flex-wrap gap-2">
+              {boardCategories.map((category) => (
+                <button
+                  className={`venue-filter-pill ${draftBoardCategory === category ? '' : ''}`}
+                  data-active={draftBoardCategory === category ? 'true' : 'false'}
+                  key={category}
+                  onClick={() => {
+                    setDraftBoardCategory(category)
+                  }}
+                  type="button"
+                >
+                  {category.toLowerCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="section-kicker">Status</div>
+            <div className="flex gap-2">
+              {BOARD_STATUS_IDS.map((statusId) => (
+                <button
+                  className="venue-filter-pill flex-1 justify-center"
+                  data-active={draftBoardStatus === statusId ? 'true' : 'false'}
+                  key={statusId}
+                  onClick={() => {
+                    setDraftBoardStatus(statusId)
+                  }}
+                  type="button"
+                >
+                  {statusId}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="section-kicker" htmlFor="markets-sort-select">
+              Sort
+            </label>
+            <select
+              className="h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 text-[14px] text-[var(--color-text-primary)]"
+              id="markets-sort-select"
+              onChange={(event) => {
+                setDraftBoardSort(event.target.value as (typeof BOARD_SORT_IDS)[number])
+              }}
+              value={draftBoardSort}
+            >
+              <option value="volume">Highest volume</option>
+              <option value="activity">Fastest tape</option>
+              <option value="tight">Closest calls</option>
+            </select>
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   )
 }

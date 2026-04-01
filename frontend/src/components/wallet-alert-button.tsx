@@ -156,10 +156,10 @@ function AlertIconButton({
       <button
         aria-label={tooltip ?? 'Set wallet alert'}
         className={clsx(
-          'inline-flex h-7 w-7 items-center justify-center rounded-[4px] border border-transparent text-[var(--color-text-tertiary)] transition-[color,background-color,opacity] duration-150 hover:bg-[rgba(0,197,142,0.08)] hover:text-[#00c58e]',
+          'inline-flex h-11 w-11 items-center justify-center rounded-[6px] border border-transparent text-[var(--color-text-tertiary)] transition-[color,background-color,opacity] duration-150 hover:bg-[rgba(0,197,142,0.08)] hover:text-[#00c58e] md:h-7 md:w-7 md:rounded-[4px]',
           isActive ? 'bg-[rgba(0,197,142,0.12)] text-[#00c58e]' : '',
           showOnHoverOnly
-            ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:opacity-100 focus-visible:opacity-100'
+            ? 'opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 md:hover:opacity-100 md:focus-visible:opacity-100'
             : '',
         )}
         onClick={onClick}
@@ -402,7 +402,10 @@ export function WalletAlertButton({
             type="button"
           />
 
-          <aside className="relative z-10 flex max-h-[min(92vh,48rem)] w-full flex-col overflow-hidden rounded-t-[12px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-[-24px_0_64px_rgba(0,0,0,0.24)] md:h-full md:max-h-none md:max-w-[360px] md:rounded-t-none md:rounded-l-[12px] md:border-t-0 md:border-r-0">
+          <aside className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[16px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-[-24px_0_64px_rgba(0,0,0,0.24)] md:h-full md:max-h-none md:max-w-[360px] md:rounded-t-none md:rounded-l-[12px] md:border-t-0 md:border-r-0">
+            <div className="flex justify-center px-4 pt-3 md:hidden">
+              <span aria-hidden="true" className="mobile-sheet-handle" />
+            </div>
             <header className="border-b border-[var(--color-border)] px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 space-y-1">
@@ -416,7 +419,7 @@ export function WalletAlertButton({
 
                 <button
                   aria-label="Close alert drawer"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--color-text-tertiary)] transition hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-secondary)]"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-text-tertiary)] transition hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-secondary)] md:h-8 md:w-8"
                   onClick={closeDrawer}
                   type="button"
                 >
@@ -555,7 +558,7 @@ export function WalletAlertButton({
               ) : null}
             </div>
 
-            <footer className="border-t border-[var(--color-border)] px-6 py-5">
+            <footer className="border-t border-[var(--color-border)] px-6 py-5 tab-bar-safe md:pb-5">
               {isManageMode ? (
                 <>
                   <div className="text-center font-mono text-[11px] text-[var(--color-text-tertiary)]">

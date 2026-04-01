@@ -20,7 +20,7 @@ export function MarketRowCard({ event }: MarketRowCardProps) {
 
   return (
     <Link
-      className="panel-elevated flex min-w-[320px] items-center gap-3 px-4 py-3 transition hover:border-[var(--color-brand)] hover:bg-[var(--color-bg-hover)] sm:min-w-[420px]"
+      className="panel-elevated flex w-full max-w-full items-center gap-3 px-4 py-3 transition hover:border-[var(--color-brand)] hover:bg-[var(--color-bg-hover)]"
       {...getEventRoute(event)}
     >
       <PlatformBadge platform={event.provider} short size="sm" />
