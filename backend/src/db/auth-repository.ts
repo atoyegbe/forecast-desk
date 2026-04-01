@@ -2,9 +2,10 @@ import { randomUUID } from 'node:crypto'
 import { getDbPool } from './pool.js'
 
 type AuthUserRow = {
+  auth_provider: 'email' | 'telegram'
   created_at: Date | string
   default_channel: 'both' | 'email' | 'telegram'
-  email: string
+  email: string | null
   id: string
   last_login_at: Date | string | null
   telegram_chat_id: string | null
@@ -12,9 +13,10 @@ type AuthUserRow = {
 }
 
 type AuthSessionRow = {
+  auth_provider: 'email' | 'telegram'
   created_at: Date | string
   default_channel: 'both' | 'email' | 'telegram'
-  email: string
+  email: string | null
   expires_at: Date | string
   id: string
   last_login_at: Date | string | null
@@ -25,9 +27,10 @@ type AuthSessionRow = {
 }
 
 export type StoredAuthUser = {
+  authProvider: 'email' | 'telegram'
   createdAt: string
   defaultChannel: 'both' | 'email' | 'telegram'
-  email: string
+  email: string | null
   id: string
   lastLoginAt: string | null
   telegramChatId?: string | null
@@ -56,6 +59,7 @@ function toIsoString(value: Date | string | null | undefined) {
 
 function mapUser(row: AuthUserRow): StoredAuthUser {
   return {
+    authProvider: row.auth_provider,
     createdAt: toIsoString(row.created_at) ?? new Date(0).toISOString(),
     defaultChannel: row.default_channel,
     email: row.email,
@@ -71,6 +75,7 @@ function mapSession(row: AuthSessionRow): StoredAuthSession {
     expiresAt: toIsoString(row.expires_at) ?? new Date(0).toISOString(),
     id: row.session_id,
     user: {
+      authProvider: row.auth_provider,
       createdAt: toIsoString(row.created_at) ?? new Date(0).toISOString(),
       defaultChannel: row.default_channel,
       email: row.email,
@@ -85,6 +90,7 @@ function mapSession(row: AuthSessionRow): StoredAuthSession {
 export async function createAuthChallenge(input: {
   email: string
   expiresAt: string
+  purpose?: 'link-email' | 'sign-in'
   resendMessageId?: string | null
   secretHash: string
   userId: string
@@ -97,16 +103,18 @@ export async function createAuthChallenge(input: {
         id,
         user_id,
         email,
+        purpose,
         code_hash,
         expires_at,
         resend_message_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
     `,
     [
       id,
       input.userId,
       input.email,
+      input.purpose ?? 'sign-in',
       input.secretHash,
       input.expiresAt,
       input.resendMessageId ?? null,
@@ -137,6 +145,7 @@ export async function createSession(input: {
       SELECT
         users.id AS user_id,
         users.email,
+        users.auth_provider,
         users.telegram_handle,
         users.telegram_chat_id,
         users.default_channel,
@@ -156,13 +165,14 @@ export async function createSession(input: {
 export async function createUser(email: string) {
   const result = await getDbPool().query<AuthUserRow>(
     `
-      INSERT INTO pulse_users (id, email)
-      VALUES ($1, $2)
+      INSERT INTO pulse_users (id, email, auth_provider)
+      VALUES ($1, $2, 'email')
       ON CONFLICT (email)
       DO UPDATE SET email = EXCLUDED.email
       RETURNING
         id,
         email,
+        auth_provider,
         telegram_handle,
         telegram_chat_id,
         default_channel,
@@ -189,6 +199,7 @@ export async function getSessionByTokenHash(tokenHash: string) {
       SELECT
         users.id AS user_id,
         users.email,
+        users.auth_provider,
         users.telegram_handle,
         users.telegram_chat_id,
         users.default_channel,
@@ -214,6 +225,7 @@ export async function markUserLoggedIn(userId: string) {
       RETURNING
         id,
         email,
+        auth_provider,
         telegram_handle,
         telegram_chat_id,
         default_channel,
@@ -241,11 +253,16 @@ export async function revokeSession(tokenHash: string) {
   return (result.rowCount ?? 0) > 0
 }
 
+type ConsumedAuthChallengeRow = AuthUserRow & {
+  auth_purpose: 'link-email' | 'sign-in'
+  challenge_email: string
+}
+
 export async function consumeAuthChallenge(email: string, secretHash: string) {
-  const result = await getDbPool().query<AuthUserRow>(
+  const result = await getDbPool().query<ConsumedAuthChallengeRow>(
     `
       WITH matched AS (
-        SELECT id, user_id
+        SELECT id, user_id, email, purpose
         FROM pulse_auth_codes
         WHERE email = $1
           AND code_hash = $2
@@ -260,23 +277,37 @@ export async function consumeAuthChallenge(email: string, secretHash: string) {
         SET consumed_at = NOW()
         FROM matched
         WHERE codes.id = matched.id
-        RETURNING matched.user_id
+        RETURNING
+          matched.user_id,
+          matched.email,
+          matched.purpose
       )
       SELECT
         users.id,
         users.email,
+        users.auth_provider,
         users.telegram_handle,
         users.telegram_chat_id,
         users.default_channel,
         users.created_at,
-        users.last_login_at
+        users.last_login_at,
+        consumed.email AS challenge_email,
+        consumed.purpose AS auth_purpose
       FROM consumed
       JOIN pulse_users users ON users.id = consumed.user_id
     `,
     [email, secretHash],
   )
 
-  return result.rows[0] ? mapUser(result.rows[0]) : null
+  if (!result.rows[0]) {
+    return null
+  }
+
+  return {
+    email: result.rows[0].challenge_email,
+    purpose: result.rows[0].auth_purpose,
+    user: mapUser(result.rows[0]),
+  }
 }
 
 export async function getUserById(userId: string) {
@@ -285,6 +316,7 @@ export async function getUserById(userId: string) {
       SELECT
         id,
         email,
+        auth_provider,
         telegram_handle,
         telegram_chat_id,
         default_channel,
@@ -305,6 +337,7 @@ export async function getUserByTelegramChatId(chatId: string) {
       SELECT
         id,
         email,
+        auth_provider,
         telegram_handle,
         telegram_chat_id,
         default_channel,
@@ -314,6 +347,27 @@ export async function getUserByTelegramChatId(chatId: string) {
       WHERE telegram_chat_id = $1
     `,
     [chatId],
+  )
+
+  return result.rows[0] ? mapUser(result.rows[0]) : null
+}
+
+export async function getUserByEmail(email: string) {
+  const result = await getDbPool().query<AuthUserRow>(
+    `
+      SELECT
+        id,
+        email,
+        auth_provider,
+        telegram_handle,
+        telegram_chat_id,
+        default_channel,
+        created_at,
+        last_login_at
+      FROM pulse_users
+      WHERE email = $1
+    `,
+    [email],
   )
 
   return result.rows[0] ? mapUser(result.rows[0]) : null
@@ -334,6 +388,7 @@ export async function updateUserPreferences(input: {
       RETURNING
         id,
         email,
+        auth_provider,
         telegram_handle,
         telegram_chat_id,
         default_channel,
@@ -365,6 +420,7 @@ export async function updateUserTelegramConnection(input: {
       RETURNING
         id,
         email,
+        auth_provider,
         telegram_handle,
         telegram_chat_id,
         default_channel,
@@ -372,6 +428,66 @@ export async function updateUserTelegramConnection(input: {
         last_login_at
     `,
     [input.userId, input.telegramChatId, input.telegramHandle],
+  )
+
+  return result.rows[0] ? mapUser(result.rows[0]) : null
+}
+
+export async function createOrUpdateTelegramUser(input: {
+  telegramChatId: string
+  telegramHandle: string | null
+}) {
+  const result = await getDbPool().query<AuthUserRow>(
+    `
+      INSERT INTO pulse_users (
+        id,
+        email,
+        telegram_handle,
+        telegram_chat_id,
+        default_channel,
+        auth_provider
+      )
+      VALUES ($1, NULL, $2, $3, 'telegram', 'telegram')
+      ON CONFLICT (telegram_chat_id)
+      WHERE telegram_chat_id IS NOT NULL
+      DO UPDATE SET
+        telegram_handle = EXCLUDED.telegram_handle
+      RETURNING
+        id,
+        email,
+        auth_provider,
+        telegram_handle,
+        telegram_chat_id,
+        default_channel,
+        created_at,
+        last_login_at
+    `,
+    [randomUUID(), input.telegramHandle, input.telegramChatId],
+  )
+
+  return mapUser(result.rows[0])
+}
+
+export async function updateUserEmail(input: {
+  email: string
+  userId: string
+}) {
+  const result = await getDbPool().query<AuthUserRow>(
+    `
+      UPDATE pulse_users
+      SET email = $2
+      WHERE id = $1
+      RETURNING
+        id,
+        email,
+        auth_provider,
+        telegram_handle,
+        telegram_chat_id,
+        default_channel,
+        created_at,
+        last_login_at
+    `,
+    [input.userId, input.email],
   )
 
   return result.rows[0] ? mapUser(result.rows[0]) : null
@@ -490,6 +606,7 @@ export async function claimTelegramConnectCode(input: {
       RETURNING
         users.id,
         users.email,
+        users.auth_provider,
         users.telegram_handle,
         users.telegram_chat_id,
         users.default_channel,

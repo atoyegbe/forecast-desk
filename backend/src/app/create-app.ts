@@ -37,6 +37,7 @@ export async function createApp() {
 
   await app.register(cors, {
     allowedHeaders: ['Authorization', 'Content-Type'],
+    credentials: true,
     maxAge: 86_400,
     methods: ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST'],
     origin(requestOrigin, callback) {

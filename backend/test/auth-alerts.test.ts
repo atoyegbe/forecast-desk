@@ -43,6 +43,20 @@ async function verifyMagicLink(email: string, token = AUTH_MAGIC_TOKEN) {
   })
 }
 
+async function beginTelegramAuth() {
+  return testApp.getApp().inject({
+    method: 'POST',
+    url: '/api/v1/auth/telegram/init',
+  })
+}
+
+async function getTelegramAuthStatus(token: string) {
+  return testApp.getApp().inject({
+    method: 'GET',
+    url: `/api/v1/auth/telegram/status?token=${encodeURIComponent(token)}`,
+  })
+}
+
 async function issueTelegramConnectCode(input?: {
   chatId?: number
   username?: string
@@ -63,6 +77,23 @@ async function issueTelegramConnectCode(input?: {
   assert.ok(codeMatch)
 
   return codeMatch[1]
+}
+
+function getCookieHeader(response: {
+  headers: Record<string, string | string[] | undefined>
+}) {
+  const setCookieHeader = response.headers['set-cookie']
+  const rawValue = Array.isArray(setCookieHeader)
+    ? setCookieHeader[0]
+    : setCookieHeader
+
+  assert.ok(rawValue)
+
+  const cookieHeader = rawValue.split(';', 1)[0]
+
+  assert.match(cookieHeader, /^quorum_session=/)
+
+  return cookieHeader
 }
 
 describe('Auth and alerts', () => {
@@ -106,7 +137,7 @@ describe('Auth and alerts', () => {
     assert.equal(response.statusCode, 400)
   })
 
-  test('verifies a passwordless magic link and returns a bearer session', async () => {
+  test('verifies a passwordless magic link, returns a session, and sets a cookie', async () => {
     await requestMagicLink('reader@example.com')
 
     const response = await verifyMagicLink('reader@example.com')
@@ -118,6 +149,7 @@ describe('Auth and alerts', () => {
     assert.equal(payload.data.user.email, 'reader@example.com')
     assert.equal(typeof payload.data.session.token, 'string')
     assert.equal(payload.data.session.token.length > 20, true)
+    assert.match(String(response.headers['set-cookie'] ?? ''), /quorum_session=/)
   })
 
   test('rejects expired or invalid magic links', async () => {
@@ -182,14 +214,14 @@ describe('Auth and alerts', () => {
     assert.equal(response.statusCode, 401)
   })
 
-  test('returns the authenticated user session via /auth/me', async () => {
+  test('returns the authenticated user session via /auth/me when using the session cookie', async () => {
     await requestMagicLink('reader@example.com')
     const verifyResponse = await verifyMagicLink('reader@example.com')
-    const token = verifyResponse.json().data.session.token as string
+    const cookieHeader = getCookieHeader(verifyResponse)
 
     const response = await testApp.getApp().inject({
       headers: {
-        authorization: `Bearer ${token}`,
+        cookie: cookieHeader,
       },
       method: 'GET',
       url: '/api/v1/auth/me',
@@ -199,6 +231,130 @@ describe('Auth and alerts', () => {
     assert.equal(response.json().data.user.email, 'reader@example.com')
     assert.equal(response.json().data.user.defaultChannel, 'email')
     assert.equal(response.json().data.user.telegramHandle, null)
+  })
+
+  test('starts Telegram auth, approves via the bot deep link, and authenticates with a cookie session', async () => {
+    const bot = registerTestTelegramBot()
+    const initResponse = await beginTelegramAuth()
+
+    assert.equal(initResponse.statusCode, 200)
+    assert.equal(typeof initResponse.json().data.token, 'string')
+    assert.equal(
+      initResponse.json().data.botUrl,
+      `https://t.me/QuorumSignalsBot?start=auth_${initResponse.json().data.token}`,
+    )
+
+    const pendingResponse = await getTelegramAuthStatus(
+      initResponse.json().data.token,
+    )
+
+    assert.equal(pendingResponse.statusCode, 200)
+    assert.equal(pendingResponse.json().data.status, 'pending')
+
+    await handleStartCommand(
+      bot,
+      createTestTelegramMessage({
+        chatId: 7777,
+        text: `/start auth_${initResponse.json().data.token}`,
+        username: 'telegram_signin',
+      }),
+      `auth_${initResponse.json().data.token}`,
+    )
+
+    assert.equal(bot.sentMessages.length, 1)
+    assert.match(bot.sentMessages[0]?.text ?? '', /Signed in to Quorum/)
+
+    const approvedResponse = await getTelegramAuthStatus(
+      initResponse.json().data.token,
+    )
+
+    assert.equal(approvedResponse.statusCode, 200)
+    assert.equal(approvedResponse.json().data.status, 'approved')
+    assert.equal(approvedResponse.json().data.username, 'telegram_signin')
+
+    const cookieHeader = getCookieHeader(approvedResponse)
+    const meResponse = await testApp.getApp().inject({
+      headers: {
+        cookie: cookieHeader,
+      },
+      method: 'GET',
+      url: '/api/v1/auth/me',
+    })
+
+    assert.equal(meResponse.statusCode, 200)
+    assert.equal(meResponse.json().data.user.authProvider, 'telegram')
+    assert.equal(meResponse.json().data.user.email, null)
+    assert.equal(meResponse.json().data.user.telegramHandle, '@telegram_signin')
+    assert.equal(meResponse.json().data.user.defaultChannel, 'telegram')
+  })
+
+  test('allows a Telegram-authenticated user to add an email via magic link', async () => {
+    const sentMessages: string[] = []
+
+    setTestEmailSender(async (input) => {
+      sentMessages.push(input.text)
+
+      return {
+        providerMessageId: 'email_link_1',
+      }
+    })
+
+    const bot = registerTestTelegramBot()
+    const initResponse = await beginTelegramAuth()
+
+    await handleStartCommand(
+      bot,
+      createTestTelegramMessage({
+        chatId: 7788,
+        text: `/start auth_${initResponse.json().data.token}`,
+        username: 'telegram_email_link',
+      }),
+      `auth_${initResponse.json().data.token}`,
+    )
+
+    const approvedResponse = await getTelegramAuthStatus(
+      initResponse.json().data.token,
+    )
+    const cookieHeader = getCookieHeader(approvedResponse)
+
+    const requestEmailLinkResponse = await testApp.getApp().inject({
+      headers: {
+        cookie: cookieHeader,
+      },
+      method: 'POST',
+      payload: {
+        email: 'reader@example.com',
+      },
+      url: '/api/v1/auth/email-link',
+    })
+
+    assert.equal(requestEmailLinkResponse.statusCode, 200)
+    assert.equal(sentMessages.length, 1)
+    assert.match(
+      sentMessages[0] ?? '',
+      /http:\/\/localhost:5173\/alerts\?auth_email=reader%40example\.com&auth_token=test-magic-token/,
+    )
+
+    const verifyResponse = await verifyMagicLink('reader@example.com')
+
+    assert.equal(verifyResponse.statusCode, 200)
+    assert.equal(verifyResponse.json().data.status, 'email-linked')
+    assert.equal(verifyResponse.json().data.user.authProvider, 'telegram')
+    assert.equal(verifyResponse.json().data.user.email, 'reader@example.com')
+
+    const meResponse = await testApp.getApp().inject({
+      headers: {
+        cookie: cookieHeader,
+      },
+      method: 'GET',
+      url: '/api/v1/auth/me',
+    })
+
+    assert.equal(meResponse.statusCode, 200)
+    assert.equal(meResponse.json().data.user.authProvider, 'telegram')
+    assert.equal(meResponse.json().data.user.email, 'reader@example.com')
+    assert.equal(meResponse.json().data.user.telegramHandle, '@telegram_email_link')
+    assert.equal(meResponse.json().data.user.defaultChannel, 'telegram')
   })
 
   test('returns and updates the authenticated user profile', async () => {
@@ -446,7 +602,7 @@ describe('Auth and alerts', () => {
     )
 
     assert.equal(bot.sentMessages.length, 1)
-    assert.match(bot.sentMessages[0]?.text ?? '', /reader@example\.com/)
+    assert.match(bot.sentMessages[0]?.text ?? '', /reader@example\\\.com/)
     assert.match(bot.sentMessages[0]?.text ?? '', /`1`/)
   })
 

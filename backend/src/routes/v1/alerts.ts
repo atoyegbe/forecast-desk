@@ -8,7 +8,7 @@ import {
   unsubscribeAlert,
   updateUserAlertSubscription,
 } from '../../app/alerts-service.js'
-import { getBearerToken, getCurrentSession } from '../../app/auth-service.js'
+import { getCurrentSession, getSessionTokenFromHeaders } from '../../app/auth-service.js'
 import {
   createApiErrorResponse,
   createApiResponse,
@@ -37,13 +37,14 @@ async function requireSession(
   request: {
     headers: {
       authorization?: string
+      cookie?: string
     }
   },
   reply: {
     code: (statusCode: number) => { send: (body: unknown) => unknown }
   },
 ): Promise<PulseAuthCurrentSession | null> {
-  const token = getBearerToken(request.headers.authorization)
+  const token = getSessionTokenFromHeaders(request.headers)
 
   if (!token) {
     replyWithError(

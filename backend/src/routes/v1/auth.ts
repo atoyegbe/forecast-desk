@@ -1,23 +1,35 @@
 import type { FastifyPluginAsync } from 'fastify'
 import {
-  getBearerToken,
+  AuthEmailInUseError,
+  buildExpiredSessionCookie,
+  buildSessionCookie,
   getCurrentSession,
+  getSessionTokenFromHeaders,
   isValidEmail,
   logoutSession,
+  requestEmailLinkForUser,
   requestPasswordlessLink,
   verifyPasswordlessLink,
 } from '../../app/auth-service.js'
+import {
+  beginTelegramAuth,
+  getTelegramAuthStatus,
+} from '../../app/telegram-auth-service.js'
 import {
   createApiErrorResponse,
   createApiResponse,
 } from '../../contracts/api-response.js'
 import type {
   PulseAuthCurrentSession,
+  PulseAuthEmailLinkInput,
+  PulseAuthEmailLinkResult,
   PulseAuthLogoutResult,
   PulseAuthRequestLinkInput,
   PulseAuthRequestLinkResult,
   PulseAuthVerifyLinkInput,
   PulseAuthVerifyLinkResult,
+  PulseTelegramAuthInitResult,
+  PulseTelegramAuthStatusResult,
 } from '../../contracts/pulse-auth.js'
 
 function replyWithError(
@@ -56,6 +68,46 @@ function getRequestOrigin(request: {
   }
 }
 
+async function requireSession(
+  request: {
+    headers: {
+      authorization?: string
+      cookie?: string
+    }
+  },
+  reply: {
+    code: (statusCode: number) => { send: (body: unknown) => unknown }
+  },
+): Promise<PulseAuthCurrentSession | null> {
+  const token = getSessionTokenFromHeaders(request.headers)
+
+  if (!token) {
+    replyWithError(
+      reply,
+      401,
+      'UNAUTHORIZED',
+      'Authentication is required.',
+    )
+
+    return null
+  }
+
+  const session = await getCurrentSession(token)
+
+  if (!session) {
+    replyWithError(
+      reply,
+      401,
+      'UNAUTHORIZED',
+      'Authentication is required.',
+    )
+
+    return null
+  }
+
+  return session
+}
+
 export const v1AuthRoutes: FastifyPluginAsync = async (app) => {
   app.post<{
     Body: PulseAuthRequestLinkInput
@@ -81,6 +133,79 @@ export const v1AuthRoutes: FastifyPluginAsync = async (app) => {
   })
 
   app.post<{
+    Body: PulseAuthEmailLinkInput
+  }>('/auth/email-link', async (request, reply) => {
+    const session = await requireSession(request, reply)
+
+    if (!session) {
+      return
+    }
+
+    const email = request.body?.email?.trim() ?? ''
+
+    if (!isValidEmail(email)) {
+      return replyWithError(
+        reply,
+        400,
+        'INVALID_EMAIL',
+        'A valid email address is required.',
+      )
+    }
+
+    try {
+      const result = await requestEmailLinkForUser({
+        email,
+        requestOrigin: getRequestOrigin(request),
+        returnToPath: '/alerts',
+        userId: session.user.id,
+      })
+
+      return createApiResponse<PulseAuthEmailLinkResult>(result)
+    } catch (error) {
+      if (error instanceof AuthEmailInUseError) {
+        return replyWithError(reply, 409, 'EMAIL_IN_USE', error.message)
+      }
+
+      throw error
+    }
+  })
+
+  app.post('/auth/telegram/init', async () => {
+    const result = await beginTelegramAuth()
+    return createApiResponse<PulseTelegramAuthInitResult>(result)
+  })
+
+  app.get<{
+    Querystring: {
+      token?: string
+    }
+  }>('/auth/telegram/status', async (request, reply) => {
+    const token = request.query?.token?.trim() ?? ''
+
+    if (!token) {
+      return createApiResponse<PulseTelegramAuthStatusResult>({
+        status: 'expired',
+      })
+    }
+
+    const result = await getTelegramAuthStatus(token)
+
+    if (result.status === 'approved') {
+      reply.header(
+        'Set-Cookie',
+        buildSessionCookie(result.sessionToken, result.sessionExpiresAt),
+      )
+
+      return createApiResponse<PulseTelegramAuthStatusResult>({
+        status: 'approved',
+        username: result.username,
+      })
+    }
+
+    return createApiResponse<PulseTelegramAuthStatusResult>(result)
+  })
+
+  app.post<{
     Body: PulseAuthVerifyLinkInput
   }>('/auth/verify-link', async (request, reply) => {
     const email = request.body?.email?.trim() ?? ''
@@ -95,25 +220,40 @@ export const v1AuthRoutes: FastifyPluginAsync = async (app) => {
       )
     }
 
-    const result = await verifyPasswordlessLink({
-      email,
-      token,
-    })
+    try {
+      const result = await verifyPasswordlessLink({
+        email,
+        token,
+      })
 
-    if (!result) {
-      return replyWithError(
-        reply,
-        401,
-        'INVALID_MAGIC_LINK',
-        'That magic link is invalid or has expired.',
-      )
+      if (!result) {
+        return replyWithError(
+          reply,
+          401,
+          'INVALID_MAGIC_LINK',
+          'That magic link is invalid or has expired.',
+        )
+      }
+
+      if (result.status === 'signed-in') {
+        reply.header(
+          'Set-Cookie',
+          buildSessionCookie(result.session.token, result.session.expiresAt),
+        )
+      }
+
+      return createApiResponse<PulseAuthVerifyLinkResult>(result)
+    } catch (error) {
+      if (error instanceof AuthEmailInUseError) {
+        return replyWithError(reply, 409, 'EMAIL_IN_USE', error.message)
+      }
+
+      throw error
     }
-
-    return createApiResponse<PulseAuthVerifyLinkResult>(result)
   })
 
   app.get('/auth/me', async (request, reply) => {
-    const token = getBearerToken(request.headers.authorization)
+    const token = getSessionTokenFromHeaders(request.headers)
 
     if (!token) {
       return replyWithError(
@@ -139,7 +279,7 @@ export const v1AuthRoutes: FastifyPluginAsync = async (app) => {
   })
 
   app.post('/auth/logout', async (request, reply) => {
-    const token = getBearerToken(request.headers.authorization)
+    const token = getSessionTokenFromHeaders(request.headers)
 
     if (!token) {
       return replyWithError(
@@ -151,6 +291,7 @@ export const v1AuthRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const result = await logoutSession(token)
+    reply.header('Set-Cookie', buildExpiredSessionCookie())
 
     return createApiResponse<PulseAuthLogoutResult>(result)
   })

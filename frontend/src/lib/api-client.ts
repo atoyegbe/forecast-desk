@@ -3,6 +3,12 @@ export type BackendApiError = {
   message: string
 }
 
+type FastifyErrorResponse = {
+  error?: string
+  message?: string
+  statusCode?: number
+}
+
 export type BackendApiResponse<T> = {
   data: T
   meta: {
@@ -31,35 +37,52 @@ export class BackendRequestError extends Error {
   }
 }
 
+async function readResponseBody(response: Response) {
+  const text = await response.text()
+
+  if (!text.trim()) {
+    return null
+  }
+
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    return text
+  }
+}
+
 export async function fetchBackendJson<T>(
   path: string,
   init?: RequestInit,
 ) {
-  const response = await fetch(`${BACKEND_API_BASE}${path}`, init)
+  const response = await fetch(`${BACKEND_API_BASE}${path}`, {
+    credentials: 'include',
+    ...init,
+  })
+  const body = await readResponseBody(response)
 
   if (!response.ok) {
     const fallback = `${response.status} ${response.statusText}`
+    const errorBody =
+      body && typeof body === 'object'
+        ? (body as { error?: BackendApiError })
+        : null
+    const fastifyErrorBody =
+      body && typeof body === 'object'
+        ? (body as FastifyErrorResponse)
+        : null
 
-    try {
-      const errorBody = (await response.json()) as { error?: BackendApiError }
-      throw new BackendRequestError({
-        code: errorBody.error?.code,
-        message: errorBody.error?.message ?? fallback,
-        status: response.status,
-      })
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error
-      }
-
-      throw new BackendRequestError({
-        message: fallback,
-        status: response.status,
-      })
-    }
+    throw new BackendRequestError({
+      code: errorBody?.error?.code,
+      message:
+        errorBody?.error?.message ??
+        fastifyErrorBody?.message ??
+        (typeof body === 'string' && body.trim() ? body.trim() : fallback),
+      status: response.status,
+    })
   }
 
-  if (response.status === 204) {
+  if (response.status === 204 || body === null) {
     return {
       data: null as T,
       meta: {
@@ -68,5 +91,12 @@ export async function fetchBackendJson<T>(
     }
   }
 
-  return (await response.json()) as BackendApiResponse<T>
+  if (typeof body === 'string') {
+    throw new BackendRequestError({
+      message: 'The server returned an invalid response.',
+      status: response.status,
+    })
+  }
+
+  return body as BackendApiResponse<T>
 }

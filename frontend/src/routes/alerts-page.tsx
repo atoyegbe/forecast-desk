@@ -23,6 +23,7 @@ import type {
 import {
   connectTelegramChannel,
   disconnectTelegramChannel,
+  requestEmailLink,
   updateUserPreferences,
 } from '../features/auth/api'
 import { useAuth } from '../features/auth/context'
@@ -533,7 +534,6 @@ export function AlertsPage() {
     isAuthenticated,
     isHydrating,
     replaceUser,
-    sessionToken,
     signOut,
     user,
   } = useAuth()
@@ -545,6 +545,8 @@ export function AlertsPage() {
   const [editingEmail, setEditingEmail] = useState(false)
   const [emailDraft, setEmailDraft] = useState('')
   const [isSavingEmail, setIsSavingEmail] = useState(false)
+  const [isSendingEmailLink, setIsSendingEmailLink] = useState(false)
+  const [emailLinkSent, setEmailLinkSent] = useState(false)
   const [showEmailSaved, setShowEmailSaved] = useState(false)
   const [showAllDeliveries, setShowAllDeliveries] = useState(false)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -569,6 +571,7 @@ export function AlertsPage() {
   const deliveries = deliveriesQuery.data ?? []
   const telegramHandle = activeUser?.telegramHandle ?? null
   const defaultChannel = activeUser?.defaultChannel ?? 'email'
+  const hasEmail = Boolean(activeUser?.email)
   const visibleSubscriptions = useMemo(
     () => subscriptions.filter((subscription) => !collapsingIds.includes(subscription.id)),
     [collapsingIds, subscriptions],
@@ -586,6 +589,12 @@ export function AlertsPage() {
       setEmailDraft(activeUser?.email ?? '')
     }
   }, [activeUser?.email, editingEmail])
+
+  useEffect(() => {
+    if (activeUser?.email) {
+      setEmailLinkSent(false)
+    }
+  }, [activeUser?.email])
 
   useEffect(() => {
     if (isHydrating) {
@@ -635,7 +644,7 @@ export function AlertsPage() {
     return <AlertsLoadingState />
   }
 
-  if (!isAuthenticated || !activeUser || !sessionToken) {
+  if (!isAuthenticated || !activeUser) {
     return (
       <AlertsAuthRequiredState
         onSignIn={() =>
@@ -677,7 +686,48 @@ export function AlertsPage() {
     }, 1200)
   }
 
+  const requestEmailAddressLink = async () => {
+    const normalizedEmail = emailDraft.trim().toLowerCase()
+
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      pushToast({
+        label: 'Could not send magic link',
+        message: 'Enter a valid email address.',
+      })
+      return
+    }
+
+    setIsSendingEmailLink(true)
+
+    try {
+      await requestEmailLink(normalizedEmail)
+      setEditingEmail(false)
+      setEmailLinkSent(true)
+      pushToast({
+        label: 'Check your inbox',
+        message: `We sent a verification link to ${normalizedEmail}.`,
+      })
+    } catch (error) {
+      const message =
+        error instanceof BackendRequestError || error instanceof Error
+          ? error.message
+          : 'Could not send the email link.'
+
+      pushToast({
+        label: 'Could not send magic link',
+        message,
+      })
+    } finally {
+      setIsSendingEmailLink(false)
+    }
+  }
+
   const saveEmail = async () => {
+    if (!hasEmail) {
+      await requestEmailAddressLink()
+      return
+    }
+
     const normalizedEmail = emailDraft.trim().toLowerCase()
 
     if (!normalizedEmail || !normalizedEmail.includes('@')) {
@@ -696,7 +746,7 @@ export function AlertsPage() {
     setIsSavingEmail(true)
 
     try {
-      const updatedUser = await updateUserPreferences(sessionToken, {
+      const updatedUser = await updateUserPreferences({
         email: normalizedEmail,
       })
 
@@ -727,7 +777,7 @@ export function AlertsPage() {
     }
 
     try {
-      const updatedUser = await updateUserPreferences(sessionToken, {
+      const updatedUser = await updateUserPreferences({
         defaultChannel: nextPreference,
       })
 
@@ -764,7 +814,7 @@ export function AlertsPage() {
     setIsVerifyingTelegram(true)
 
     try {
-      const result = await connectTelegramChannel(sessionToken, code)
+      const result = await connectTelegramChannel(code)
 
       replaceUser({
         ...activeUser,
@@ -842,7 +892,7 @@ export function AlertsPage() {
 
   const handleDisconnectTelegram = async () => {
     try {
-      await disconnectTelegramChannel(sessionToken)
+      await disconnectTelegramChannel()
       replaceUser({
         ...activeUser,
         defaultChannel: 'email',
@@ -1006,50 +1056,106 @@ export function AlertsPage() {
 
               <div className="min-w-0 flex-1">
                 <div className="text-[15px] font-medium text-[var(--color-text-primary)]">
-                  Email
+                  {hasEmail ? 'Email' : 'Email (optional)'}
                 </div>
                 <div className="mt-1 flex min-h-[20px] items-center gap-2 font-mono text-[13px] text-[var(--color-text-secondary)]">
                   {editingEmail ? (
-                    <input
-                      autoFocus
-                      className="min-h-11 min-w-0 flex-1 border-0 border-b border-b-[#00c58e] bg-transparent px-0 py-0 text-[16px] text-[var(--color-text-secondary)] outline-none"
-                      onBlur={() => void saveEmail()}
-                      onChange={(event) => setEmailDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault()
-                          void saveEmail()
-                        }
+                    <div className="w-full">
+                      <input
+                        autoFocus
+                        className="min-h-11 w-full rounded-[7px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2 text-[16px] text-[var(--color-text-primary)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#00c58e] focus:shadow-[0_0_0_3px_rgba(0,197,142,0.1)]"
+                        onChange={(event) => setEmailDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            void saveEmail()
+                          }
 
-                        if (event.key === 'Escape') {
-                          setEditingEmail(false)
-                          setEmailDraft(activeUser?.email ?? '')
-                        }
-                      }}
-                      value={emailDraft}
-                    />
+                          if (event.key === 'Escape') {
+                            setEditingEmail(false)
+                            setEmailDraft(activeUser?.email ?? '')
+                          }
+                        }}
+                        placeholder="you@example.com"
+                        value={emailDraft}
+                      />
+                      <div className="mt-2 flex items-center gap-3 text-[12px]">
+                        <button
+                          className="min-h-11 text-[#00c58e] transition hover:underline"
+                          disabled={isSavingEmail || isSendingEmailLink}
+                          onClick={() => void saveEmail()}
+                          type="button"
+                        >
+                          {hasEmail
+                            ? isSavingEmail
+                              ? 'Saving...'
+                              : 'Save'
+                            : isSendingEmailLink
+                              ? 'Sending...'
+                              : 'Send magic link'}
+                        </button>
+                        <button
+                          className="min-h-11 text-[var(--color-text-tertiary)] transition hover:underline"
+                          onClick={() => {
+                            setEditingEmail(false)
+                            setEmailDraft(activeUser?.email ?? '')
+                          }}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
                   ) : (
-                    <>
-                      <span className="truncate">{activeUser?.email}</span>
-                      <button
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-[8px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:bg-[var(--color-bg-hover)] hover:text-[#00c58e]"
-                        onClick={() => setEditingEmail(true)}
-                        type="button"
-                      >
-                        <PencilIcon className="h-3 w-3" />
-                      </button>
-                      {showEmailSaved ? (
-                        <span className="inline-flex h-4 w-4 items-center justify-center text-[#00c58e]">
-                          <CheckIcon className="h-3.5 w-3.5" />
-                        </span>
-                      ) : null}
-                    </>
+                    hasEmail ? (
+                      <>
+                        <span className="truncate">{activeUser?.email}</span>
+                        <button
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-[8px] text-[var(--color-text-tertiary)] transition-colors duration-150 hover:bg-[var(--color-bg-hover)] hover:text-[#00c58e]"
+                          onClick={() => setEditingEmail(true)}
+                          type="button"
+                        >
+                          <PencilIcon className="h-3 w-3" />
+                        </button>
+                        {showEmailSaved ? (
+                          <span className="inline-flex h-4 w-4 items-center justify-center text-[#00c58e]">
+                            <CheckIcon className="h-3.5 w-3.5" />
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>Add an email to also receive alerts there.</span>
+                        <button
+                          className="text-[#00c58e] transition hover:underline"
+                          onClick={() => setEditingEmail(true)}
+                          type="button"
+                        >
+                          Add email
+                        </button>
+                        {emailLinkSent ? (
+                          <span className="text-[var(--color-text-tertiary)]">
+                            Link sent
+                          </span>
+                        ) : null}
+                      </div>
+                    )
                   )}
                 </div>
               </div>
 
               <div className="shrink-0 self-start sm:self-auto">
-                <ChannelStatusPill>{isSavingEmail ? 'Saving' : 'Verified'}</ChannelStatusPill>
+                <ChannelStatusPill>
+                  {hasEmail
+                    ? isSavingEmail
+                      ? 'Saving'
+                      : 'Verified'
+                    : isSendingEmailLink
+                      ? 'Sending'
+                      : emailLinkSent
+                        ? 'Pending'
+                        : 'Optional'}
+                </ChannelStatusPill>
               </div>
             </div>
 
@@ -1271,27 +1377,36 @@ export function AlertsPage() {
                   Default channel
                 </div>
 
-                <div className="w-full overflow-hidden rounded-[6px] border border-[var(--color-border)] sm:w-auto">
-                  <div className="flex items-stretch">
-                    <DeliveryChannelButton
-                      isActive={defaultChannel === 'email'}
-                      isFirst
-                      label="Email"
-                      onClick={() => void handlePreferenceChange('email')}
-                    />
-                    <DeliveryChannelButton
-                      isActive={defaultChannel === 'telegram'}
-                      label="Telegram"
-                      onClick={() => void handlePreferenceChange('telegram')}
-                    />
-                    <DeliveryChannelButton
-                      isActive={defaultChannel === 'both'}
-                      isLast
-                      label="Both"
-                      onClick={() => void handlePreferenceChange('both')}
-                    />
+                {hasEmail ? (
+                  <div className="w-full overflow-hidden rounded-[6px] border border-[var(--color-border)] sm:w-auto">
+                    <div className="flex items-stretch">
+                      <DeliveryChannelButton
+                        isActive={defaultChannel === 'email'}
+                        isFirst
+                        label="Email"
+                        onClick={() => void handlePreferenceChange('email')}
+                      />
+                      <DeliveryChannelButton
+                        isActive={defaultChannel === 'telegram'}
+                        label="Telegram"
+                        onClick={() => void handlePreferenceChange('telegram')}
+                      />
+                      <DeliveryChannelButton
+                        isActive={defaultChannel === 'both'}
+                        isLast
+                        label="Both"
+                        onClick={() => void handlePreferenceChange('both')}
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <ChannelStatusPill>Telegram</ChannelStatusPill>
+                    <span className="text-[12px] font-mono text-[var(--color-text-tertiary)]">
+                      Add email to enable Both.
+                    </span>
+                  </div>
+                )}
               </div>
             ) : null}
           </div>

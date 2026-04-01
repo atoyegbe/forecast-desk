@@ -1,4 +1,5 @@
 import type TelegramBot from 'node-telegram-bot-api'
+import { setTestTelegramAuthStore } from '../../src/app/telegram-auth-service.js'
 import { setTestTelegramBot } from '../../src/bot/index.js'
 import { setTestVerificationStore } from '../../src/bot/verify.js'
 
@@ -129,12 +130,15 @@ export function createTestTelegramMessage(input: {
 
 export function registerTestTelegramBot() {
   const bot = new TestTelegramBot()
+  const store = createVerificationStore()
   setTestTelegramBot(bot)
-  setTestVerificationStore(createVerificationStore())
+  setTestVerificationStore(store)
+  setTestTelegramAuthStore(store)
   return bot
 }
 
 export function resetTestTelegramBot() {
   setTestTelegramBot(null)
   setTestVerificationStore(null)
+  setTestTelegramAuthStore(null)
 }

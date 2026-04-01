@@ -132,7 +132,8 @@ CREATE INDEX IF NOT EXISTS idx_pulse_event_link_members_event
 
 CREATE TABLE IF NOT EXISTS pulse_users (
   id TEXT PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE,
+  email TEXT UNIQUE,
+  auth_provider TEXT NOT NULL DEFAULT 'email',
   telegram_handle TEXT,
   telegram_chat_id BIGINT,
   default_channel TEXT NOT NULL DEFAULT 'email',
@@ -142,6 +143,10 @@ CREATE TABLE IF NOT EXISTS pulse_users (
 
 CREATE INDEX IF NOT EXISTS idx_pulse_users_email
   ON pulse_users(email);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_users_telegram_chat_id
+  ON pulse_users(telegram_chat_id)
+  WHERE telegram_chat_id IS NOT NULL;
 
 ALTER TABLE pulse_users
   ADD COLUMN IF NOT EXISTS telegram_handle TEXT;
@@ -156,6 +161,12 @@ ALTER TABLE pulse_users
     WHEN telegram_chat_id::TEXT ~ '^-?[0-9]+$' THEN telegram_chat_id::BIGINT
     ELSE NULL
   END;
+
+ALTER TABLE pulse_users
+  ALTER COLUMN email DROP NOT NULL;
+
+ALTER TABLE pulse_users
+  ADD COLUMN IF NOT EXISTS auth_provider TEXT NOT NULL DEFAULT 'email';
 
 ALTER TABLE pulse_users
   ADD COLUMN IF NOT EXISTS default_channel TEXT NOT NULL DEFAULT 'email';
@@ -186,12 +197,16 @@ CREATE TABLE IF NOT EXISTS pulse_auth_codes (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES pulse_users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
+  purpose TEXT NOT NULL DEFAULT 'sign-in',
   code_hash TEXT NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
   consumed_at TIMESTAMPTZ,
   resend_message_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE pulse_auth_codes
+  ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'sign-in';
 
 CREATE INDEX IF NOT EXISTS idx_pulse_auth_codes_email
   ON pulse_auth_codes(email, created_at DESC);

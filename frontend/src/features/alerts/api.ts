@@ -6,22 +6,14 @@ import type {
   PulseAlertSubscriptionUpdateInput,
 } from './types'
 
-function buildAuthHeaders(token: string) {
-  return {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  }
-}
-
-export async function createAlertSubscription(
-  token: string,
-  input: PulseAlertSubscriptionCreateInput,
-) {
+export async function createAlertSubscription(input: PulseAlertSubscriptionCreateInput) {
   const response = await fetchBackendJson<PulseAlertSubscription>(
     '/alerts/subscriptions',
     {
       body: JSON.stringify(input),
-      headers: buildAuthHeaders(token),
+      headers: {
+        'Content-Type': 'application/json',
+      },
       method: 'POST',
     },
   )
@@ -29,30 +21,21 @@ export async function createAlertSubscription(
   return response.data
 }
 
-export async function deleteAlertSubscription(token: string, subscriptionId: string) {
+export async function deleteAlertSubscription(subscriptionId: string) {
   await fetchBackendJson<null>(`/alerts/subscriptions/${encodeURIComponent(subscriptionId)}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
     method: 'DELETE',
   })
 }
 
-export async function listAlertSubscriptions(token: string) {
+export async function listAlertSubscriptions() {
   const response = await fetchBackendJson<{ items: PulseAlertSubscription[] }>(
     '/alerts/subscriptions',
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
   )
 
   return response.data.items
 }
 
 export async function updateAlertSubscription(
-  token: string,
   subscriptionId: string,
   input: PulseAlertSubscriptionUpdateInput,
 ) {
@@ -60,7 +43,9 @@ export async function updateAlertSubscription(
     `/alerts/subscriptions/${encodeURIComponent(subscriptionId)}`,
     {
       body: JSON.stringify(input),
-      headers: buildAuthHeaders(token),
+      headers: {
+        'Content-Type': 'application/json',
+      },
       method: 'PATCH',
     },
   )
@@ -68,14 +53,9 @@ export async function updateAlertSubscription(
   return response.data
 }
 
-export async function listRecentAlertDeliveries(token: string) {
+export async function listRecentAlertDeliveries() {
   const response = await fetchBackendJson<{ items: PulseAlertRecentDelivery[] }>(
     '/alerts/deliveries/recent',
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
   )
 
   return response.data.items

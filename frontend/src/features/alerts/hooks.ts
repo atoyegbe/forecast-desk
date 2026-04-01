@@ -25,27 +25,27 @@ export const alertKeys = {
 }
 
 export function useAlertSubscriptionsQuery() {
-  const { sessionToken } = useAuth()
+  const { isAuthenticated } = useAuth()
 
   return useQuery({
-    enabled: Boolean(sessionToken),
-    queryFn: () => listAlertSubscriptions(sessionToken!),
+    enabled: isAuthenticated,
+    queryFn: () => listAlertSubscriptions(),
     queryKey: alertKeys.subscriptions,
     staleTime: 60_000,
   })
 }
 
 export function useCreateAlertSubscriptionMutation() {
-  const { sessionToken } = useAuth()
+  const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: PulseAlertSubscriptionCreateInput) => {
-      if (!sessionToken) {
+      if (!isAuthenticated) {
         throw new Error('Sign in to create alerts.')
       }
 
-      return createAlertSubscription(sessionToken, input)
+      return createAlertSubscription(input)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -56,16 +56,16 @@ export function useCreateAlertSubscriptionMutation() {
 }
 
 export function useDeleteAlertSubscriptionMutation() {
-  const { sessionToken } = useAuth()
+  const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (subscriptionId: string) => {
-      if (!sessionToken) {
+      if (!isAuthenticated) {
         throw new Error('Sign in to manage alerts.')
       }
 
-      return deleteAlertSubscription(sessionToken, subscriptionId)
+      return deleteAlertSubscription(subscriptionId)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -76,7 +76,7 @@ export function useDeleteAlertSubscriptionMutation() {
 }
 
 export function useUpdateAlertSubscriptionMutation() {
-  const { sessionToken } = useAuth()
+  const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -84,11 +84,11 @@ export function useUpdateAlertSubscriptionMutation() {
       subscriptionId: string
       update: PulseAlertSubscriptionUpdateInput
     }) => {
-      if (!sessionToken) {
+      if (!isAuthenticated) {
         throw new Error('Sign in to manage alerts.')
       }
 
-      return updateAlertSubscription(sessionToken, input.subscriptionId, input.update)
+      return updateAlertSubscription(input.subscriptionId, input.update)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -99,11 +99,11 @@ export function useUpdateAlertSubscriptionMutation() {
 }
 
 export function useRecentAlertDeliveriesQuery() {
-  const { sessionToken } = useAuth()
+  const { isAuthenticated } = useAuth()
 
   return useQuery({
-    enabled: Boolean(sessionToken),
-    queryFn: () => listRecentAlertDeliveries(sessionToken!),
+    enabled: isAuthenticated,
+    queryFn: () => listRecentAlertDeliveries(),
     queryKey: alertKeys.recentDeliveries,
     staleTime: 60_000,
   })

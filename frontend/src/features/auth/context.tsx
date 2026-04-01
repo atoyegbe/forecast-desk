@@ -11,6 +11,8 @@ import { useToast } from '../../components/toast-provider'
 import { BackendRequestError } from '../../lib/api-client'
 import {
   getCurrentSession,
+  getTelegramAuthStatus,
+  initTelegramAuth,
   logoutSession,
   requestMagicLink,
   verifyMagicLink,
@@ -23,8 +25,8 @@ import type {
 
 const AUTH_CALLBACK_EMAIL_PARAM = 'auth_email'
 const AUTH_CALLBACK_TOKEN_PARAM = 'auth_token'
-const AUTH_TOKEN_STORAGE_KEY = 'quorum-auth-token'
 const PENDING_AUTH_ACTION_STORAGE_KEY = 'quorum-auth-pending-action'
+const TELEGRAM_AUTH_POLL_INTERVAL_MS = 2_000
 
 type AuthDialogState = {
   email: string
@@ -33,7 +35,9 @@ type AuthDialogState = {
   isSubmitting: boolean
   resendCooldownEndsAt: number | null
   resentState: 'idle' | 'resent'
-  step: 'email' | 'check-email'
+  step: 'check-email' | 'options' | 'telegram-waiting'
+  telegramBotUrl: string | null
+  telegramToken: string | null
 }
 
 export type WalletAlertPendingAuthActionInput = {
@@ -74,10 +78,11 @@ type AuthContextValue = {
   pendingAction: PendingAuthAction | null
   replaceUser: (nextUser: PulseAuthUser | null) => void
   requestMagicLink: (email: string) => Promise<boolean>
-  resetAuthDialogToEmailEntry: () => void
   resendMagicLink: () => Promise<boolean>
-  sessionToken: string | null
+  resetAuthDialogToEmailEntry: () => void
+  reopenTelegramAuth: () => void
   signOut: () => Promise<void>
+  startTelegramAuth: () => Promise<boolean>
   user: PulseAuthUser | null
 }
 
@@ -93,22 +98,11 @@ function createDefaultDialogState(
     isSubmitting: false,
     resendCooldownEndsAt: null,
     resentState: 'idle',
-    step: 'email',
+    step: 'options',
+    telegramBotUrl: null,
+    telegramToken: null,
     ...overrides,
   }
-}
-
-function getStoredToken() {
-  return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
-}
-
-function setStoredToken(token: string | null) {
-  if (!token) {
-    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
-    return
-  }
-
-  window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
 }
 
 function createPendingActionId() {
@@ -223,13 +217,17 @@ function normalizePendingAction(
   }
 }
 
+function getUserDisplayLabel(user: PulseAuthUser) {
+  return user.email ?? user.telegramHandle ?? 'Telegram'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const { pushToast } = useToast()
   const didHydrateRef = useRef(false)
   const pendingActionRef = useRef<PendingAuthAction | null>(null)
   const resentTimerRef = useRef<number | null>(null)
-  const [sessionToken, setSessionToken] = useState<string | null>(null)
+  const telegramPollIntervalRef = useRef<number | null>(null)
   const [currentSession, setCurrentSession] = useState<PulseAuthSessionView | null>(
     null,
   )
@@ -240,11 +238,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     createDefaultDialogState(),
   )
 
+  const clearTelegramPolling = () => {
+    if (telegramPollIntervalRef.current) {
+      window.clearInterval(telegramPollIntervalRef.current)
+      telegramPollIntervalRef.current = null
+    }
+  }
+
+  const applySessionState = (nextSession: {
+    session: PulseAuthSession | PulseAuthSessionView
+    user: PulseAuthUser
+  }) => {
+    setCurrentSession({
+      expiresAt: nextSession.session.expiresAt,
+      id: nextSession.session.id,
+    })
+    setUser(nextSession.user)
+    void queryClient.invalidateQueries({
+      queryKey: ['alerts'],
+    })
+  }
+
+  const clearSessionState = () => {
+    setCurrentSession(null)
+    setUser(null)
+  }
+
   useEffect(() => {
     return () => {
       if (resentTimerRef.current) {
         window.clearTimeout(resentTimerRef.current)
       }
+
+      clearTelegramPolling()
     }
   }, [])
 
@@ -256,24 +282,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     didHydrateRef.current = true
     let isActive = true
 
-    const applySessionState = (nextSession: {
-      session: PulseAuthSession
-      user: PulseAuthUser
-    }) => {
-      const storedSession = nextSession.session
-
-      setSessionToken(storedSession.token)
-      setStoredToken(storedSession.token)
-      setCurrentSession({
-        expiresAt: storedSession.expiresAt,
-        id: storedSession.id,
-      })
-      setUser(nextSession.user)
-      void queryClient.invalidateQueries({
-        queryKey: ['alerts'],
-      })
-    }
-
     void (async () => {
       const authCallback = getAuthCallback()
 
@@ -281,7 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         storeAuthCallbackRemoval(authCallback.cleanUrl)
 
         try {
-          const nextSession = await verifyMagicLink(
+          const nextResult = await verifyMagicLink(
             authCallback.email,
             authCallback.token,
           )
@@ -290,16 +298,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return
           }
 
-          applySessionState(nextSession)
-          const nextPendingAction = getStoredPendingAuthAction()
+          if (nextResult.status === 'signed-in') {
+            applySessionState(nextResult)
+            const nextPendingAction = getStoredPendingAuthAction()
 
-          pendingActionRef.current = nextPendingAction
-          setPendingAction(nextPendingAction)
-          setAuthDialog(createDefaultDialogState())
-          pushToast({
-            label: 'Signed in',
-            message: `Signed in as ${nextSession.user.email}`,
-          })
+            pendingActionRef.current = nextPendingAction
+            setPendingAction(nextPendingAction)
+            setAuthDialog(createDefaultDialogState())
+            pushToast({
+              label: 'Signed in',
+              message: `Signed in as ${getUserDisplayLabel(nextResult.user)}`,
+            })
+          } else {
+            try {
+              const refreshedSession = await getCurrentSession()
+
+              if (!isActive) {
+                return
+              }
+
+              applySessionState(refreshedSession)
+            } catch {
+              if (isActive) {
+                clearSessionState()
+              }
+            }
+
+            setAuthDialog(createDefaultDialogState())
+            pushToast({
+              label: 'Email linked',
+              message: `Added ${nextResult.user.email ?? authCallback.email}.`,
+            })
+          }
         } catch (error) {
           if (!isActive) {
             return
@@ -322,36 +352,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const token = getStoredToken()
-
-      if (!token) {
-        if (isActive) {
-          setIsHydrating(false)
-        }
-
-        return
-      }
-
-      setSessionToken(token)
-
       try {
-        const session = await getCurrentSession(token)
+        const session = await getCurrentSession()
 
         if (!isActive) {
           return
         }
 
-        setCurrentSession(session.session)
-        setUser(session.user)
+        applySessionState(session)
       } catch {
-        if (!isActive) {
-          return
+        if (isActive) {
+          clearSessionState()
         }
-
-        setSessionToken(null)
-        setCurrentSession(null)
-        setUser(null)
-        setStoredToken(null)
       } finally {
         if (isActive) {
           setIsHydrating(false)
@@ -363,6 +375,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isActive = false
     }
   }, [pushToast, queryClient])
+
+  useEffect(() => {
+    if (
+      !authDialog.isOpen ||
+      authDialog.step !== 'telegram-waiting' ||
+      !authDialog.telegramToken
+    ) {
+      clearTelegramPolling()
+      return
+    }
+
+    let isActive = true
+
+    const poll = async () => {
+      try {
+        const status = await getTelegramAuthStatus(authDialog.telegramToken!)
+
+        if (!isActive) {
+          return
+        }
+
+        if (status.status === 'pending') {
+          return
+        }
+
+        clearTelegramPolling()
+
+        if (status.status === 'expired') {
+          setAuthDialog((current) =>
+            createDefaultDialogState({
+              email: current.email,
+              error: 'The request expired. Try again.',
+              isOpen: true,
+            }),
+          )
+          return
+        }
+
+        const nextSession = await getCurrentSession()
+
+        if (!isActive) {
+          return
+        }
+
+        applySessionState(nextSession)
+        const nextPendingAction = getStoredPendingAuthAction()
+
+        pendingActionRef.current = nextPendingAction
+        setPendingAction(nextPendingAction)
+        setAuthDialog(createDefaultDialogState())
+        pushToast({
+          label: 'Signed in',
+          message: `Signed in as @${status.username ?? 'telegram'}`,
+        })
+      } catch (error) {
+        if (!isActive) {
+          return
+        }
+
+        clearTelegramPolling()
+        setAuthDialog((current) =>
+          createDefaultDialogState({
+            email: current.email,
+            error: getErrorMessage(error),
+            isOpen: true,
+          }),
+        )
+      }
+    }
+
+    void poll()
+    telegramPollIntervalRef.current = window.setInterval(() => {
+      void poll()
+    }, TELEGRAM_AUTH_POLL_INTERVAL_MS)
+
+    return () => {
+      isActive = false
+      clearTelegramPolling()
+    }
+  }, [authDialog.isOpen, authDialog.step, authDialog.telegramToken, pushToast, queryClient])
 
   const openAuthDialog = (input?: {
     initialEmail?: string
@@ -382,11 +474,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const closeAuthDialog = () => {
+    clearTelegramPolling()
     setAuthDialog((current) => ({
       ...current,
       error: null,
       isOpen: false,
       isSubmitting: false,
+      step: 'options',
+      telegramBotUrl: null,
+      telegramToken: null,
     }))
   }
 
@@ -444,7 +540,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthDialog((current) => ({
         ...current,
         error: 'Enter your email to continue.',
-        step: 'email',
+        step: 'options',
       }))
 
       return false
@@ -493,9 +589,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const startTelegramAuth = async () => {
+    const popup = window.open('', '_blank', 'noopener,noreferrer')
+
+    setAuthDialog((current) => ({
+      ...current,
+      error: null,
+      isSubmitting: true,
+    }))
+
+    try {
+      const result = await initTelegramAuth()
+
+      if (popup) {
+        popup.location.href = result.botUrl
+      } else {
+        window.open(result.botUrl, '_blank', 'noopener,noreferrer')
+      }
+
+      setAuthDialog((current) => ({
+        ...current,
+        error: null,
+        isSubmitting: false,
+        step: 'telegram-waiting',
+        telegramBotUrl: result.botUrl,
+        telegramToken: result.token,
+      }))
+
+      return true
+    } catch (error) {
+      popup?.close()
+      setAuthDialog((current) => ({
+        ...current,
+        error: getErrorMessage(error),
+        isSubmitting: false,
+      }))
+
+      return false
+    }
+  }
+
+  const reopenTelegramAuth = () => {
+    if (!authDialog.telegramBotUrl) {
+      return
+    }
+
+    window.open(authDialog.telegramBotUrl, '_blank', 'noopener,noreferrer')
+  }
+
   const resetAuthDialogToEmailEntry = () => {
+    clearTelegramPolling()
     setAuthDialog(
       createDefaultDialogState({
+        email: authDialog.email,
         isOpen: true,
       }),
     )
@@ -522,27 +668,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
-    const activeToken = sessionToken
-
     pendingActionRef.current = null
     setPendingAction(null)
     setStoredPendingAuthAction(null)
-    setSessionToken(null)
-    setCurrentSession(null)
-    setUser(null)
-    setStoredToken(null)
+    clearTelegramPolling()
+    clearSessionState()
 
-    if (activeToken) {
-      try {
-        await logoutSession(activeToken)
-      } catch {
-        // Best-effort logout. The local session is already gone.
-      }
+    try {
+      await logoutSession()
+    } catch {
+      // Best-effort logout. The local session is already gone.
     }
 
-    void queryClient.removeQueries({
+    await queryClient.removeQueries({
       queryKey: ['alerts'],
     })
+
+    if (window.location.pathname !== '/') {
+      window.location.assign('/')
+    }
   }
 
   const replaceUser = (nextUser: PulseAuthUser | null) => {
@@ -556,16 +700,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         closeAuthDialog,
         consumePendingAction,
         currentSession,
-        isAuthenticated: Boolean(sessionToken && user),
+        isAuthenticated: Boolean(user),
         isHydrating,
         openAuthDialog,
         pendingAction,
         replaceUser,
         requestMagicLink: requestMagicLinkForEmail,
-        resetAuthDialogToEmailEntry,
         resendMagicLink: resendMagicLinkForEmail,
-        sessionToken,
+        resetAuthDialogToEmailEntry,
+        reopenTelegramAuth,
         signOut,
+        startTelegramAuth,
         user,
       }}
     >

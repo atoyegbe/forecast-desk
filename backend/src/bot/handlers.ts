@@ -1,4 +1,5 @@
 import type TelegramBot from 'node-telegram-bot-api'
+import { approveTelegramAuth } from '../app/telegram-auth-service.js'
 import {
   countActiveAlertSubscriptionsByUser,
   failPendingTelegramDeliveriesForUser,
@@ -10,6 +11,7 @@ import {
 } from '../db/auth-repository.js'
 import {
   notConnectedMessage,
+  signedInMessage,
   statusMessage,
   stopMessage,
   unknownMessage,
@@ -21,7 +23,7 @@ import {
   issueVerificationCode,
 } from './verify.js'
 
-const START_COMMAND = /^\/start(?:@\w+)?(?:\s.*)?$/i
+const START_COMMAND = /^\/start(?:@\w+)?(?:\s+(.+))?$/i
 const STATUS_COMMAND = /^\/status(?:@\w+)?$/i
 const STOP_COMMAND = /^\/stop(?:@\w+)?$/i
 const VERIFICATION_CODE_PATTERN = /^\d{6}$/
@@ -97,8 +99,51 @@ function logHandlerError(command: string, error: unknown) {
 export async function handleStartCommand(
   bot: TelegramBotLike,
   message: TelegramBot.Message,
+  parameter?: string | null,
 ) {
   if (!isPrivateChat(message)) {
+    return
+  }
+
+  const normalizedParameter = parameter?.trim()
+
+  if (normalizedParameter?.startsWith('auth_')) {
+    const token = normalizedParameter.slice('auth_'.length).trim()
+
+    if (!token) {
+      await sendMarkdownMessage(
+        bot,
+        getChatId(message),
+        'This link has expired\\. Please try again from the Quorum website\\.',
+      )
+      return
+    }
+
+    const result = await approveTelegramAuth({
+      telegramChatId: getChatId(message),
+      telegramHandle: buildTelegramHandle(message.from),
+      token,
+    })
+
+    if (result.status === 'expired') {
+      await sendMarkdownMessage(
+        bot,
+        getChatId(message),
+        'This link has expired\\. Please try again from the Quorum website\\.',
+      )
+      return
+    }
+
+    if (result.status === 'already-used') {
+      await sendMarkdownMessage(
+        bot,
+        getChatId(message),
+        'This link has already been used\\.',
+      )
+      return
+    }
+
+    await sendMarkdownMessage(bot, getChatId(message), signedInMessage())
     return
   }
 
@@ -131,7 +176,7 @@ export async function handleStatusCommand(
   await sendMarkdownMessage(
     bot,
     chatId,
-    statusMessage(user.email, activeSubscriptionCount),
+    statusMessage(user.email ?? user.telegramHandle ?? 'Telegram', activeSubscriptionCount),
   )
 }
 
@@ -172,8 +217,8 @@ export async function handleUnknownMessage(
 }
 
 export function registerBotHandlers(bot: TelegramBotLike) {
-  bot.onText(START_COMMAND, (message) => {
-    void handleStartCommand(bot, message).catch((error) => {
+  bot.onText(START_COMMAND, (message, match) => {
+    void handleStartCommand(bot, message, match?.[1]).catch((error) => {
       logHandlerError('/start', error)
     })
   })

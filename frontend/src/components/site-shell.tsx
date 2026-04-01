@@ -428,10 +428,20 @@ function IconButtonTooltip({
   )
 }
 
-function UserAvatar({ email }: { email: string }) {
+function getUserPrimaryLabel(user: { email?: string | null; telegramHandle?: string | null }) {
+  return user.email ?? user.telegramHandle ?? 'Telegram'
+}
+
+function getUserSecondaryLabel(user: { email?: string | null; telegramHandle?: string | null }) {
+  return user.email && user.telegramHandle ? user.telegramHandle : null
+}
+
+function UserAvatar({ label }: { label: string }) {
+  const normalizedLabel = label.replace(/^@+/, '')
+
   return (
     <span className="shell-avatar">
-      {email[0]?.toUpperCase() ?? 'Q'}
+      {normalizedLabel[0]?.toUpperCase() ?? 'Q'}
     </span>
   )
 }
@@ -760,14 +770,19 @@ export function SiteShell() {
                   }}
                   type="button"
                 >
-                  <UserAvatar email={user?.email ?? 'q'} />
+                  <UserAvatar label={getUserPrimaryLabel(user ?? {})} />
                 </button>
 
                 {isUserMenuOpen ? (
                   <div className="absolute top-full right-0 z-30 mt-1 min-w-[180px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-[6px] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
                     <div className="px-3 py-2 font-mono text-[12px] text-[var(--color-text-tertiary)]">
-                      {user?.email}
+                      {getUserPrimaryLabel(user ?? {})}
                     </div>
+                    {getUserSecondaryLabel(user ?? {}) ? (
+                      <div className="px-3 pb-2 font-mono text-[11px] text-[var(--color-text-tertiary)]">
+                        {getUserSecondaryLabel(user ?? {})}
+                      </div>
+                    ) : null}
                     <div className="mx-1 my-1 h-px bg-[var(--color-border-subtle)]" />
                     <Link
                       className="block rounded-[5px] px-3 py-2 text-[13px] text-[var(--color-text-primary)] transition hover:bg-[var(--color-bg-hover)]"
@@ -947,11 +962,16 @@ export function SiteShell() {
         onClose={() => {
           setIsMobileAccountSheetOpen(false)
         }}
-        title="Account"
+          title="Account"
       >
         <div className="space-y-4">
           <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3 font-mono text-[13px] text-[var(--color-text-tertiary)]">
-            {user?.email}
+            {getUserPrimaryLabel(user ?? {})}
+            {getUserSecondaryLabel(user ?? {}) ? (
+              <div className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">
+                {getUserSecondaryLabel(user ?? {})}
+              </div>
+            ) : null}
           </div>
           <div className="h-px bg-[var(--color-border-subtle)]" />
           <Link

@@ -51,6 +51,15 @@ Account: \`${email}\`
 Use /stop at any time to disconnect\\.
 `
 
+export const signedInMessage = () => `
+*Signed in to Quorum* ✓
+
+You're connected\\. Switch back to Quorum to continue\\.
+
+You'll receive alerts here when your watched wallets move\\.
+Use /stop at any time to disconnect\\.
+`
+
 export const alertMessage = (signal: AlertSignal) => {
   const diffText = signal.currentDiff > 0
     ? `\\+${signal.currentDiff.toFixed(1)} pts`
@@ -106,10 +115,10 @@ I only send Quorum alerts\\.
 Use /status to check your connection or /stop to disconnect\\.
 `
 
-export const statusMessage = (email: string, count: number) => `
+export const statusMessage = (accountLabel: string, count: number) => `
 *Connected account*
 
-Email: \`${email}\`
+Account: \`${escapeMarkdown(accountLabel)}\`
 Active subscriptions: \`${count}\`
 
 Use /stop to disconnect\\.

@@ -355,7 +355,8 @@ export function WalletAlertButton({
     setIsDrawerOpen(false)
   }
 
-  const deliveryLabel = user?.email ?? 'Sign in to continue'
+  const deliveryLabel =
+    user?.email ?? user?.telegramHandle ?? 'Sign in to continue'
   const currentSubscriptionStatus = existingSubscription?.status ?? null
 
   const trigger = (() => {

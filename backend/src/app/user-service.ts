@@ -82,6 +82,9 @@ export async function updateUserProfilePreferences(
   const nextEmail = input.email === undefined
     ? undefined
     : normalizeEmail(input.email)
+  const resolvedEmail = nextEmail ?? currentUser.email
+  const hasEmail = Boolean(resolvedEmail)
+  const hasTelegram = Boolean(currentUser.telegramHandle)
 
   if (nextEmail !== undefined && !isValidEmail(nextEmail)) {
     throw new Error('A valid email address is required.')
@@ -96,10 +99,18 @@ export async function updateUserProfilePreferences(
 
   if (
     input.defaultChannel !== undefined &&
-    input.defaultChannel !== 'email' &&
-    !currentUser.telegramHandle
+    (input.defaultChannel === 'telegram' || input.defaultChannel === 'both') &&
+    !hasTelegram
   ) {
     throw new Error('Connect Telegram before using it as a delivery default.')
+  }
+
+  if (
+    input.defaultChannel !== undefined &&
+    (input.defaultChannel === 'email' || input.defaultChannel === 'both') &&
+    !hasEmail
+  ) {
+    throw new Error('Add an email before using it for alert delivery.')
   }
 
   try {
@@ -152,7 +163,7 @@ export async function connectTelegramChannel(
   await clearVerificationFailureAttempts(user.id)
   const confirmationResult = await sendTelegramConnectedMessage({
     chatId,
-    email: user.email,
+    email: user.email ?? connectedUser.telegramHandle ?? 'Telegram',
   })
 
   if (!confirmationResult.success) {
