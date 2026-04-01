@@ -419,15 +419,39 @@ CREATE INDEX IF NOT EXISTS idx_pulse_alert_deliveries_subscription
   ON pulse_alert_deliveries(subscription_id);
 `
 
+const DISCOVERY_SCHEMA_BOOTSTRAP_LOCK_ID = 42_530_001
+
 let schemaReadyPromise: Promise<void> | null = null
 
 async function runDiscoverySchemaBootstrap() {
-  await getDbPool().query(DISCOVERY_SCHEMA_SQL)
+  const client = await getDbPool().connect()
+
+  try {
+    await client.query('BEGIN')
+    // Serialize schema bootstraps across the API and worker so concurrent
+    // startup does not deadlock on ALTER TABLE / CREATE INDEX statements.
+    await client.query(
+      'SELECT pg_advisory_xact_lock($1)',
+      [DISCOVERY_SCHEMA_BOOTSTRAP_LOCK_ID],
+    )
+    await client.query(DISCOVERY_SCHEMA_SQL)
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {
+      // Best-effort cleanup after bootstrap failures.
+    })
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export function ensureDiscoverySchema() {
   if (!schemaReadyPromise) {
-    schemaReadyPromise = runDiscoverySchemaBootstrap()
+    schemaReadyPromise = runDiscoverySchemaBootstrap().catch((error) => {
+      schemaReadyPromise = null
+      throw error
+    })
   }
 
   return schemaReadyPromise
