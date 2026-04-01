@@ -31,6 +31,7 @@ REDIS_URL ?= redis://127.0.0.1:$(REDIS_PORT)
 .PHONY: \
 	help \
 	check-docker \
+	check-postgres-port check-redis-port \
 	infra-up infra-down infra-logs \
 	postgres-up postgres-down postgres-logs \
 	redis-up redis-down redis-logs \
@@ -68,7 +69,43 @@ check-docker:
 		exit 1; \
 	}
 
-postgres-up: check-docker
+check-postgres-port: check-docker
+	@compose_container_id="$$( $(DOCKER_COMPOSE) ps -q postgres 2>/dev/null )"; \
+	if [ -n "$$compose_container_id" ] && [ "$$(docker inspect -f '{{.State.Running}}' $$compose_container_id 2>/dev/null)" = "true" ]; then \
+		exit 0; \
+	fi; \
+	existing_docker_container="$$(docker ps --filter 'publish=$(POSTGRES_PORT)' --format '{{.Names}}' | head -n 1)"; \
+	if [ -n "$$existing_docker_container" ]; then \
+		printf "Postgres port %s is already in use by Docker container '%s'.\n" "$(POSTGRES_PORT)" "$$existing_docker_container"; \
+		printf "Stop it with: docker stop %s\n" "$$existing_docker_container"; \
+		printf "Or pick another port: POSTGRES_PORT=54330 make dev\n"; \
+		exit 1; \
+	fi; \
+	if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:$(POSTGRES_PORT) -sTCP:LISTEN >/dev/null 2>&1; then \
+		printf "Postgres port %s is already in use by another local process.\n" "$(POSTGRES_PORT)"; \
+		printf "Pick another port: POSTGRES_PORT=54330 make dev\n"; \
+		exit 1; \
+	fi
+
+check-redis-port: check-docker
+	@compose_container_id="$$( $(DOCKER_COMPOSE) ps -q redis 2>/dev/null )"; \
+	if [ -n "$$compose_container_id" ] && [ "$$(docker inspect -f '{{.State.Running}}' $$compose_container_id 2>/dev/null)" = "true" ]; then \
+		exit 0; \
+	fi; \
+	existing_docker_container="$$(docker ps --filter 'publish=$(REDIS_PORT)' --format '{{.Names}}' | head -n 1)"; \
+	if [ -n "$$existing_docker_container" ]; then \
+		printf "Redis port %s is already in use by Docker container '%s'.\n" "$(REDIS_PORT)" "$$existing_docker_container"; \
+		printf "Stop it with: docker stop %s\n" "$$existing_docker_container"; \
+		printf "Or pick another port: REDIS_PORT=6380 make dev\n"; \
+		exit 1; \
+	fi; \
+	if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:$(REDIS_PORT) -sTCP:LISTEN >/dev/null 2>&1; then \
+		printf "Redis port %s is already in use by another local process.\n" "$(REDIS_PORT)"; \
+		printf "Pick another port: REDIS_PORT=6380 make dev\n"; \
+		exit 1; \
+	fi
+
+postgres-up: check-docker check-postgres-port
 	@$(DOCKER_COMPOSE) up -d postgres >/dev/null
 	@until $(DOCKER_COMPOSE) exec -T postgres pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB) >/dev/null 2>&1; do \
 		printf "Waiting for Postgres to become ready...\n"; \
@@ -76,7 +113,7 @@ postgres-up: check-docker
 	done
 	@printf "Postgres ready at %s\n" "$(DATABASE_URL)"
 
-redis-up: check-docker
+redis-up: check-docker check-redis-port
 	@$(DOCKER_COMPOSE) up -d redis >/dev/null
 	@until $(DOCKER_COMPOSE) exec -T redis redis-cli ping >/dev/null 2>&1; do \
 		printf "Waiting for Redis to become ready...\n"; \

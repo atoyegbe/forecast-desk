@@ -69,6 +69,12 @@ jobs so an API process and worker can safely coexist.
 4. If you are not using the checked-in Compose file, create a local database yourself, for example `createdb naija_pulse`
 5. Run `npm run dev`
 
+If `make infra-up` fails because `54329` or `6379` is already in use, stop the
+other local service or override the ports for this project, for example
+`POSTGRES_PORT=54330 REDIS_PORT=6380 make infra-up`. The root
+[Makefile](/Users/atoyegbe/dev/quant/projects/naija-pulse/Makefile) updates
+`DATABASE_URL` and `REDIS_URL` automatically from those overrides.
+
 If you want a dedicated smart-money worker instead of running the scheduler in
 the API process:
 

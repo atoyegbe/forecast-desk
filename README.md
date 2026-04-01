@@ -145,6 +145,19 @@ That starts:
 
 Then open `http://localhost:5173`.
 
+If Docker reports that `54329` or `6379` is already allocated, another local
+container or process already owns the default Postgres or Redis port. Either
+stop that process, or override the ports for this project:
+
+```bash
+POSTGRES_PORT=54330 REDIS_PORT=6380 make dev
+```
+
+The root `Makefile` recalculates `DATABASE_URL` and `REDIS_URL` automatically
+from those overrides. A `502 Bad Gateway` from `localhost:5173/api/v1/...`
+usually means the frontend is up but the backend never started because local
+infra failed to boot.
+
 If you want the local infrastructure up before starting the app processes, use:
 
 ```bash
