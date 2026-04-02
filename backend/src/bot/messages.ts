@@ -15,7 +15,7 @@ export type AlertSignal = {
 }
 
 export const escapeMarkdown = (text: string): string => {
-  return text.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')
+  return text.replace(/[_*[\]()~`>#+=|{}.!\-]/g, '\\$&')
 }
 
 function getAlertsPageUrl() {
@@ -41,22 +41,21 @@ _This code expires in 15 minutes\\._
 _Do not share it with anyone\\._
 `
 
+export const startMessage = () => `
+*Welcome to Quorum Alerts*
+
+To connect your Telegram to Quorum, visit [Quorum alerts page](${getAlertsPageUrl()}) and tap *Connect Telegram*\\.
+
+Already connected? Use /status to check or /stop to disconnect\\.
+`
+
 export const connectedMessage = (email: string) => `
 *Telegram connected* ✓
 
 You'll now receive Quorum alerts here when your watched wallets move\\.
 
-Account: \`${email}\`
+Account: \`${escapeMarkdown(email)}\`
 
-Use /stop at any time to disconnect\\.
-`
-
-export const signedInMessage = () => `
-*Signed in to Quorum* ✓
-
-You're connected\\. Switch back to Quorum to continue\\.
-
-You'll receive alerts here when your watched wallets move\\.
 Use /stop at any time to disconnect\\.
 `
 

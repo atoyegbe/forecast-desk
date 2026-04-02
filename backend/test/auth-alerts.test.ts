@@ -67,9 +67,10 @@ async function issueTelegramConnectCode(input?: {
     bot,
     createTestTelegramMessage({
       chatId: input?.chatId,
-      text: '/start',
+      text: '/start connect',
       username: input?.username,
     }),
+    'connect',
   )
 
   const codeMatch = bot.sentMessages[0]?.text.match(/\b(\d{6})\b/)
@@ -97,6 +98,36 @@ function getCookieHeader(response: {
 }
 
 describe('Auth and alerts', () => {
+  test('shows a welcome message for plain /start and keeps connect codes on /start connect', async () => {
+    const bot = registerTestTelegramBot()
+
+    await handleStartCommand(
+      bot,
+      createTestTelegramMessage({
+        chatId: 7007,
+        text: '/start',
+        username: 'welcome_reader',
+      }),
+    )
+
+    assert.equal(bot.sentMessages.length, 1)
+    assert.match(bot.sentMessages[0]?.text ?? '', /Welcome to Quorum Alerts/)
+    assert.doesNotMatch(bot.sentMessages[0]?.text ?? '', /\b(\d{6})\b/)
+
+    await handleStartCommand(
+      bot,
+      createTestTelegramMessage({
+        chatId: 7007,
+        text: '/start connect',
+        username: 'welcome_reader',
+      }),
+      'connect',
+    )
+
+    assert.equal(bot.sentMessages.length, 2)
+    assert.match(bot.sentMessages[1]?.text ?? '', /\b(\d{6})\b/)
+  })
+
   test('requests a passwordless magic link for a valid email', async () => {
     const response = await requestMagicLink('reader@example.com')
 
@@ -273,6 +304,13 @@ describe('Auth and alerts', () => {
     assert.equal(approvedResponse.json().data.username, 'telegram_signin')
 
     const cookieHeader = getCookieHeader(approvedResponse)
+    const consumedResponse = await getTelegramAuthStatus(
+      initResponse.json().data.token,
+    )
+
+    assert.equal(consumedResponse.statusCode, 200)
+    assert.equal(consumedResponse.json().data.status, 'expired')
+
     const meResponse = await testApp.getApp().inject({
       headers: {
         cookie: cookieHeader,

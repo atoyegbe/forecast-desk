@@ -160,9 +160,40 @@ export async function getTelegramAuthStatus(token: string) {
   }
 }
 
+async function deleteTelegramAuthState(token: string) {
+  const store = await getStore()
+  await store.del(buildAuthKey(token))
+}
+
+export async function consumeTelegramAuthStatus(token: string) {
+  const state = await readTelegramAuthState(token)
+
+  if (!state) {
+    return {
+      status: 'expired' as const,
+    }
+  }
+
+  if (state.status === 'approved') {
+    await deleteTelegramAuthState(token)
+
+    return {
+      sessionExpiresAt: state.sessionExpiresAt,
+      sessionToken: state.sessionToken,
+      status: 'approved' as const,
+      username: state.username,
+    }
+  }
+
+  return {
+    status: 'pending' as const,
+  }
+}
+
 export async function approveTelegramAuth(input: {
   telegramChatId: string
   telegramHandle: string | null
+  telegramUsername: string | null
   token: string
 }) {
   const state = await readTelegramAuthState(input.token)
@@ -190,13 +221,13 @@ export async function approveTelegramAuth(input: {
     sessionExpiresAt: session.session.expiresAt,
     sessionToken: session.session.token,
     status: 'approved',
-    username: input.telegramHandle?.replace(/^@+/, '') ?? null,
+    username: input.telegramUsername,
   })
 
   return {
     status: 'approved' as const,
     user,
-    username: input.telegramHandle?.replace(/^@+/, '') ?? null,
+    username: input.telegramUsername,
   }
 }
 

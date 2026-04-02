@@ -142,9 +142,10 @@ async function issueTelegramConnectCode(input?: {
     bot,
     createTestTelegramMessage({
       chatId: input?.chatId ?? 7001,
-      text: '/start',
+      text: '/start connect',
       username: input?.username ?? 'signal_reader',
     }),
+    'connect',
   )
 
   const codeMatch = bot.sentMessages[0]?.text.match(/\b(\d{6})\b/)

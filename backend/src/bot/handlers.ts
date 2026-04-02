@@ -10,8 +10,9 @@ import {
   updateUserTelegramConnection,
 } from '../db/auth-repository.js'
 import {
+  escapeMarkdown,
   notConnectedMessage,
-  signedInMessage,
+  startMessage,
   statusMessage,
   stopMessage,
   unknownMessage,
@@ -26,6 +27,7 @@ import {
 const START_COMMAND = /^\/start(?:@\w+)?(?:\s+(.+))?$/i
 const STATUS_COMMAND = /^\/status(?:@\w+)?$/i
 const STOP_COMMAND = /^\/stop(?:@\w+)?$/i
+const TELEGRAM_CONNECT_START_PARAMETER = 'connect'
 const VERIFICATION_CODE_PATTERN = /^\d{6}$/
 
 export type TelegramBotLike = Pick<
@@ -96,32 +98,50 @@ function logHandlerError(command: string, error: unknown) {
   console.error(`Telegram bot ${command} handler failed:`, error)
 }
 
-export async function handleStartCommand(
+function getTelegramUsername(
+  from: Pick<TelegramBot.User, 'username'> | undefined,
+) {
+  const username = from?.username?.trim()
+
+  return username ? username.replace(/^@+/, '') : null
+}
+
+function buildSignedInConfirmationMessage(firstName?: string | null) {
+  const normalizedFirstName = firstName?.trim()
+  const welcomeLine = normalizedFirstName
+    ? `Welcome, ${escapeMarkdown(normalizedFirstName)}\\. Switch back to Quorum to continue\\.`
+    : 'You are connected\\. Switch back to Quorum to continue\\.'
+
+  return `
+*Signed in to Quorum* ✓
+
+${welcomeLine}
+
+You'll receive smart money alerts here when watched wallets move\\.
+
+Use /stop at any time to disconnect\\.
+`
+}
+
+async function handleDeepLinkAuth(
   bot: TelegramBotLike,
   message: TelegramBot.Message,
-  parameter?: string | null,
+  token: string,
 ) {
-  if (!isPrivateChat(message)) {
+  if (!token) {
+    await sendMarkdownMessage(
+      bot,
+      getChatId(message),
+      'This sign\\-in link has expired\\. Please go back to Quorum and try again\\.',
+    )
     return
   }
 
-  const normalizedParameter = parameter?.trim()
-
-  if (normalizedParameter?.startsWith('auth_')) {
-    const token = normalizedParameter.slice('auth_'.length).trim()
-
-    if (!token) {
-      await sendMarkdownMessage(
-        bot,
-        getChatId(message),
-        'This link has expired\\. Please try again from the Quorum website\\.',
-      )
-      return
-    }
-
+  try {
     const result = await approveTelegramAuth({
       telegramChatId: getChatId(message),
       telegramHandle: buildTelegramHandle(message.from),
+      telegramUsername: getTelegramUsername(message.from),
       token,
     })
 
@@ -129,7 +149,7 @@ export async function handleStartCommand(
       await sendMarkdownMessage(
         bot,
         getChatId(message),
-        'This link has expired\\. Please try again from the Quorum website\\.',
+        'This sign\\-in link has expired\\. Please go back to Quorum and try again\\.',
       )
       return
     }
@@ -143,16 +163,56 @@ export async function handleStartCommand(
       return
     }
 
-    await sendMarkdownMessage(bot, getChatId(message), signedInMessage())
-    return
+    await sendMarkdownMessage(
+      bot,
+      getChatId(message),
+      buildSignedInConfirmationMessage(message.from?.first_name),
+    )
+  } catch (error) {
+    logHandlerError('deep-link auth', error)
+    await sendMarkdownMessage(
+      bot,
+      getChatId(message),
+      'Something went wrong\\. Please try again from the Quorum website\\.',
+    )
   }
+}
 
+async function handleVerificationStart(
+  bot: TelegramBotLike,
+  message: TelegramBot.Message,
+) {
   const code = await issueVerificationCode({
     chatId: message.chat.id,
     telegramHandle: buildTelegramHandle(message.from),
   })
 
   await sendMarkdownMessage(bot, getChatId(message), verificationMessage(code))
+}
+
+export async function handleStartCommand(
+  bot: TelegramBotLike,
+  message: TelegramBot.Message,
+  parameter?: string | null,
+) {
+  if (!isPrivateChat(message)) {
+    return
+  }
+
+  const normalizedParameter = parameter?.trim()
+
+  if (normalizedParameter?.startsWith('auth_')) {
+    const token = normalizedParameter.slice('auth_'.length).trim()
+    await handleDeepLinkAuth(bot, message, token)
+    return
+  }
+
+  if (normalizedParameter?.toLowerCase() === TELEGRAM_CONNECT_START_PARAMETER) {
+    await handleVerificationStart(bot, message)
+    return
+  }
+
+  await sendMarkdownMessage(bot, getChatId(message), startMessage())
 }
 
 export async function handleStatusCommand(

@@ -40,6 +40,7 @@ import {
 } from '../lib/routes'
 
 type TelegramFlowStep = 'enter-code' | 'hidden' | 'open-bot'
+const TELEGRAM_CONNECT_BOT_URL = 'https://t.me/QuorumSignalsBot?start=connect'
 
 function EnvelopeIcon({ className }: { className?: string }) {
   return (
@@ -1288,18 +1289,18 @@ export function AlertsPage() {
                   {telegramFlowStep === 'open-bot' ? (
                     <>
                       <p className="mt-3 text-[13px] leading-6 text-[var(--color-text-secondary)]">
-                        Open our Telegram bot and press Start.
+                        Open our Telegram bot to generate your 6-digit connect code.
                       </p>
                       <a
                         className="mt-3 flex min-h-11 w-full items-center justify-center rounded-[7px] border border-[var(--color-border)] px-4 py-[10px] text-[13px] font-medium text-[var(--color-text-primary)] transition-colors duration-150 hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-hover)]"
-                        href="https://t.me/QuorumSignalsBot"
+                        href={TELEGRAM_CONNECT_BOT_URL}
                         rel="noreferrer"
                         target="_blank"
                       >
                         Open @QuorumSignalsBot →
                       </a>
                       <div className="mt-3 text-[12px] font-mono text-[var(--color-text-tertiary)]">
-                        The bot will give you a 6-digit code.
+                        The bot will open directly to your one-time connect code.
                       </div>
                       <button
                         className="mt-4 min-h-11 text-[13px] text-[#00c58e] hover:underline"

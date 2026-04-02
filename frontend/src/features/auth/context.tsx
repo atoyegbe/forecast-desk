@@ -27,6 +27,7 @@ const AUTH_CALLBACK_EMAIL_PARAM = 'auth_email'
 const AUTH_CALLBACK_TOKEN_PARAM = 'auth_token'
 const PENDING_AUTH_ACTION_STORAGE_KEY = 'quorum-auth-pending-action'
 const TELEGRAM_AUTH_POLL_INTERVAL_MS = 2_000
+const TELEGRAM_AUTH_TIMEOUT_MS = 5 * 60 * 1_000
 
 type AuthDialogState = {
   email: string
@@ -228,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pendingActionRef = useRef<PendingAuthAction | null>(null)
   const resentTimerRef = useRef<number | null>(null)
   const telegramPollIntervalRef = useRef<number | null>(null)
+  const telegramPollTimeoutRef = useRef<number | null>(null)
   const [currentSession, setCurrentSession] = useState<PulseAuthSessionView | null>(
     null,
   )
@@ -242,6 +244,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (telegramPollIntervalRef.current) {
       window.clearInterval(telegramPollIntervalRef.current)
       telegramPollIntervalRef.current = null
+    }
+
+    if (telegramPollTimeoutRef.current) {
+      window.clearTimeout(telegramPollTimeoutRef.current)
+      telegramPollTimeoutRef.current = null
     }
   }
 
@@ -406,42 +413,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAuthDialog((current) =>
             createDefaultDialogState({
               email: current.email,
-              error: 'The request expired. Try again.',
+              error: 'The sign-in request expired. Please try again.',
               isOpen: true,
             }),
           )
           return
         }
 
-        const nextSession = await getCurrentSession()
+        try {
+          const nextSession = await getCurrentSession()
 
-        if (!isActive) {
-          return
+          if (!isActive) {
+            return
+          }
+
+          applySessionState(nextSession)
+          const nextPendingAction = getStoredPendingAuthAction()
+
+          pendingActionRef.current = nextPendingAction
+          setPendingAction(nextPendingAction)
+          setAuthDialog(createDefaultDialogState())
+          pushToast({
+            label: 'Signed in',
+            message: status.username
+              ? `Signed in as @${status.username}`
+              : 'Signed in successfully',
+          })
+        } catch {
+          if (isActive) {
+            window.location.reload()
+          }
         }
-
-        applySessionState(nextSession)
-        const nextPendingAction = getStoredPendingAuthAction()
-
-        pendingActionRef.current = nextPendingAction
-        setPendingAction(nextPendingAction)
-        setAuthDialog(createDefaultDialogState())
-        pushToast({
-          label: 'Signed in',
-          message: `Signed in as @${status.username ?? 'telegram'}`,
-        })
       } catch (error) {
-        if (!isActive) {
-          return
-        }
-
-        clearTelegramPolling()
-        setAuthDialog((current) =>
-          createDefaultDialogState({
-            email: current.email,
-            error: getErrorMessage(error),
-            isOpen: true,
-          }),
-        )
+        void error
       }
     }
 
@@ -449,6 +453,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     telegramPollIntervalRef.current = window.setInterval(() => {
       void poll()
     }, TELEGRAM_AUTH_POLL_INTERVAL_MS)
+    telegramPollTimeoutRef.current = window.setTimeout(() => {
+      if (!isActive) {
+        return
+      }
+
+      clearTelegramPolling()
+      setAuthDialog((current) =>
+        createDefaultDialogState({
+          email: current.email,
+          error: 'Sign-in timed out. Please try again.',
+          isOpen: true,
+        }),
+      )
+    }, TELEGRAM_AUTH_TIMEOUT_MS)
 
     return () => {
       isActive = false

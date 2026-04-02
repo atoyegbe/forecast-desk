@@ -13,7 +13,7 @@ import {
 } from '../../app/auth-service.js'
 import {
   beginTelegramAuth,
-  getTelegramAuthStatus,
+  consumeTelegramAuthStatus,
 } from '../../app/telegram-auth-service.js'
 import {
   createApiErrorResponse,
@@ -183,12 +183,15 @@ export const v1AuthRoutes: FastifyPluginAsync = async (app) => {
     const token = request.query?.token?.trim() ?? ''
 
     if (!token) {
-      return createApiResponse<PulseTelegramAuthStatusResult>({
-        status: 'expired',
-      })
+      return replyWithError(
+        reply,
+        400,
+        'TOKEN_REQUIRED',
+        'A Telegram auth token is required.',
+      )
     }
 
-    const result = await getTelegramAuthStatus(token)
+    const result = await consumeTelegramAuthStatus(token)
 
     if (result.status === 'approved') {
       reply.header(
