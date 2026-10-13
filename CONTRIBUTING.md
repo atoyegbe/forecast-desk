@@ -15,7 +15,8 @@ make dev
 ```
 
 Open <http://localhost:5173>. The default local setup starts PostgreSQL and
-Redis through Docker Compose. See the [README](README.md) for port overrides.
+Redis through Docker Compose. See the [development guide](docs/development.md)
+for port overrides and test database setup.
 Keep real credentials in local `.env` files or deployment secrets; never commit
 them, database exports, or private user data.
 
