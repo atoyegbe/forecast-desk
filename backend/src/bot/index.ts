@@ -16,7 +16,7 @@
      (bot only reads commands, not group messages)
 */
 
-import TelegramBot from 'node-telegram-bot-api'
+import TelegramBot, { type Message } from 'node-telegram-bot-api'
 import { buildMarketUrl } from '../app/alert-email-template.js'
 import type { PulseSmartMoneySignal } from '../contracts/pulse-smart-money.js'
 import { getQuorumBaseUrl, getQuorumTelegramBotToken } from '../db/config.js'
@@ -53,7 +53,7 @@ function buildWalletUrl(walletAddress: string) {
   ).toString()
 }
 
-function toProviderMessageId(message: TelegramBot.Message | undefined) {
+function toProviderMessageId(message: Message | undefined) {
   if (!message?.message_id && message?.message_id !== 0) {
     return null
   }
@@ -131,7 +131,7 @@ async function sendMarkdownMessage(
 
   try {
     const sentMessage = await activeBot.sendMessage(String(chatId), text, {
-      disable_web_page_preview: true,
+      link_preview_options: { is_disabled: true },
       parse_mode: 'MarkdownV2',
     })
 

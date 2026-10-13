@@ -1,4 +1,4 @@
-import type TelegramBot from 'node-telegram-bot-api'
+import type { ChatId, Message, SendMessageParams } from 'node-telegram-bot-api'
 import { setTestTelegramAuthStore } from '../../src/app/telegram-auth-service.js'
 import { setTestTelegramBot } from '../../src/bot/index.js'
 import { setTestVerificationStore } from '../../src/bot/verify.js'
@@ -8,9 +8,11 @@ type StoredValue = {
   value: string
 }
 
+type SendMessageOptions = Omit<SendMessageParams, 'chat_id' | 'text'>
+
 type SentMessage = {
   chatId: string
-  options?: TelegramBot.SendMessageOptions
+  options?: SendMessageOptions
   text: string
 }
 
@@ -72,9 +74,9 @@ export class TestTelegramBot {
   readonly sentMessages: SentMessage[] = []
 
   async sendMessage(
-    chatId: TelegramBot.ChatId,
+    chatId: ChatId,
     text: string,
-    options?: TelegramBot.SendMessageOptions,
+    options?: SendMessageOptions,
   ) {
     this.sentMessages.push({
       chatId: String(chatId),
@@ -90,7 +92,7 @@ export class TestTelegramBot {
       date: Math.floor(Date.now() / 1_000),
       message_id: this.sentMessages.length,
       text,
-    } as TelegramBot.Message
+    } as Message
   }
 
   on() {
@@ -125,7 +127,7 @@ export function createTestTelegramMessage(input: {
     },
     message_id: 1,
     text: input.text,
-  } as TelegramBot.Message
+  } as Message
 }
 
 export function registerTestTelegramBot() {

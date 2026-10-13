@@ -48,7 +48,7 @@ The current frontend surface includes:
 
 The frontend is intended to run as its own Railway service.
 
-- Railway config file: [frontend/railway.toml](/Users/atoyegbe/dev/quant/projects/naija-pulse/frontend/railway.toml)
+- Railway config file: [railway.toml](railway.toml)
 - Production start command: `npm run start`
 
 Before deploying the frontend, set:
@@ -58,4 +58,4 @@ Before deploying the frontend, set:
 - `QUORUM_PUBLIC_BACKEND_HEALTH_URL`
 
 These should point at the owned backend service's public Railway domain. Full
-setup notes live in [docs/railway-deployment.md](/Users/atoyegbe/dev/quant/projects/naija-pulse/docs/railway-deployment.md).
+setup notes live in [docs/railway-deployment.md](../docs/railway-deployment.md).

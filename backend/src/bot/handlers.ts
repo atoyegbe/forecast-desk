@@ -1,4 +1,5 @@
 import type TelegramBot from 'node-telegram-bot-api'
+import type { Message, User } from 'node-telegram-bot-api'
 import { approveTelegramAuth } from '../app/telegram-auth-service.js'
 import {
   countActiveAlertSubscriptionsByUser,
@@ -35,15 +36,15 @@ export type TelegramBotLike = Pick<
   'on' | 'onText' | 'sendMessage'
 >
 
-function getChatId(message: TelegramBot.Message) {
+function getChatId(message: Message) {
   return String(message.chat.id)
 }
 
-function getMessageText(message: TelegramBot.Message) {
+function getMessageText(message: Message) {
   return message.text?.trim() ?? ''
 }
 
-function isPrivateChat(message: TelegramBot.Message) {
+function isPrivateChat(message: Message) {
   return message.chat.type === 'private'
 }
 
@@ -61,7 +62,7 @@ async function sendMarkdownMessage(
   text: string,
 ) {
   await bot.sendMessage(chatId, text, {
-    disable_web_page_preview: true,
+    link_preview_options: { is_disabled: true },
     parse_mode: 'MarkdownV2',
   })
 }
@@ -99,7 +100,7 @@ function logHandlerError(command: string, error: unknown) {
 }
 
 function getTelegramUsername(
-  from: Pick<TelegramBot.User, 'username'> | undefined,
+  from: Pick<User, 'username'> | undefined,
 ) {
   const username = from?.username?.trim()
 
@@ -125,7 +126,7 @@ Use /stop at any time to disconnect\\.
 
 async function handleDeepLinkAuth(
   bot: TelegramBotLike,
-  message: TelegramBot.Message,
+  message: Message,
   token: string,
 ) {
   if (!token) {
@@ -180,7 +181,7 @@ async function handleDeepLinkAuth(
 
 async function handleVerificationStart(
   bot: TelegramBotLike,
-  message: TelegramBot.Message,
+  message: Message,
 ) {
   const code = await issueVerificationCode({
     chatId: message.chat.id,
@@ -192,7 +193,7 @@ async function handleVerificationStart(
 
 export async function handleStartCommand(
   bot: TelegramBotLike,
-  message: TelegramBot.Message,
+  message: Message,
   parameter?: string | null,
 ) {
   if (!isPrivateChat(message)) {
@@ -217,7 +218,7 @@ export async function handleStartCommand(
 
 export async function handleStatusCommand(
   bot: TelegramBotLike,
-  message: TelegramBot.Message,
+  message: Message,
 ) {
   if (!isPrivateChat(message)) {
     return
@@ -242,7 +243,7 @@ export async function handleStatusCommand(
 
 export async function handleStopCommand(
   bot: TelegramBotLike,
-  message: TelegramBot.Message,
+  message: Message,
 ) {
   if (!isPrivateChat(message)) {
     return
@@ -261,7 +262,7 @@ export async function handleStopCommand(
 
 export async function handleUnknownMessage(
   bot: TelegramBotLike,
-  message: TelegramBot.Message,
+  message: Message,
 ) {
   if (!isPrivateChat(message)) {
     return

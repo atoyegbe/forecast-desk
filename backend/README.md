@@ -72,7 +72,7 @@ jobs so an API process and worker can safely coexist.
 If `make infra-up` fails because `54329` or `6379` is already in use, stop the
 other local service or override the ports for this project, for example
 `POSTGRES_PORT=54330 REDIS_PORT=6380 make infra-up`. The root
-[Makefile](/Users/atoyegbe/dev/quant/projects/naija-pulse/Makefile) updates
+[Makefile](../Makefile) updates
 `DATABASE_URL` and `REDIS_URL` automatically from those overrides.
 
 If you want a dedicated smart-money worker instead of running the scheduler in
@@ -82,7 +82,7 @@ the API process:
 2. Start the worker with `npm run dev:worker`
 3. Set `REDIS_URL` so the worker-issued Telegram verification codes can be claimed by the API process and the API can use Redis-backed caching
 
-If you use the root [Makefile](/Users/atoyegbe/dev/quant/projects/naija-pulse/Makefile), `make api`, `make worker`, and `make dev` already start local Postgres and Redis through the checked-in [compose.yml](/Users/atoyegbe/dev/quant/projects/naija-pulse/compose.yml).
+If you use the root [Makefile](../Makefile), `make api`, `make worker`, and `make dev` already start local Postgres and Redis through the checked-in [compose.yml](../compose.yml).
 
 The backend bootstraps its discovery schema on startup. If `DATABASE_URL` is not
 set, it falls back to `postgresql:///postgres` for local development. Server-side
@@ -97,8 +97,8 @@ serving the response.
 
 The backend now deploys to Railway as two services:
 
-- API service with [backend/railway.toml](/Users/atoyegbe/dev/quant/projects/naija-pulse/backend/railway.toml)
-- Worker service with [backend/railway.worker.toml](/Users/atoyegbe/dev/quant/projects/naija-pulse/backend/railway.worker.toml)
+- API service with [railway.toml](railway.toml)
+- Worker service with [railway.worker.toml](railway.worker.toml)
 
 The API disables the embedded scheduler at start, while the worker owns smart
 money refreshes, alert delivery, and Telegram bot polling in production.
@@ -114,7 +114,7 @@ src/
     verify.ts
 ```
 
-Full deployment notes live in [docs/railway-deployment.md](/Users/atoyegbe/dev/quant/projects/naija-pulse/docs/railway-deployment.md).
+Full deployment notes live in [docs/railway-deployment.md](../docs/railway-deployment.md).
 
 ## Expected Source Layout
 

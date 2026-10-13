@@ -1,4 +1,4 @@
-import type TelegramBot from 'node-telegram-bot-api'
+import type { User } from 'node-telegram-bot-api'
 import { createClient } from 'redis'
 import { getRedisUrl } from '../db/config.js'
 
@@ -196,7 +196,7 @@ function normalizeChatId(chatId: number | string) {
 
 export function buildTelegramHandle(
   from:
-    | Pick<TelegramBot.User, 'first_name' | 'last_name' | 'username'>
+    | Pick<User, 'first_name' | 'last_name' | 'username'>
     | undefined,
 ) {
   const username = from?.username?.trim()

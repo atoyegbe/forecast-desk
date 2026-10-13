@@ -221,7 +221,7 @@ Important variables include:
 
 Notes:
 
-- The checked-in [compose.yml](/Users/atoyegbe/dev/quant/projects/naija-pulse/compose.yml) is the supported local path for Postgres and Redis.
+- The checked-in [compose.yml](compose.yml) is the supported local path for Postgres and Redis.
 - `make api`, `make worker`, and `make dev` all start Postgres and Redis first.
 - Redis is still optional if you run processes manually, but it is now recommended for local caching and API/worker coordination.
 - Without `RESEND_API_KEY`, email auth and alert delivery fall back to local
@@ -308,12 +308,14 @@ Deployment notes:
 
 Key project docs:
 
-- [docs/implementation-tracker.md](docs/implementation-tracker.md) - working delivery tracker
 - [docs/mvp.md](docs/mvp.md) - MVP guardrails
 - [docs/provider-model.md](docs/provider-model.md) - provider abstraction model
-- [docs/naijapulse-blueprint.md](docs/naijapulse-blueprint.md) - product and architecture blueprint
-- [docs/naijapulse-uiux.md](docs/naijapulse-uiux.md) - UI and UX direction
-- [docs/caching.md](docs/caching.md) - backend and client caching notes
+
+## Contributing and License
+
+Quorum is available under the [MIT License](LICENSE). See [CONTRIBUTING.md](CONTRIBUTING.md)
+for development checks and pull request guidance. The logo and hero artwork are
+included in this repository with the copyright holder's permission.
 
 ## Current Focus
 
